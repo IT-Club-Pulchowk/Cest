@@ -17,25 +17,27 @@ fi
 echo ------------------------------
 echo Building With GCC
 echo ------------------------------
-if ! command -v gcc &> /dev/null
+if command -v gcc &> /dev/null
 then
+    pushd bin
+    gcc -Wno-switch -Wno-pointer-sign -Wno-enum-conversion $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE
+    popd
+    exit
+else
     echo GCC Not Found
     echo ------------------------------
-    exit
 fi
-pushd bin
-gcc -Wno-switch -Wno-pointer-sign -Wno-enum-conversion $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE
-popd
 
 echo ------------------------------
 echo Building With Clang
 echo ------------------------------
-if ! command -v clang &> /dev/null
+if command -v clang &> /dev/null
 then
+    pushd bin
+    clang -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -D_CRT_SECURE_NO_WARNINGS $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE
+    popd
+    exit
+else
     echo Clang Not Found
     echo ------------------------------
-    exit
 fi
-pushd bin
-clang -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -D_CRT_SECURE_NO_WARNINGS $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE
-popd
