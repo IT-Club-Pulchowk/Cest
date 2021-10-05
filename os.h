@@ -20,8 +20,8 @@ typedef struct File_Info {
 	Uint64 LastWriteTime;
 	Uint64 Size;
 	Uint32 Atribute;
-	char *Path;
-	char *Name;
+	String Path;
+	String Name;
 } File_Info;
 
 typedef enum Directory_Iteration {

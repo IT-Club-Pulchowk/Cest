@@ -11,7 +11,7 @@ static wchar_t *UnicodeToWideChar(const char *msg, int length) {
 	return result;
 }
 
-static int ConvertWin32FileInfo(File_Info *dst, WIN32_FIND_DATAW *src, const char *root, int root_len) {
+static void ConvertWin32FileInfo(File_Info *dst, WIN32_FIND_DATAW *src, String root) {
 	ULARGE_INTEGER converter;
 
 	converter.HighPart = src->ftCreationTime.dwHighDateTime;
@@ -46,24 +46,26 @@ static int ConvertWin32FileInfo(File_Info *dst, WIN32_FIND_DATAW *src, const cha
 
 	Memory_Arena *scratch = ThreadScratchpad();
 
-	int len = snprintf(NULL, 0, "%s%S", root, src->cFileName);
-	Assert(len > 0 && root_len > 0);
+	int len = snprintf(NULL, 0, "%s%S", root.Data, src->cFileName);
+	Assert(len > 0);
 
-	// Fir directory allocate 1 byte extra incase we might want to postfix with "/*" when recursively iterating
+	// Fir directory allocate 2 bytes extra incase we might want to postfix with "/*" when recursively iterating
+	// We also zero the extra 2 bytes that are allocated
 	bool is_dir = ((dst->Atribute & File_Attribute_Directory) == File_Attribute_Directory);
-	dst->Path = (char *)PushSize(scratch, (len + 1 + 2 * is_dir) * sizeof(char));
-	len = snprintf(dst->Path, len + 1 + 2 * is_dir, "%s%S", root, src->cFileName);
-	dst->Path[len + 1 * is_dir] = 0;
-	dst->Path[len + 2 * is_dir] = 0;
-	dst->Name = dst->Path + root_len;
-
-	return len;
+	dst->Path.Data = (Uint8 *)PushSize(scratch, (len + 1 + 2 * is_dir) * sizeof(char));
+	len = snprintf(dst->Path.Data, len + 1 + 2 * is_dir, "%s%S", root.Data, src->cFileName);
+	dst->Path.Data[len + 1 * is_dir] = 0;
+	dst->Path.Data[len + 2 * is_dir] = 0;
+	dst->Path.Length = len;
+	dst->Name.Data = dst->Path.Data + root.Length;
+	dst->Name.Length = dst->Path.Length - root.Length;
 }
 
-static bool IterateDirectroyInternal(char *path_normalized, int len, directory_iterator iterator, void *context) {
+// The path parameter of this procedure MUST be the non const string that ends with "/*"
+static bool IterateDirectroyInternal(String path, directory_iterator iterator, void *context) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
-	wchar_t *wpath = UnicodeToWideChar(path_normalized, len);
+	wchar_t *wpath = UnicodeToWideChar(path.Data, path.Length);
 
 	WIN32_FIND_DATAW find_data;
 	HANDLE find_handle = FindFirstFileW(wpath, &find_data);
@@ -80,8 +82,8 @@ static bool IterateDirectroyInternal(char *path_normalized, int len, directory_i
 	}
 
 	// Removing "*" from "root_dir/*"
-	len -= 1;
-	path_normalized[len] = '\0';
+	path.Length -= 1;
+	path.Data[path.Length] = '\0';
 
 	while (true) {
 		if (wcscmp(find_data.cFileName, L".") != 0 &&
@@ -90,7 +92,7 @@ static bool IterateDirectroyInternal(char *path_normalized, int len, directory_i
 			Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
 			File_Info info;
-			int path_len = ConvertWin32FileInfo(&info, &find_data, path_normalized, len);
+			ConvertWin32FileInfo(&info, &find_data, path);
 
 			Directory_Iteration result = iterator(&info, context);
 
@@ -100,10 +102,12 @@ static bool IterateDirectroyInternal(char *path_normalized, int len, directory_i
 			}
 
 			if ((info.Atribute & File_Attribute_Directory) && result == Directory_Iteration_Recurse) {
-				// Adding "/*" to "root_dir/"
-				info.Path[path_len] = '/';
-				info.Path[path_len + 1] = '*';
-				IterateDirectroyInternal(info.Path, path_len + 2, iterator, context);
+				// ConvertWin32FileInfo procedure allocates 2 bytes more and zered,
+				// so adding "/*" to "root_dir" is fine
+				info.Path.Data[info.Path.Length] = '/';
+				info.Path.Data[info.Path.Length + 1] = '*';
+				info.Path.Length += 2;
+				IterateDirectroyInternal(info.Path, iterator, context);
 			}
 
 			EndTemporaryMemory(&temp);
@@ -124,25 +128,25 @@ bool IterateDirectroy(const char *path, directory_iterator iterator, void *conte
 
 	size_t len = strlen(path);
 
-	char *path_normalized = 0;
+	String path_normalized = {0, 0};
 	if (path[len - 1] == '/' || path[len - 1] == '\\') {
-		path_normalized = PushSize(scratch, len + 2);
-		memcpy(path_normalized, path, len);
-		path_normalized[len] = '*';
-		path_normalized[len + 1] = '\0';
-		len += 1;
+		path_normalized.Data = PushSize(scratch, len + 2);
+		memcpy(path_normalized.Data, path, len);
+		path_normalized.Data[len] = '*';
+		path_normalized.Data[len + 1] = '\0';
+		path_normalized.Length = len + 1;
 	}
 	else {
-		path_normalized = PushSize(scratch, len + 3);
-		memcpy(path_normalized, path, len);
-		path_normalized[len] = '/';
-		path_normalized[len + 1] = '*';
-		path_normalized[len + 2] = '\0';
-		len += 2;
+		path_normalized.Data = PushSize(scratch, len + 3);
+		memcpy(path_normalized.Data, path, len);
+		path_normalized.Data[len] = '/';
+		path_normalized.Data[len + 1] = '*';
+		path_normalized.Data[len + 2] = '\0';
+		path_normalized.Length = len + 2;
 	}
 
 	{
-		char *iter = path_normalized;
+		char *iter = path_normalized.Data;
 		while (*iter) {
 			if (*iter == '\\') *iter = '/';
 			iter += 1;
@@ -151,7 +155,7 @@ bool IterateDirectroy(const char *path, directory_iterator iterator, void *conte
 
 	if (!iterator) iterator = DirectoryIteratorPrint;
 
-	bool result = IterateDirectroyInternal(path_normalized, len, iterator, context);
+	bool result = IterateDirectroyInternal(path_normalized, iterator, context);
 
 	EndTemporaryMemory(&temp);
 
