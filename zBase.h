@@ -323,9 +323,9 @@ extern "C" {
 	//
 
 	void *VirtualMemoryAllocate(void *ptr, Ptrsize size);
-	void *VirtualMemoryCommit(void *ptr, Ptrsize size);
+	bool VirtualMemoryCommit(void *ptr, Ptrsize size);
 	bool VirtualMemoryDecommit(void *ptr, Ptrsize size);
-	bool VirtualMemoryFree(void *ptr);
+	bool VirtualMemoryFree(void *ptr, Ptrsize size);
 
 #if defined(__cplusplus)
 }
