@@ -151,6 +151,12 @@
 void AssertHandle(const char *reason, const char *file, int line, const char *proc);
 #endif
 
+#if !defined(DEPRECATION_HANDLED)
+#define DeprecateHandle(file, line, proc) TriggerBreakpoint()
+#else
+void DeprecateHandle(const char *file, int line, const char *proc);
+#endif
+
 #if defined(BUILD_DEBUG)
 #define DebugTriggerbreakpoint TriggerBreakpoint
 #define Assert(x)                                                  \
@@ -165,6 +171,7 @@ do {          \
 } while (0)
 #endif
 
+#define Deprecated()	DeprecateHandle(__FILE__, __LINE__, __PROCEDURE__)
 #define Unimplemented() AssertHandle("Unimplemented procedure", __FILE__, __LINE__, __PROCEDURE__); TriggerBreakpoint()
 #define Unreachable()   AssertHandle("Unreachable code path", __FILE__, __LINE__, __PROCEDURE__); TriggerBreakpoint()
 #define NoDefaultCase()      \
