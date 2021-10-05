@@ -30,11 +30,11 @@ typedef enum Directory_Iteration {
 	Directory_Iteration_Break
 } Directory_Iteration;
 
-typedef Directory_Iteration(*directory_iterator)(const File_Info *info, void *user_context);
+typedef Directory_Iteration(*Directory_Iterator)(const File_Info *info, void *user_context);
 
 inline Directory_Iteration DirectoryIteratorPrint(const File_Info *info, void *user_context) {
 	LogInfo("%s - %zu bytes\n", info->Path, info->Size);
 	return Directory_Iteration_Recurse;
 }
 
-bool IterateDirectroy(const char *path, directory_iterator iterator, void *context);
+bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *context);

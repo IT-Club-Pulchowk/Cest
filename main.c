@@ -33,3 +33,6 @@ int main(int argc, char *argv[]) {
 #if OS_WINDOWS == 1
 #include "os_windows.c"
 #endif
+#if OS_LINUX == 1
+#include "os_linux.c"
+#endif

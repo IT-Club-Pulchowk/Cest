@@ -62,7 +62,7 @@ static void ConvertWin32FileInfo(File_Info *dst, WIN32_FIND_DATAW *src, String r
 }
 
 // The path parameter of this procedure MUST be the non const string that ends with "/*"
-static bool IterateDirectroyInternal(String path, directory_iterator iterator, void *context) {
+static bool IterateDirectroyInternal(String path, Directory_Iterator iterator, void *context) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	wchar_t *wpath = UnicodeToWideChar(path.Data, path.Length);
@@ -121,7 +121,7 @@ static bool IterateDirectroyInternal(String path, directory_iterator iterator, v
 	return true;
 }
 
-bool IterateDirectroy(const char *path, directory_iterator iterator, void *context) {
+bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *context) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
