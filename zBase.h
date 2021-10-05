@@ -2,6 +2,7 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+#include <stddef.h>
 #if !defined(__cplusplus)
 #include <stdbool.h>
 #endif
