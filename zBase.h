@@ -135,13 +135,6 @@
 #define TriggerBreakpoint() ((int *)0) = 0
 #endif
 
-#define Unimplemented() TriggerBreakpoint()
-#define Unreachable()   TriggerBreakpoint()
-#define NoDefaultCase()      \
-default:                 \
-TriggerBreakpoint(); \
-break
-
 #if !defined(BUILD_DEBUG) && !defined(BUILD_DEVELOPER) && !defined(BUILD_RELEASE)
 #if defined(_DEBUG) || defined(DEBUG)
 #define BUILD_DEBUG
@@ -153,16 +146,16 @@ break
 #endif
 
 #if !defined(ASSERTION_HANDLED)
-#define AssertHandle(file, line, proc) TriggerBreakpoint()
+#define AssertHandle(reason, file, line, proc) TriggerBreakpoint()
 #else
-void AssertHandle(const char *file, int line, const char *proc);
+void AssertHandle(const char *reason, const char *file, int line, const char *proc);
 #endif
 
 #if defined(BUILD_DEBUG)
 #define DebugTriggerbreakpoint TriggerBreakpoint
 #define Assert(x)                                                  \
 do {                                                           \
-if (!(x)) AssertHandle(__FILE__, __LINE__, __PROCEDURE__); \
+if (!(x)) AssertHandle("Assert Failed", __FILE__, __LINE__, __PROCEDURE__); \
 } while (0)
 #else
 #define DebugTriggerbreakpoint()
@@ -171,6 +164,13 @@ do {          \
 0;        \
 } while (0)
 #endif
+
+#define Unimplemented() AssertHandle("Unimplemented procedure", __FILE__, __LINE__, __PROCEDURE__); TriggerBreakpoint()
+#define Unreachable()   AssertHandle("Unreachable code path", __FILE__, __LINE__, __PROCEDURE__); TriggerBreakpoint()
+#define NoDefaultCase()      \
+default:                 \
+AssertHandle("No default case", __FILE__, __LINE__, __PROCEDURE__); TriggerBreakpoint(); \
+break
 
 //
 //

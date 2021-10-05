@@ -20,7 +20,7 @@ echo ------------------------------
 if command -v gcc &> /dev/null
 then
     pushd bin
-    gcc -Wno-switch -Wno-pointer-sign -Wno-enum-conversion $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE
+    gcc -DASSERTION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE
     popd
     exit
 else
@@ -34,7 +34,7 @@ echo ------------------------------
 if command -v clang &> /dev/null
 then
     pushd bin
-    clang -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -D_CRT_SECURE_NO_WARNINGS $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE
+    clang -DASSERTION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -D_CRT_SECURE_NO_WARNINGS $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE
     popd
     exit
 else
