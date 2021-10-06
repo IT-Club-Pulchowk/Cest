@@ -3,7 +3,7 @@
 #define WIN32_MEAN_AND_LEAN
 #include <Windows.h>
 
-Compiler DetectCompiler() {
+Compiler_Kind DetectCompiler() {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	DWORD length = 0;
@@ -188,4 +188,29 @@ bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *conte
 	EndTemporaryMemory(&temp);
 
 	return result;
+}
+
+
+bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
+	Assert(compiler == Compiler_Kind_CL);
+
+	wchar_t *wcmdline = UnicodeToWideChar(cmdline.Data, (int)cmdline.Length);
+
+	STARTUPINFOW start_up = { sizeof(start_up) };
+	PROCESS_INFORMATION process;
+	memset(&process, 0, sizeof(process));
+
+	LogInfo("Compiling...\n");
+
+	// TODO: Use security attributes??
+	CreateProcessW(NULL, wcmdline, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &start_up, &process);
+
+	WaitForSingleObject(process.hProcess, INFINITE);
+
+	LogInfo("Done...\n");
+
+	CloseHandle(process.hProcess);
+	CloseHandle(process.hThread);
+
+	return true;
 }

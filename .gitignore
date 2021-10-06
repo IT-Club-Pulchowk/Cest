@@ -1,3 +1,7 @@
 misc
 bin
 .vscode
+/*.exe
+/*.ilk
+/*.pdb
+/*.obj

@@ -52,24 +52,31 @@ typedef struct Compiler_Config {
 } Compiler_Config;
 
 void SetDefaultCompilerConfig(Compiler_Config *config) {
-	static String source;
-	if (!source.Data) source = StringLiteral("*.c");
+	Memory_Arena *arena = ThreadScratchpadI(1);
+
+	// TODO: Use sensible default values
 
 	config->Type = Compile_Type_Project;
 
 	config->Optimization = false;
 
-	config->Defines = NULL;
-	config->DefineCount = 0;
+	config->DefineCount = 3;
+	config->Defines = PushArrayAligned(arena, String, config->DefineCount, sizeof(Ptrsize));
+
+	config->Defines[0] = StringLiteral("ASSERTION_HANDLED");
+	config->Defines[1] = StringLiteral("DEPRECATION_HANDLED");
+	config->Defines[2] = StringLiteral("_CRT_SECURE_NO_WARNINGS");
 
 	config->IncludeDirectory = NULL;
 	config->IncludeDirectoryCount = 0;
 
-	config->Source = (String *)&source;
 	config->SourceCount = 1;
+	config->Source = PushArrayAligned(arena, String, config->DefineCount, sizeof(Ptrsize));
+
+	config->Source[0] = StringLiteral("main.c");
 
 	config->BuildDirectory = StringLiteral("./bin");
-	config->Build = StringLiteral("main");
+	config->Build = StringLiteral("bootstrap");
 
 	config->LiraryDirectory = NULL;
 	config->LibraryDirectoryCount = 0;
@@ -78,10 +85,13 @@ void SetDefaultCompilerConfig(Compiler_Config *config) {
 	config->LibraryCount = 0;
 }
 
-void Compile(Compiler_Config *config, Compiler compiler) {
+void Compile(Compiler_Config *config, Compiler_Kind compiler) {
+	String cmdline = {0, 0};
+
 	Memory_Arena *scratch = ThreadScratchpadI(1);
 
 	Assert(config->Type == Compile_Type_Project);
+	Assert(compiler == Compiler_Kind_CL);
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
@@ -91,7 +101,7 @@ void Compile(Compiler_Config *config, Compiler compiler) {
 	// TODO: Check if the compiler is CL or CLANG
 
 	// Defaults
-	OutFormatted(&out, "-nologo -Zi -EHsc ");
+	OutFormatted(&out, "cl -nologo -Zi -EHsc ");
 
 	if (config->Optimization) {
 		OutFormatted(&out, "-O2 ");
@@ -128,20 +138,22 @@ void Compile(Compiler_Config *config, Compiler compiler) {
 	}
 
 	Push_Allocator point = PushThreadAllocator(MemoryArenaAllocator(ThreadScratchpadI(0)));
-	String cmdline = OutBuildString(&out);
+	cmdline = OutBuildString(&out);
 	PopThreadAllocator(&point);
 
 	EndTemporaryMemory(&temp);
 
 
 	LogInfo("Command Line: %s\n", cmdline.Data);
+
+	OsLaunchCompilation(compiler, cmdline);
 }
 
 
 int main(int argc, char *argv[]) {
 	InitThreadContextCrt(MegaBytes(512));
 
-	Compiler compiler = DetectCompiler();
+	Compiler_Kind compiler = DetectCompiler();
 
 	Memory_Arena *scratch = ThreadScratchpad();
 

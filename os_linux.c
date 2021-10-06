@@ -16,7 +16,6 @@ Compiler_Kind DetectCompiler() {
         return Compiler_Kind_GCC;
     }
     if (!system("which clang > /dev/null 2>&1")){
-        Compiler_Kind = L"clang";
         LogInfo("CLANG Detected\n");
         return Compiler_Kind_CLANG;
     }
@@ -124,4 +123,10 @@ bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *conte
 
     EndTemporaryMemory(&temp);
     return res;
+}
+
+
+bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
+    LogError("ERROR: Not yet implemented!");
+    return false;
 }
