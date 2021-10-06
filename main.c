@@ -123,14 +123,16 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 		OutFormatted(&out, "\"%s\" ", config->Source[i].Data);
 	}
 
-	// For CL, we need to change the working directory to BuildDirectory, so here we just set Build
-	OutFormatted(&out, "-Fe\"%s.exe\" ", config->Build.Data);
+	//OutFormatted(&out, "-Fe\"%s.exe\" ", config->Build.Data);
 
-	if (config->LibraryDirectoryCount) {
-		OutFormatted(&out, "-link ");
-		for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i) {
-			OutFormatted(&out, "-LIBPATH:\"%s\" ", config->LiraryDirectory[i].Data);
-		}
+	OutFormatted(&out, "-Fo\"%s/int/\" ", config->BuildDirectory.Data);
+	OutFormatted(&out, "-Fd\"%s/\" ", config->BuildDirectory.Data);
+	OutFormatted(&out, "-link ");
+	OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
+	//OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
+
+	for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i) {
+		OutFormatted(&out, "-LIBPATH:\"%s\" ", config->LiraryDirectory[i].Data);
 	}
 
 	for (Uint32 i = 0; i < config->LibraryCount; ++i) {
