@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
-Compiler_Kind DetectCompiler() {
+Compiler DetectCompiler() {
     if (!system("which gcc > /dev/null 2>&1")){
         LogInfo("GCC Detected\n");
         return Compiler_Kind_GCC;
@@ -53,7 +53,7 @@ static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * 
 }
 
 static bool IterateInternal(const String path, Directory_Iterator iterator, void *context) {
-    DIR *dir = opendir(path.Data);
+    DIR *dir = opendir((char*)path.Data);
     if (!dir){ 
         char * err_msg = strerror(errno);
         LogError("Error (%d): %s Path: %s\n", errno, err_msg, path.Data);
