@@ -45,6 +45,6 @@ typedef enum Compiler_Kind {
 	Compiler_Kind_CL,
 	Compiler_Kind_CLANG,
 	Compiler_Kind_GCC,
-} Compiler_Kind;
+} Compiler;
 
-Compiler_Kind DetectCompiler();
+Compiler DetectCompiler();

@@ -3,7 +3,7 @@
 #define WIN32_MEAN_AND_LEAN
 #include <Windows.h>
 
-Compiler_Kind DetectCompiler() {
+Compiler DetectCompiler() {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	DWORD length = 0;

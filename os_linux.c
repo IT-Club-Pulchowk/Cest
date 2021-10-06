@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
-Compiler_Kind DetectCompiler() {
+Compiler DetectCompiler() {
     if (!system("which gcc > /dev/null 2>&1")){
         LogInfo("GCC Detected\n");
         return Compiler_Kind_GCC;
