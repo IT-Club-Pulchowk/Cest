@@ -21,7 +21,7 @@ typedef struct Out_Stream {
 	Memory_Allocator Allocator;
 } Out_Stream;
 
-inline void OutBuffer(Out_Stream *out, const void *ptr, Int64 size) {
+static inline void OutBuffer(Out_Stream *out, const void *ptr, Int64 size) {
 	Uint8 *data = (Uint8 *)ptr;
 
 	while (size) {
@@ -44,7 +44,7 @@ inline void OutBuffer(Out_Stream *out, const void *ptr, Int64 size) {
 	}
 }
 
-inline void OutFormatted(Out_Stream *out, const char *fmt, ...) {
+static inline void OutFormatted(Out_Stream *out, const char *fmt, ...) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
@@ -65,11 +65,11 @@ inline void OutFormatted(Out_Stream *out, const char *fmt, ...) {
 	EndTemporaryMemory(&temp);
 }
 
-inline Int64 OutGetSize(Out_Stream *out) {
+static inline Int64 OutGetSize(Out_Stream *out) {
 	return out->Size;
 }
 
-inline String OutBuildString(Out_Stream *out) {
+static inline String OutBuildString(Out_Stream *out) {
 	String string;
 	string.Data = (Uint8 *)MemoryAllocate(out->Size + 1, &ThreadContext.Allocator);
 	string.Length = 0;
@@ -88,7 +88,7 @@ inline String OutBuildString(Out_Stream *out) {
 	return string;
 }
 
-inline void OutReset(Out_Stream *out) {
+static inline void OutReset(Out_Stream *out) {
 	Assert(out->Tail->Next == NULL);	
 	struct Out_Stream_Bucket *buk = &out->Head;
 	while (buk) {
@@ -98,7 +98,7 @@ inline void OutReset(Out_Stream *out) {
 	out->Size = 0;
 }
 
-inline void OutCreate(Out_Stream *out, Memory_Allocator allocator) {
+static inline void OutCreate(Out_Stream *out, Memory_Allocator allocator) {
 	out->Allocator = allocator;
 	out->Size = 0;
 	out->Head.Next = NULL;
@@ -106,7 +106,7 @@ inline void OutCreate(Out_Stream *out, Memory_Allocator allocator) {
 	out->Tail = &out->Head;
 }
 
-inline void OutDestroy(Out_Stream *out) {
+static inline void OutDestroy(Out_Stream *out) {
 	while (out->Head.Next) {
 		struct Out_Stream_Bucket *buk = out->Head.Next;
 		out->Head.Next = buk->Next;

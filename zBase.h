@@ -412,15 +412,15 @@ inline void MemoryFree(void *ptr, Memory_Allocator *allocator = &ThreadContext.A
 
 #else
 
-inline void *MemoryAllocate(Ptrsize size, Memory_Allocator *allocator) {
+static inline void *MemoryAllocate(Ptrsize size, Memory_Allocator *allocator) {
 	return allocator->Allocate(size, allocator->Context);
 }
 
-inline void *MemoryReallocate(Ptrsize old_size, Ptrsize new_size, void *ptr, Memory_Allocator *allocator) {
+static inline void *MemoryReallocate(Ptrsize old_size, Ptrsize new_size, void *ptr, Memory_Allocator *allocator) {
 	return allocator->Reallocate(ptr, old_size, new_size, allocator->Context);
 }
 
-inline void MemoryFree(void *ptr, Memory_Allocator *allocator) {
+static inline void MemoryFree(void *ptr, Memory_Allocator *allocator) {
 	allocator->Free(ptr, allocator->Context);
 }
 
