@@ -298,13 +298,13 @@ extern "C" {
 		void *Data;
 	} Log_Agent;
 
-	typedef struct Scratchpad {
+	typedef struct Thread_Scratchpad {
 		Memory_Arena Arena[2];
-	} Scratchpad;
+	} Thread_Scratchpad;
 
 	typedef struct Thread_Context {
 		Memory_Allocator      Allocator;
-		Scratchpad			  Scratchpad;
+		Thread_Scratchpad	  Scratchpad;
 		Log_Agent			  LogAgent;
 		Fatal_Error_Procedure FatalError;
 	} Thread_Context;
