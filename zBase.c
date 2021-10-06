@@ -111,6 +111,17 @@ extern "C" {
 		return allocator;
 	}
 
+	Push_Allocator PushThreadAllocator(Memory_Allocator to_push) {
+		Push_Allocator pushed;
+		pushed.Pushed = ThreadContext.Allocator;
+		ThreadContext.Allocator = to_push;
+		return pushed;
+	}
+
+	void PopThreadAllocator(Push_Allocator *pushed) {
+		ThreadContext.Allocator = pushed->Pushed;
+	}
+
 	Memory_Arena *ThreadScratchpad() {
 		for (uint32_t index = 0; ArrayCount(ThreadContext.Scratchpad.Arena); ++index) {
 			if (&ThreadContext.Scratchpad.Arena[index] != ThreadContext.Allocator.Context) {
@@ -118,6 +129,11 @@ extern "C" {
 			}
 		}
 		return 0;
+	}
+	
+	Memory_Arena *ThreadScratchpadI(Uint32 i) {
+		Assert(i < ArrayCount(ThreadContext.Scratchpad.Arena));
+		return &ThreadContext.Scratchpad.Arena[i];
 	}
 
 	void ResetThreadScratchpad() {

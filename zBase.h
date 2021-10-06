@@ -315,7 +315,15 @@ extern "C" {
 	//
 	//
 
+	typedef struct Push_Allocator {
+		Memory_Allocator Pushed;
+	} Push_Allocator;
+
+	Push_Allocator PushThreadAllocator(Memory_Allocator to_push);
+	void PopThreadAllocator(Push_Allocator *pushed);
+
 	Memory_Arena *ThreadScratchpad();
+	Memory_Arena *ThreadScratchpadI(Uint32 i);
 	void ResetThreadScratchpad();
 	Memory_Allocator ThreadScratchpadAllocator();
 
@@ -390,16 +398,30 @@ struct Exit_Scope_Help {
 };
 #define Defer const auto &_zConcat(defer__, __LINE__) = Exit_Scope_Help() + [&]()
 
-inline void *MemoryAllocate(Ptrsize size, Memory_Allocator &allocator = ThreadContext.Allocator) {
-	allocator.Allocate(size, allocator.Context);
+inline void *MemoryAllocate(Ptrsize size, Memory_Allocator *allocator = &ThreadContext.Allocator) {
+	return allocator->Allocate(size, allocator->Context);
 }
 
-inline void *MemoryReallocate(Ptrsize old_size, Ptrsize new_size, void *ptr, Memory_Allocator &allocator = ThreadContext.Allocator) {
-	allocator.Reallocate(ptr, old_size, new_size, allocator.Context);
+inline void *MemoryReallocate(Ptrsize old_size, Ptrsize new_size, void *ptr, Memory_Allocator *allocator = &ThreadContext.Allocator) {
+	return allocator->Reallocate(ptr, old_size, new_size, allocator->Context);
 }
 
-inline void MemoryFree(void *ptr, Memory_Allocator &allocator = ThreadContext.Allocator) {
-	allocator.Free(ptr, allocator.Context);
+inline void MemoryFree(void *ptr, Memory_Allocator *allocator = &ThreadContext.Allocator) {
+	allocator->Free(ptr, allocator->Context);
+}
+
+#else
+
+inline void *MemoryAllocate(Ptrsize size, Memory_Allocator *allocator) {
+	return allocator->Allocate(size, allocator->Context);
+}
+
+inline void *MemoryReallocate(Ptrsize old_size, Ptrsize new_size, void *ptr, Memory_Allocator *allocator) {
+	return allocator->Reallocate(ptr, old_size, new_size, allocator->Context);
+}
+
+inline void MemoryFree(void *ptr, Memory_Allocator *allocator) {
+	allocator->Free(ptr, allocator->Context);
 }
 
 #endif

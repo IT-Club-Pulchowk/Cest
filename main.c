@@ -1,6 +1,7 @@
 
 #include "os.h"
 #include "zBaseCRT.h"
+#include "stream.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -28,19 +29,26 @@ typedef enum Compile_Type {
 
 typedef struct Compiler_Config {
 	Compile_Type Type;
-	String BuildDirectory;
-	String Build;
+
+	bool Optimization;
+
 	String *Defines;
 	Uint32 DefineCount;
-	String *Source;
-	Uint32 SourceCount;
+
 	String *IncludeDirectory;
 	Uint32 IncludeDirectoryCount;
+
+	String *Source;
+	Uint32 SourceCount;
+
+	String BuildDirectory;
+	String Build;
+
 	String *LiraryDirectory;
 	Uint32 LibraryDirectoryCount;
+
 	String *Library;
 	Uint32 LibraryCount;
-	bool Optimization;
 } Compiler_Config;
 
 void SetDefaultCompilerConfig(Compiler_Config *config) {
@@ -48,20 +56,87 @@ void SetDefaultCompilerConfig(Compiler_Config *config) {
 	if (!source.Data) source = StringLiteral("*.c");
 
 	config->Type = Compile_Type_Project;
-	config->BuildDirectory = StringLiteral("./bin");
-	config->Build = StringLiteral("main");
+
+	config->Optimization = false;
+
 	config->Defines = NULL;
 	config->DefineCount = 0;
-	config->Source = (String *)&source;
-	config->SourceCount = 1;
+
 	config->IncludeDirectory = NULL;
 	config->IncludeDirectoryCount = 0;
+
+	config->Source = (String *)&source;
+	config->SourceCount = 1;
+
+	config->BuildDirectory = StringLiteral("./bin");
+	config->Build = StringLiteral("main");
+
 	config->LiraryDirectory = NULL;
 	config->LibraryDirectoryCount = 0;
+
 	config->Library = NULL;
 	config->LibraryCount = 0;
-	config->Optimization = false;
 }
+
+void Compile(Compiler_Config *config) {
+	Memory_Arena *scratch = ThreadScratchpadI(1);
+
+	Assert(config->Type == Compile_Type_Project);
+
+	Temporary_Memory temp = BeginTemporaryMemory(scratch);
+
+	Out_Stream out;
+	OutCreate(&out, MemoryArenaAllocator(scratch));
+
+	// TODO: Check if the compiler is CL or CLANG
+
+	// Defaults
+	OutFormatted(&out, "-nologo -Zi -EHsc ");
+
+	if (config->Optimization) {
+		OutFormatted(&out, "-O2 ");
+	}
+	else {
+		OutFormatted(&out, "-Od ");
+	}
+
+	for (Uint32 i = 0; i < config->DefineCount; ++i) {
+		OutFormatted(&out, "-D%s ", config->Defines[i].Data);
+	}
+
+	for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i) {
+		OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data);
+	}
+
+	// TODO: Add Recursively if it is has "*"
+	for (Uint32 i = 0; i < config->SourceCount; ++i) {
+		OutFormatted(&out, "\"%s\" ", config->Source[i].Data);
+	}
+
+	// For CL, we need to change the working directory to BuildDirectory, so here we just set Build
+	OutFormatted(&out, "-Fe\"%s.exe\" ", config->Build.Data);
+
+	if (config->LibraryDirectoryCount) {
+		OutFormatted(&out, "-link ");
+		for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i) {
+			OutFormatted(&out, "-LIBPATH:\"%s\" ", config->LiraryDirectory[i].Data);
+		}
+	}
+
+	for (Uint32 i = 0; i < config->LibraryCount; ++i) {
+		OutFormatted(&out, "\"%s\" ", config->Library[i].Data);
+	}
+
+	Push_Allocator point = PushThreadAllocator(MemoryArenaAllocator(ThreadScratchpadI(0)));
+	String cmdline = OutBuildString(&out);
+	PopThreadAllocator(&point);
+
+	EndTemporaryMemory(&temp);
+
+
+	LogInfo("Command Line: %s\n", cmdline.Data);
+}
+
 
 int main(int argc, char *argv[]) {
 	InitThreadContextCrt(MegaBytes(512));
@@ -81,7 +156,11 @@ int main(int argc, char *argv[]) {
 	config[size] = 0;
 	fclose(fp);
 
-	LogInfo("Config:\n%s\n", config);
+	//LogInfo("Config:\n%s\n", config);
+	
+	Compiler_Config compiler_config;
+	SetDefaultCompilerConfig(&compiler_config);
+	Compile(&compiler_config);
 
 #if 0
 	if (argc != 2) {

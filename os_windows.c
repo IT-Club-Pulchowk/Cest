@@ -3,7 +3,7 @@
 #define WIN32_MEAN_AND_LEAN
 #include <Windows.h>
 
-static const wchar_t *Compiler;
+static const char *Compiler;
 
 void DetectCompiler() {
 	Memory_Arena *scratch = ThreadScratchpad();
@@ -16,7 +16,7 @@ void DetectCompiler() {
 		SearchPathW(NULL, L"cl", L".exe", length, path, &dir);
 		LogInfo("CL Detected: \"%S\"\n", path);
 		EndTemporaryMemory(&temp);
-		Compiler = L"cl.exe";
+		Compiler = "cl.exe";
 		return;
 	}
 	
@@ -28,11 +28,11 @@ void DetectCompiler() {
 		SearchPathW(NULL, L"clang", L".exe", length, path, &dir);
 		LogInfo("CLANG Detected: \"%S\"\n", path);
 		EndTemporaryMemory(&temp);
-		Compiler = L"clang.exe";
+		Compiler = "clang.exe";
 		return;
 	}
 
-	LogError("Error: Failed to detect compiler!");
+	LogError("Error: Failed to detect compiler!\n");
 }
 
 static wchar_t *UnicodeToWideChar(const char *msg, int length) {

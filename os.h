@@ -39,4 +39,5 @@ static inline Directory_Iteration DirectoryIteratorPrint(const File_Info *info, 
 
 bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *context);
 
+
 void DetectCompiler();
