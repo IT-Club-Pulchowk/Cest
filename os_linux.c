@@ -10,21 +10,19 @@
 #include <stdio.h>
 #include <string.h>
 
-static const wchar_t *Compiler;
-
-void DetectCompiler() {
+Compiler_Kind DetectCompiler() {
     if (!system("which gcc > /dev/null 2>&1")){
-        Compiler = L"gcc";
         LogInfo("GCC Detected\n");
-        return;
+        return Compiler_Kind_GCC;
     }
     if (!system("which clang > /dev/null 2>&1")){
-        Compiler = L"clang";
+        Compiler_Kind = L"clang";
         LogInfo("CLANG Detected\n");
-        return;
+        return Compiler_Kind_CLANG;
     }
 
-    LogError("Error: Failed to detect compiler!");
+    LogError("Error: Failed to detect compiler!\n");
+    return Compiler_Kind_NULL;
 }
 
 static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * name, const int name_len){

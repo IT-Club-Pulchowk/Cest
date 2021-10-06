@@ -78,7 +78,7 @@ void SetDefaultCompilerConfig(Compiler_Config *config) {
 	config->LibraryCount = 0;
 }
 
-void Compile(Compiler_Config *config) {
+void Compile(Compiler_Config *config, Compiler compiler) {
 	Memory_Arena *scratch = ThreadScratchpadI(1);
 
 	Assert(config->Type == Compile_Type_Project);
@@ -141,7 +141,7 @@ void Compile(Compiler_Config *config) {
 int main(int argc, char *argv[]) {
 	InitThreadContextCrt(MegaBytes(512));
 
-	DetectCompiler();
+	Compiler compiler = DetectCompiler();
 
 	Memory_Arena *scratch = ThreadScratchpad();
 
@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
 	
 	Compiler_Config compiler_config;
 	SetDefaultCompilerConfig(&compiler_config);
-	Compile(&compiler_config);
+	Compile(&compiler_config, compiler);
 
 #if 0
 	if (argc != 2) {

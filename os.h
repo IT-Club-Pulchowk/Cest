@@ -39,5 +39,12 @@ static inline Directory_Iteration DirectoryIteratorPrint(const File_Info *info, 
 
 bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *context);
 
+typedef enum Compiler_Kind {
+	Compiler_Kind_NULL,
 
-void DetectCompiler();
+	Compiler_Kind_CL,
+	Compiler_Kind_CLANG,
+	Compiler_Kind_GCC,
+} Compiler;
+
+Compiler DetectCompiler();
