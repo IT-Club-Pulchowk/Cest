@@ -13,18 +13,18 @@
 static const wchar_t *Compiler;
 
 void DetectCompiler() {
-    if (system("which gcc > /dev/null 2>&1")){
+    if (!system("which gcc > /dev/null 2>&1")){
         Compiler = L"gcc";
         LogInfo("GCC Detected\n");
         return;
     }
-    if (system("which clang > /dev/null 2>&1")){
+    if (!system("which clang > /dev/null 2>&1")){
         Compiler = L"clang";
         LogInfo("CLANG Detected\n");
         return;
     }
 
-	LogError("Error: Failed to detect compiler!");
+    LogError("Error: Failed to detect compiler!");
 }
 
 static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * name, const int name_len){
