@@ -1,6 +1,7 @@
 #include "os.h"
 #include "zBase.h"
 
+#include <errno.h>
 #include <sys/stat.h>
 #include <bits/statx.h>
 #include <fcntl.h>
@@ -9,16 +10,14 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool GetInfo(File_Info *info, const String Path, const char * name, const int name_len){
+static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * name, const int name_len){
     struct statx stats;
-    statx(open(".", O_DIRECTORY), (char *)Path.Data, AT_SYMLINK_NOFOLLOW, STATX_ALL, &stats);
+    statx(dirfd, (char *)Path.Data, AT_SYMLINK_NOFOLLOW, STATX_ALL, &stats);
 
     info->CreationTime   = stats.stx_btime.tv_nsec;
     info->LastAccessTime = stats.stx_atime.tv_nsec;
     info->LastWriteTime  = stats.stx_mtime.tv_nsec;
-    // Size of directory always shows up as 4096 bytes
-    // Hacky workaround to make it 0 bytes
-    info->Size           = stats.stx_size * ((stats.stx_mode & S_IFDIR) != S_IFDIR);
+    info->Size           = stats.stx_size;
 
     Memory_Arena *scratch = ThreadScratchpad();
     info->Path.Length = Path.Length;
@@ -41,11 +40,13 @@ static bool GetInfo(File_Info *info, const String Path, const char * name, const
 
 static bool IterateInternal(const String path, Directory_Iterator iterator, void *context) {
     DIR *dir = opendir(path.Data);
-    if (!dir){
-        printf("Could not open %s\n", path.Data);
+    if (!dir){ 
+        char * err_msg = strerror(errno);
+        LogError("Error (%d): %s Path: %s\n", errno, err_msg, path.Data);
         return false;
     }
 
+    int dfd = dirfd(dir);
     struct dirent *dp;
 
     while ((dp = readdir(dir)) != NULL) {
@@ -61,7 +62,7 @@ static bool IterateInternal(const String path, Directory_Iterator iterator, void
         sprintf(new_path.Data, "%s/%s", path.Data, dp->d_name);
 
         File_Info info;
-        bool is_dir = GetInfo(&info, new_path, dp->d_name, name_len);
+        bool is_dir = GetInfo(&info, dfd, new_path, dp->d_name, name_len);
         Directory_Iteration iter = iterator(&info, context);
 
         if (is_dir && iter == Directory_Iteration_Recurse){
