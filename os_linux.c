@@ -127,6 +127,9 @@ bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *conte
 
 
 bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
-    LogError("ERROR: Not yet implemented!");
+    if (compiler != Compiler_Kind_NULL){
+        system ((char *)cmdline.Data);
+        return true;
+    }
     return false;
 }

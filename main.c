@@ -91,7 +91,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Memory_Arena *scratch = ThreadScratchpadI(1);
 
 	Assert(config->Type == Compile_Type_Project);
-	Assert(compiler == Compiler_Kind_CL);
+	Assert(compiler != Compiler_Kind_CLANG);
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
@@ -101,43 +101,64 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	// TODO: Check if the compiler is CL or CLANG
 
 	// Defaults
-	OutFormatted(&out, "cl -nologo -Zi -EHsc ");
+    if (compiler == Compiler_Kind_CL){
+        OutFormatted(&out, "cl -nologo -Zi -EHsc ");
 
-	if (config->Optimization) {
-		OutFormatted(&out, "-O2 ");
-	}
-	else {
-		OutFormatted(&out, "-Od ");
-	}
+        if (config->Optimization)
+            OutFormatted(&out, "-O2 ");
+        else
+            OutFormatted(&out, "-Od ");
 
-	for (Uint32 i = 0; i < config->DefineCount; ++i) {
-		OutFormatted(&out, "-D%s ", config->Defines[i].Data);
-	}
+        for (Uint32 i = 0; i < config->DefineCount; ++i)
+            OutFormatted(&out, "-D%s ", config->Defines[i].Data);
 
-	for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i) {
-		OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data);
-	}
+        for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i)
+            OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data);
 
-	// TODO: Add Recursively if it is has "*"
-	for (Uint32 i = 0; i < config->SourceCount; ++i) {
-		OutFormatted(&out, "\"%s\" ", config->Source[i].Data);
-	}
+        // TODO: Add Recursively if it is has "*"
+        for (Uint32 i = 0; i < config->SourceCount; ++i)
+            OutFormatted(&out, "\"%s\" ", config->Source[i].Data);
 
-	// TODO: Make directory if not present, need to add OS api for making directory!
-	// Until then make "bin/int" directory manually :(
-	OutFormatted(&out, "-Fo\"%s/int/\" ", config->BuildDirectory.Data);
-	OutFormatted(&out, "-Fd\"%s/\" ", config->BuildDirectory.Data);
-	OutFormatted(&out, "-link ");
-	OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
-	OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
+        // TODO: Make directory if not present, need to add OS api for making directory!
+        // Until then make "bin/int" directory manually :(
+        OutFormatted(&out, "-Fo\"%s/int/\" ", config->BuildDirectory.Data);
+        OutFormatted(&out, "-Fd\"%s/\" ", config->BuildDirectory.Data);
+        OutFormatted(&out, "-link ");
+        OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
+        OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
 
-	for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i) {
-		OutFormatted(&out, "-LIBPATH:\"%s\" ", config->LiraryDirectory[i].Data);
-	}
+        for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i)
+            OutFormatted(&out, "-LIBPATH:\"%s\" ", config->LiraryDirectory[i].Data);
 
-	for (Uint32 i = 0; i < config->LibraryCount; ++i) {
-		OutFormatted(&out, "\"%s\" ", config->Library[i].Data);
-	}
+        for (Uint32 i = 0; i < config->LibraryCount; ++i)
+            OutFormatted(&out, "\"%s\" ", config->Library[i].Data);
+    }
+    else if (compiler == Compiler_Kind_GCC){
+        // TODO: Same as with cl
+        OutFormatted(&out, "gcc -pipe ");
+
+        if (config->Optimization)
+            OutFormatted(&out, "-O2 ");
+        else
+            OutFormatted(&out, "-g ");
+
+        for (Uint32 i = 0; i < config->DefineCount; ++i)
+            OutFormatted(&out, "-D%s ", config->Defines[i].Data);
+
+        for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i)
+            OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data);
+
+        for (Uint32 i = 0; i < config->SourceCount; ++i)
+            OutFormatted(&out, "%s ", config->Source[i].Data);
+
+        OutFormatted(&out, "-o%s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
+
+        for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i)
+            OutFormatted(&out, "-L%s ", config->LiraryDirectory[i].Data);
+
+        for (Uint32 i = 0; i < config->LibraryCount; ++i)
+            OutFormatted(&out, "-l%s ", config->Library[i].Data);
+    }
 
 	Push_Allocator point = PushThreadAllocator(MemoryArenaAllocator(ThreadScratchpadI(0)));
 	cmdline = OutBuildString(&out);
@@ -174,6 +195,9 @@ int main(int argc, char *argv[]) {
 	SetDefaultCompilerConfig(&compiler_config);
 
 #if PLATFORM_OS_WINDOWS == 1
+	Compile(&compiler_config, compiler);
+#endif
+#if PLATFORM_OS_LINUX == 1
 	Compile(&compiler_config, compiler);
 #endif
 
