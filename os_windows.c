@@ -200,14 +200,10 @@ bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
 	PROCESS_INFORMATION process;
 	memset(&process, 0, sizeof(process));
 
-	LogInfo("Compiling...\n");
-
 	// TODO: Use security attributes??
 	CreateProcessW(NULL, wcmdline, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &start_up, &process);
 
 	WaitForSingleObject(process.hProcess, INFINITE);
-
-	LogInfo("Done...\n");
 
 	CloseHandle(process.hProcess);
 	CloseHandle(process.hThread);

@@ -123,13 +123,13 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 		OutFormatted(&out, "\"%s\" ", config->Source[i].Data);
 	}
 
-	//OutFormatted(&out, "-Fe\"%s.exe\" ", config->Build.Data);
-
+	// TODO: Make directory if not present, need to add OS api for making directory!
+	// Until then make "bin/int" directory manually :(
 	OutFormatted(&out, "-Fo\"%s/int/\" ", config->BuildDirectory.Data);
 	OutFormatted(&out, "-Fd\"%s/\" ", config->BuildDirectory.Data);
 	OutFormatted(&out, "-link ");
 	OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
-	//OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
+	OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
 
 	for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i) {
 		OutFormatted(&out, "-LIBPATH:\"%s\" ", config->LiraryDirectory[i].Data);
@@ -169,12 +169,13 @@ int main(int argc, char *argv[]) {
 	fread(config, size, 1, fp);
 	config[size] = 0;
 	fclose(fp);
-
-	//LogInfo("Config:\n%s\n", config);
 	
 	Compiler_Config compiler_config;
 	SetDefaultCompilerConfig(&compiler_config);
+
+#if PLATFORM_OS_WINDOWS == 1
 	Compile(&compiler_config, compiler);
+#endif
 
 #if 0
 	if (argc != 2) {
