@@ -368,7 +368,7 @@ typedef struct String {
 	}
 #endif
 } String;
-#define StringLiteral(lit) (String) { lit, (Int64)(sizeof(lit) - 1) }
+#define StringLiteral(lit) (const String) { (Int64)(sizeof(lit) - 1), lit }
 
 
 #if defined(__cplusplus)
