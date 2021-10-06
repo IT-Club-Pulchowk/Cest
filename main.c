@@ -7,6 +7,7 @@
 
 void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
 	fprintf(stderr, "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
+	TriggerBreakpoint();
 }
 
 void DeprecateHandle(const char *file, int line, const char *proc) {
