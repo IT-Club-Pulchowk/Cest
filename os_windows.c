@@ -3,11 +3,11 @@
 #define WIN32_MEAN_AND_LEAN
 #include <Windows.h>
 
-Compiler DetectCompiler() {
+Compiler_Kind DetectCompiler() {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	DWORD length = 0;
-	if (length = SearchPathW(NULL, L"cl", L".exe", 0, NULL, NULL)) {
+	if ((length = SearchPathW(NULL, L"cl", L".exe", 0, NULL, NULL))) {
 		Temporary_Memory temp = BeginTemporaryMemory(scratch);
 		wchar_t *dir = 0;
 		wchar_t *path = PushSize(scratch, sizeof(wchar_t) * (length + 1));
@@ -18,7 +18,7 @@ Compiler DetectCompiler() {
 	}
 	
 	length = 0;
-	if (length = SearchPathW(NULL, L"clang", L".exe", 0, NULL, NULL)) {
+	if ((length = SearchPathW(NULL, L"clang", L".exe", 0, NULL, NULL))) {
 		Temporary_Memory temp = BeginTemporaryMemory(scratch);
 		wchar_t *dir = 0;
 		wchar_t *path = PushSize(scratch, sizeof(wchar_t) * (length + 1));

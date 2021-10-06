@@ -16,7 +16,6 @@ Compiler_Kind DetectCompiler() {
         return Compiler_Kind_GCC;
     }
     if (!system("which clang > /dev/null 2>&1")){
-        Compiler_Kind = L"clang";
         LogInfo("CLANG Detected\n");
         return Compiler_Kind_CLANG;
     }
@@ -54,7 +53,7 @@ static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * 
 }
 
 static bool IterateInternal(const String path, Directory_Iterator iterator, void *context) {
-    DIR *dir = opendir(path.Data);
+    DIR *dir = opendir((char*)path.Data);
     if (!dir){ 
         char * err_msg = strerror(errno);
         LogError("Error (%d): %s Path: %s\n", errno, err_msg, path.Data);

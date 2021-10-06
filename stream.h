@@ -71,7 +71,7 @@ inline Int64 OutGetSize(Out_Stream *out) {
 
 inline String OutBuildString(Out_Stream *out) {
 	String string;
-	string.Data = MemoryAllocate(out->Size + 1, &ThreadContext.Allocator);
+	string.Data = (Uint8 *)MemoryAllocate(out->Size + 1, &ThreadContext.Allocator);
 	string.Length = 0;
 
 	struct Out_Stream_Bucket *buk = &out->Head;
