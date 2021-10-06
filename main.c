@@ -29,6 +29,8 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	DetectCompiler();
+
 	const char *dir = argv[1];
 
 	IterateDirectroy(dir, DirectoryIteratorPrintNoBin, NULL);
@@ -39,9 +41,9 @@ int main(int argc, char *argv[]) {
 #include "zBase.c"
 #include "zBaseCRT.c"
 
-#if OS_WINDOWS == 1
+#if PLATFORM_OS_WINDOWS == 1
 #include "os_windows.c"
 #endif
-#if OS_LINUX == 1
+#if PLATFORM_OS_LINUX == 1
 #include "os_linux.c"
 #endif

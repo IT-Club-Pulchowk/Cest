@@ -3,6 +3,38 @@
 #define WIN32_MEAN_AND_LEAN
 #include <Windows.h>
 
+static const wchar_t *Compiler;
+
+void DetectCompiler() {
+	Memory_Arena *scratch = ThreadScratchpad();
+
+	DWORD length = 0;
+	if (length = SearchPathW(NULL, L"cl", L".exe", 0, NULL, NULL)) {
+		Temporary_Memory temp = BeginTemporaryMemory(scratch);
+		wchar_t *dir = 0;
+		wchar_t *path = PushSize(scratch, sizeof(wchar_t) * (length + 1));
+		SearchPathW(NULL, L"cl", L".exe", length, path, &dir);
+		LogInfo("CL Detected: \"%S\"\n", path);
+		EndTemporaryMemory(&temp);
+		Compiler = L"cl.exe";
+		return;
+	}
+	
+	length = 0;
+	if (length = SearchPathW(NULL, L"clang", L".exe", 0, NULL, NULL)) {
+		Temporary_Memory temp = BeginTemporaryMemory(scratch);
+		wchar_t *dir = 0;
+		wchar_t *path = PushSize(scratch, sizeof(wchar_t) * (length + 1));
+		SearchPathW(NULL, L"clang", L".exe", length, path, &dir);
+		LogInfo("CLANG Detected: \"%S\"\n", path);
+		EndTemporaryMemory(&temp);
+		Compiler = L"clang.exe";
+		return;
+	}
+
+	LogError("Error: Failed to detect compiler!");
+}
+
 static wchar_t *UnicodeToWideChar(const char *msg, int length) {
 	Memory_Arena *scratch = ThreadScratchpad();
 	wchar_t *result = (wchar_t *)PushSize(scratch, (length + 1) * sizeof(wchar_t));

@@ -37,33 +37,33 @@
 #if defined(__ANDROID__) || defined(__ANDROID_API__)
 #define OS_ANDROID 1
 #elif defined(__gnu_linux__) || defined(__linux__) || defined(linux) || defined(__linux)
-#define OS_LINUX 1
+#define PLATFORM_OS_LINUX 1
 #elif defined(macintosh) || defined(Macintosh)
-#define OS_MAC 1
+#define PLATFORM_OS_MAC 1
 #elif defined(__APPLE__) && defined(__MACH__)
-#defined OS_MAC 1
+#defined PLATFORM_OS_MAC 1
 #elif defined(__APPLE__)
-#define OS_IOS 1
+#define PLATFORM_OS_IOS 1
 #elif defined(_WIN64) || defined(_WIN32)
-#define OS_WINDOWS 1
+#define PLATFORM_OS_WINDOWS 1
 #else
 #error Missing Operating System Detection
 #endif
 
-#if !defined(OS_ANDRIOD)
-#define OS_ANDRIOD 0
+#if !defined(PLATFORM_OS_ANDRIOD)
+#define PLATFORM_OS_ANDRIOD 0
 #endif
-#if !defined(OS_LINUX)
-#define OS_LINUX 0
+#if !defined(PLATFORM_OS_LINUX)
+#define PLATFORM_OS_LINUX 0
 #endif
-#if !defined(OS_MAC)
-#define OS_MAC 0
+#if !defined(PLATFORM_OS_MAC)
+#define PLATFORM_OS_MAC 0
 #endif
-#if !defined(OS_IOS)
-#define OS_IOS 0
+#if !defined(PLATFORM_OS_IOS)
+#define PLATFORM_OS_IOS 0
 #endif
-#if !defined(OS_WINDOWS)
-#define OS_WINDOWS 0
+#if !defined(PLATFORM_OS_WINDOWS)
+#define PLATFORM_OS_WINDOWS 0
 #endif
 
 #if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
