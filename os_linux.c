@@ -10,6 +10,10 @@
 #include <stdio.h>
 #include <string.h>
 
+void DetectCompiler() {
+    Unimplemented();
+}
+
 static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * name, const int name_len){
     struct statx stats;
     statx(dirfd, (char *)Path.Data, AT_SYMLINK_NOFOLLOW, STATX_ALL, &stats);
