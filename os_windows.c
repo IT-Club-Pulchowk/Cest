@@ -96,11 +96,6 @@ static bool IterateDirectroyInternal(String path, Directory_Iterator iterator, v
 
 			Directory_Iteration result = iterator(&info, context);
 
-			if (result == Directory_Iteration_Break) {
-				EndTemporaryMemory(&temp);
-				break;
-			}
-
 			if ((info.Atribute & File_Attribute_Directory) && result == Directory_Iteration_Recurse) {
 				// ConvertWin32FileInfo procedure allocates 2 bytes more and zered,
 				// so adding "/*" to "root_dir" is fine
@@ -108,6 +103,9 @@ static bool IterateDirectroyInternal(String path, Directory_Iterator iterator, v
 				info.Path.Data[info.Path.Length + 1] = '*';
 				info.Path.Length += 2;
 				IterateDirectroyInternal(info.Path, iterator, context);
+			} else if (result == Directory_Iteration_Break) {
+				EndTemporaryMemory(&temp);
+				break;
 			}
 
 			EndTemporaryMemory(&temp);
