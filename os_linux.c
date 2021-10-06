@@ -22,10 +22,12 @@ static bool GetFileInfo(File_Info *dst, const char *cur_path, const char *name){
     dst->Size = src.stx_size;
 
     Memory_Arena *scratch = ThreadScratchpad();
+    Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
     dst->Path.Data = (Uint8 *)PushSize(scratch, pathlen * sizeof(char));
     memcpy(dst->Path.Data, cur_path, pathlen);
     dst->Path.Length = pathlen;
+    dst->Path.Data[pathlen] = 0;
     dst->Name.Data = dst->Path.Data + (pathlen - strlen(name));
     dst->Name.Length = strlen(name);
 
@@ -36,12 +38,13 @@ static bool GetFileInfo(File_Info *dst, const char *cur_path, const char *name){
 	if (attr & STATX_ATTR_COMPRESSED) dst->Atribute |= File_Attribute_Compressed;
 	if (src.stx_mode & S_IFDIR) dst->Atribute |= File_Attribute_Directory;
 	if (attr & STATX_ATTR_ENCRYPTED) dst->Atribute |= File_Attribute_Encrypted;
-	/* if (attr & FILE_ATTRIBUTE_HIDDEN) dst->Atribute |= File_Attribute_Hidden; */
+	if (name[0] == '.') dst->Atribute |= File_Attribute_Hidden;
 	/* if (attr & FILE_ATTRIBUTE_NORMAL) dst->Atribute |= File_Attribute_Normal; */
 	/* if (attr & FILE_ATTRIBUTE_OFFLINE) dst->Atribute |= File_Attribute_Offline; */
 	if (attr & STATX_ATTR_IMMUTABLE) dst->Atribute |= File_Attribute_Read_Only;
 	/* if (attr & FILE_ATTRIBUTE_SYSTEM) dst->Atribute |= File_Attribute_System; */
 	/* if (attr & FILE_ATTRIBUTE_TEMPORARY) dst->Atribute |= File_Attribute_Temporary; */
+    EndTemporaryMemory(&temp);
 
     return (src.stx_mode & S_IFDIR) == S_IFDIR;
 }
@@ -55,7 +58,8 @@ bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *conte
         if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, ".."))
             continue;
         Memory_Arena *scratch = ThreadScratchpad();
-        char* cur_path = (char *)PushSize(scratch, (strlen(path) + strlen(dp->d_name) + 2) * sizeof(char));
+        Temporary_Memory temp = BeginTemporaryMemory(scratch);
+        char *cur_path = (char *) PushSize(scratch, (strlen(path) + strlen(dp->d_name) + 2) * sizeof(char));
         strcpy(cur_path, path);
         strcat(cur_path, "/");
         strcat(cur_path, dp->d_name);
@@ -67,7 +71,11 @@ bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *conte
         
         if (iterate == Directory_Iteration_Recurse && isdir)
             IterateDirectroy(cur_path, iterator, context);
-        else if(iterate == Directory_Iteration_Break) break;
+        else if(iterate == Directory_Iteration_Break) {
+            break;
+            EndTemporaryMemory(&temp);
+        }
+        EndTemporaryMemory(&temp);
     }
 
     closedir(dirp);
