@@ -40,12 +40,13 @@ static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * 
 
 static bool IterateInternal(const String path, Directory_Iterator iterator, void *context) {
     DIR *dir = opendir(path.Data);
-    int dfd = dirfd(dir);
     if (!dir){ 
-        printf("Could not open %s\n", path.Data);
+        char * err_msg = strerror(errno);
+        LogError("Error (%d): %s Path: %s\n", errno, err_msg, path.Data);
         return false;
     }
 
+    int dfd = dirfd(dir);
     struct dirent *dp;
 
     while ((dp = readdir(dir)) != NULL) {
