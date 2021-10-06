@@ -2,7 +2,7 @@
 
 SOURCEFILES=../main.c
 OUTPUTFILE=main.out
-GCCFLAGS="-g -Od"
+GCCFLAGS="-g"
 CLANGFLAGS="-gcodeview -Od"
 
 if [ ! -d "./bin" ]; then
@@ -20,7 +20,7 @@ echo ------------------------------
 if command -v gcc &> /dev/null
 then
     pushd bin
-    gcc -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE
+    gcc -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion $GCCFLAGS $SOURCEFILES -o $OUTPUTFILE
     popd
     exit
 else
