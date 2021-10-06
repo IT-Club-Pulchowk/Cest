@@ -76,7 +76,8 @@ static bool IterateDirectroyInternal(String path, Directory_Iterator iterator, v
 
 		FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, error,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), message, message_length, NULL);
-		LogError("Error (%d): %S", error, message);
+		path.Data[path.Length - 2] = 0;
+		LogError("Error (%d): %S Path: %s", error, message, path.Data);
 
 		return false;
 	}
