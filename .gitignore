@@ -1,6 +1,7 @@
 misc
 bin
 .vscode
+/*.out
 /*.exe
 /*.ilk
 /*.pdb
