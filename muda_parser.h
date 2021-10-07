@@ -9,9 +9,11 @@
 #ifdef __linux
     #define INLINE static inline
 #endif
-#ifdef _WIN32
+#if defined(_WIN32) || defined(_WIN64)
     #define INLINE inline
 #endif
+
+#define MudaReportError(p, ...) snprintf(p->Token.Data.Error.Desc, sizeof(p->Token.Data.Error.Desc), __VA_ARGS__)
 
 typedef enum {
     Muda_Token_Section,
@@ -41,7 +43,6 @@ typedef struct Muda_Token {
 typedef struct Muda_Parser {
     uint8_t *Ptr;
     uint8_t *Pos;
-    int64_t Length;
 
     Muda_Token Token;
 } Muda_Parser;
@@ -50,9 +51,24 @@ INLINE Muda_Parser MudaParseInit(uint8_t *data, int64_t length) {
     Muda_Parser parser;
     parser.Ptr = data;
     parser.Pos = parser.Ptr;
-    parser.Length = (length < 0) ? strlen((char *)data) : length;
     memset(&parser.Token, 0, sizeof(parser.Token));
     return parser;
+}
+
+INLINE void GetLineNoAndColumn(uint8_t *cur, Muda_Parser *p){
+    uint8_t *cpy = cur;
+    p->Token.Data.Error.Column = 0;
+    while (*cpy != '\n' && *cpy != '\r'){
+        cpy--;
+        p->Token.Data.Error.Column ++;
+    }
+
+    cpy = cur;
+    p->Token.Data.Error.Line = 0;
+    while (cpy > p->Ptr + 1){
+        p->Token.Data.Error.Line += (*cpy == '\n' || *cpy == '\r');
+        cpy --;
+    }
 }
 
 INLINE bool MudaParseNext(Muda_Parser *p) {
@@ -64,8 +80,7 @@ INLINE bool MudaParseNext(Muda_Parser *p) {
     if (!*cur) {
         p->Pos = cur;
         return false;
-    }
-    else if (*cur == '[') {
+    } else if (*cur == '[') {
         // Section
         cur ++;
         while (isspace(*cur)) cur ++;
@@ -89,10 +104,13 @@ INLINE bool MudaParseNext(Muda_Parser *p) {
         } else {
             p->Token.Kind = Muda_Token_Error;
             p->Pos = cur;
-            if (*cur)
-                sprintf(p->Token.Data.Error.Desc, "Only Alpha-Numeric Characters Allowed for Identifiers");
-            else
-                sprintf(p->Token.Data.Error.Desc, "Missing ']'");
+            if (*cur){
+                GetLineNoAndColumn(cur, p);
+                MudaReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
+            } else{
+                GetLineNoAndColumn(cur, p);
+                MudaReportError(p, "Missing ']'");
+            }
             return false;
         }
         p->Pos = cur + 1;
@@ -120,10 +138,13 @@ INLINE bool MudaParseNext(Muda_Parser *p) {
         if (!*cur || *cur != '='){
             p->Token.Kind = Muda_Token_Error;
             p->Pos = cur;
-            if (*cur)
-                sprintf(p->Token.Data.Error.Desc, "Only Alpha-Numeric Characters Allowed for Identifiers");
-            else
-                sprintf(p->Token.Data.Error.Desc, "Property name without assignment");
+            if (*cur){
+                GetLineNoAndColumn(cur, p);
+                MudaReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
+            } else {
+                GetLineNoAndColumn(cur, p);
+                MudaReportError(p, "Property name without assignment");
+            }
             return false;
         }
 
@@ -161,14 +182,18 @@ INLINE bool MudaParseNext(Muda_Parser *p) {
         } else {
             p->Token.Kind = Muda_Token_Error;
             p->Pos = cur;
-            sprintf(p->Token.Data.Error.Desc, "Missing ';'");
+            GetLineNoAndColumn(cur, p);
+            MudaReportError(p, "Missing ';'");
             return false;
         }
         *cur = 0;
         p->Pos = cur + 1;
         return true;
     } else {
-        p->Pos = cur + 1;
-        return true;
+        p->Token.Kind = Muda_Token_Error;
+        p->Pos = cur;
+        GetLineNoAndColumn(cur, p);
+        MudaReportError(p, "Bad character, unrecognized");
+        return false;
     }
 }
