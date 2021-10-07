@@ -91,7 +91,6 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Memory_Arena *scratch = ThreadScratchpadI(1);
 
 	Assert(config->Type == Compile_Type_Project);
-	Assert(compiler != Compiler_Kind_CLANG);
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
@@ -159,6 +158,36 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         for (Uint32 i = 0; i < config->LibraryCount; ++i)
             OutFormatted(&out, "-l%s ", config->Library[i].Data);
     }
+    else if (compiler == Compiler_Kind_CLANG){
+        // TODO: Same as with cl
+        //       Could merge GCC and Clang since most flags are same
+        OutFormatted(&out, "clang -gcodeview -w ");
+
+        if (config->Optimization)
+            OutFormatted(&out, "-O2 ");
+        else
+            OutFormatted(&out, "-g ");
+
+        for (Uint32 i = 0; i < config->DefineCount; ++i)
+            OutFormatted(&out, "-D%s ", config->Defines[i].Data);
+
+        for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i)
+            OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data);
+
+        for (Uint32 i = 0; i < config->SourceCount; ++i)
+            OutFormatted(&out, "%s ", config->Source[i].Data);
+
+        if (PLATFORM_OS_WINDOWS)
+            OutFormatted(&out, "-o%s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
+        else if (PLATFORM_OS_LINUX)
+            OutFormatted(&out, "-o%s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
+
+        for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i)
+            OutFormatted(&out, "-L%s ", config->LiraryDirectory[i].Data);
+
+        for (Uint32 i = 0; i < config->LibraryCount; ++i)
+            OutFormatted(&out, "-l%s ", config->Library[i].Data);
+    }
 
 	Push_Allocator point = PushThreadAllocator(MemoryArenaAllocator(ThreadScratchpadI(0)));
 	cmdline = OutBuildString(&out);
@@ -194,12 +223,8 @@ int main(int argc, char *argv[]) {
 	Compiler_Config compiler_config;
 	SetDefaultCompilerConfig(&compiler_config);
 
-#if PLATFORM_OS_WINDOWS == 1
-	Compile(&compiler_config, compiler);
-#endif
-#if PLATFORM_OS_LINUX == 1
-	Compile(&compiler_config, compiler);
-#endif
+    if (compiler != Compiler_Kind_NULL)
+        Compile(&compiler_config, compiler);
 
 #if 0
 	if (argc != 2) {
