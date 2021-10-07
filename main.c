@@ -1,7 +1,7 @@
-
 #include "os.h"
 #include "zBaseCRT.h"
 #include "stream.h"
+#include "muda_parser.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -85,6 +85,61 @@ void SetDefaultCompilerConfig(Compiler_Config *config) {
 	config->LibraryCount = 0;
 }
 
+void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
+    if (!data) return;
+	Memory_Arena *scratch = ThreadScratchpad();
+    
+    Muda_Parser prsr = MudaParseInit(data, length);
+    while (MudaParseNext(&prsr)) {
+        // Temporary
+        if (prsr.Token.Kind != Muda_Token_Property){
+            continue;
+        }
+        printf("%s : %s\n", prsr.Token.Data.Property.Key.Data, prsr.Token.Data.Property.Value.Data); 
+        if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Type")){
+            if (!strcmp((char *)prsr.Token.Data.Property.Value.Data, "Project"))
+                config->Type = Compile_Type_Project;
+            else
+                config->Type = Compile_Type_Solution;
+        }
+
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Optimization"))
+            config->Optimization = !strcmp((char *)prsr.Token.Data.Property.Value.Data, "true");
+
+/*         config->DefineCount = 3; */
+/*         config->Defines = PushArrayAligned(arena, String, config->DefineCount, sizeof(Ptrsize)); */
+/*  */
+/*         config->IncludeDirectory = NULL; */
+/*         config->IncludeDirectoryCount = 0; */
+/*  */
+/*         config->SourceCount = 1; */
+/*         config->Source = PushArrayAligned(arena, String, config->DefineCount, sizeof(Ptrsize)); */
+/*  */
+/*         config->Source[0] = StringLiteral("main.c"); */
+/*  */
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "BuildDirectory")){
+            config->BuildDirectory.Length = prsr.Token.Data.Property.Value.Length + 1;
+            config->BuildDirectory.Data = PushSize(scratch, config->BuildDirectory.Length);
+            memcpy(config->BuildDirectory.Data, prsr.Token.Data.Property.Value.Data, prsr.Token.Data.Property.Value.Length);
+            config->BuildDirectory.Data[prsr.Token.Data.Property.Value.Length] = 0;
+        }
+
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Build")){
+            config->Build.Length = prsr.Token.Data.Property.Value.Length + 1;
+            config->Build.Data = PushSize(scratch, config->Build.Length);
+            memcpy(config->Build.Data, prsr.Token.Data.Property.Value.Data, prsr.Token.Data.Property.Value.Length);
+            config->Build.Data[prsr.Token.Data.Property.Value.Length] = 0;
+            LogInfo("Build : %s\n", config->Build.Data);
+        }
+/*  */
+/*         config->LiraryDirectory = NULL; */
+/*         config->LibraryDirectoryCount = 0; */
+/*  */
+/*         config->Library = NULL; */
+/*         config->LibraryCount = 0; */
+    }
+}
+
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	String cmdline = {0, 0};
 
@@ -96,8 +151,6 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
 	Out_Stream out;
 	OutCreate(&out, MemoryArenaAllocator(scratch));
-
-	// TODO: Check if the compiler is CL or CLANG
 
 	// Defaults
     if (compiler == Compiler_Kind_CL){
@@ -114,7 +167,6 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i)
             OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data);
 
-        // TODO: Add Recursively if it is has "*"
         for (Uint32 i = 0; i < config->SourceCount; ++i)
             OutFormatted(&out, "\"%s\" ", config->Source[i].Data);
 
@@ -210,7 +262,7 @@ int main(int argc, char *argv[]) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	// TODO: Error checking
-	FILE *fp = fopen("sample.cest", "rb");
+	FILE *fp = fopen("sample.muda", "rb");
 	fseek(fp, 0L, SEEK_END);
 	int size = ftell(fp);
 	fseek(fp, 0L, SEEK_SET);
@@ -222,6 +274,7 @@ int main(int argc, char *argv[]) {
 	
 	Compiler_Config compiler_config;
 	SetDefaultCompilerConfig(&compiler_config);
+    LoadCompilerConfig(&compiler_config, config, size);
 
     if (compiler != Compiler_Kind_NULL)
         Compile(&compiler_config, compiler);

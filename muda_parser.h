@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
+#include "zBase.h"
 #include <ctype.h>
 
 #ifdef __linux
@@ -11,27 +12,6 @@
 #ifdef _WIN32
     #define INLINE inline
 #endif
-
-typedef struct String {
-	int64_t  Length;
-	uint8_t *Data;
-
-#if defined(__cplusplus)
-	String() : Data(0), Length(0) {}
-	template <int64_t _Length>
-	constexpr String(const char(&a)[_Length]) : Data((uint8_t *)a), Length(_Length - 1) {}
-	String(const uint8_t *_Data, int64_t _Length) : Data((uint8_t *)_Data), Length(_Length) {}
-	const uint8_t &operator[](const int64_t index) const {
-		Assert(index < Length);
-		return Data[index];
-	}
-	uint8_t &operator[](const int64_t index) {
-		Assert(index < Length);
-		return Data[index];
-	}
-#endif
-
-} String;
 
 typedef enum {
     Muda_Token_Section,
