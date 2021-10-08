@@ -5,11 +5,11 @@
 # Other options will be stacked 
 
 Type = Project; # Solution or Project
-BuildDirectory = ./bin; # String
+BuildDirectory = ./bin/test/folder; # String
 Build = builtByMuda; # String
 Define = ASSERTION_HANDLED DEPRECATION_HANDLED _CRT_SECURE_NO_WARNINGS; # Array of Identifiers
 Optimization = true; # Boolean
-Source = apple.c; # Array of Strings
+Source = main.c; # Array of Strings
 IncludeDirectory = .; # Array of Strings
 LibraryDirectory = ; # Array of Strings
 Library = ; # Array of Strings

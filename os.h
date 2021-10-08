@@ -1,5 +1,6 @@
 #pragma once
 #include "zBase.h"
+#include <sys/stat.h>
 
 typedef enum File_Attribute {
 	File_Attribute_Archive = 0x1,
@@ -35,6 +36,19 @@ typedef Directory_Iteration(*Directory_Iterator)(const File_Info *info, void *us
 static inline Directory_Iteration DirectoryIteratorPrint(const File_Info *info, void *user_context) {
 	LogInfo("%s - %zu bytes\n", info->Path, info->Size);
 	return Directory_Iteration_Recurse;
+}
+
+static inline bool CheckIfPathExists(char *path){
+    struct stat tmp;
+    if (stat(path, &tmp) == 0){
+        if ((tmp.st_mode & S_IFDIR) == S_IFDIR){
+            LogWarn ("%s: Path exists but is not a directory\n", path);
+            return false;
+        } else {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *context);

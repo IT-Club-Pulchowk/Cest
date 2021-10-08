@@ -161,6 +161,9 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
 	Out_Stream out;
 	OutCreate(&out, MemoryArenaAllocator(scratch));
+        
+    if (!CheckIfPathExists((char *)config->BuildDirectory.Data))
+        CreateDirectoryRecursively((char *)config->BuildDirectory.Data);
 
 	// Defaults
     if (compiler == Compiler_Kind_CL){
