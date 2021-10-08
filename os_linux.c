@@ -133,3 +133,23 @@ bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
     }
     return false;
 }
+bool  createDirectoryRecursively( char path1[])
+{
+	const int len=strlen(path1);
+    for (int i = 0; i <len+1; i++)
+    {
+        if (path1[i] == '/' )
+        {
+            path1[i]='\0';
+			const char* dirPath=path1;
+			mkdir(dirPath,S_IRWXU);
+            path[i]='/';
+        }
+        else if(path1[i]=='\0')
+        {
+            const char* dirPath=path1;
+            mkdir(dirPath,S_IRWXU);
+        }
+    }
+	return true;
+}

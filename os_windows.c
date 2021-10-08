@@ -1,7 +1,7 @@
 #include "os.h"
-
+#include<stdio.h>
 #define WIN32_MEAN_AND_LEAN
-#include <Windows.h>
+#include <windows.h>
 
 Compiler_Kind DetectCompiler() {
 	Memory_Arena *scratch = ThreadScratchpad();
@@ -208,5 +208,20 @@ bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
 	CloseHandle(process.hProcess);
 	CloseHandle(process.hThread);
 
+	return true;
+}
+
+bool  createDirectoryRecursively( char path1[])
+{
+	wchar_t *dirPath=NULL;
+	const int len=strlen(path1);
+    for (int i = 0; i <len+1; i++)
+    {
+        if (path1[i] == '/'||path1[i]=='\0' )
+        {
+			dirPath= UnicodeToWideChar(path1,i);
+			CreateDirectoryW(dirPath,NULL);
+        }
+    }
 	return true;
 }
