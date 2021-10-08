@@ -31,22 +31,22 @@ typedef struct Compiler_Config {
 
 	bool Optimization;
 
-	String *Defines;
+	String Defines;
 	Uint32 DefineCount;
 
-	String *IncludeDirectory;
+	String IncludeDirectory;
 	Uint32 IncludeDirectoryCount;
 
-	String *Source;
+	String Source;
 	Uint32 SourceCount;
 
 	String BuildDirectory;
 	String Build;
 
-	String *LiraryDirectory;
+	String LibraryDirectory;
 	Uint32 LibraryDirectoryCount;
 
-	String *Library;
+	String Library;
 	Uint32 LibraryCount;
 } Compiler_Config;
 
@@ -60,27 +60,21 @@ void SetDefaultCompilerConfig(Compiler_Config *config) {
 	config->Optimization = false;
 
 	config->DefineCount = 3;
-	config->Defines = PushArrayAligned(arena, String, config->DefineCount, sizeof(Ptrsize));
+	config->Defines = StringLiteral("ASSERTION_HANDLED DEPRECATION_HANDLED _CRT_SECURE_NO_WARNINGS");
 
-	config->Defines[0] = StringLiteral("ASSERTION_HANDLED");
-	config->Defines[1] = StringLiteral("DEPRECATION_HANDLED");
-	config->Defines[2] = StringLiteral("_CRT_SECURE_NO_WARNINGS");
-
-	config->IncludeDirectory = NULL;
+	config->IncludeDirectory = (String) {0, 0};
 	config->IncludeDirectoryCount = 0;
 
 	config->SourceCount = 1;
-	config->Source = PushArrayAligned(arena, String, config->DefineCount, sizeof(Ptrsize));
-
-	config->Source[0] = StringLiteral("main.c");
+	config->Source = StringLiteral("main.c");
 
 	config->BuildDirectory = StringLiteral("./bin");
 	config->Build = StringLiteral("bootstrap");
 
-	config->LiraryDirectory = NULL;
+	config->LibraryDirectory = (String){0, 0};
 	config->LibraryDirectoryCount = 0;
 
-	config->Library = NULL;
+	config->Library = (String){0, 0};
 	config->LibraryCount = 0;
 }
 
@@ -94,7 +88,6 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
         if (prsr.Token.Kind != Muda_Token_Property){
             continue;
         }
-        printf("%s : %s\n", prsr.Token.Data.Property.Key.Data, prsr.Token.Data.Property.Value.Data); 
         if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Type")){
             if (!strcmp((char *)prsr.Token.Data.Property.Value.Data, "Project"))
                 config->Type = Compile_Type_Project;
@@ -105,17 +98,51 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
         else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Optimization"))
             config->Optimization = !strcmp((char *)prsr.Token.Data.Property.Value.Data, "true");
 
-/*         config->DefineCount = 3; */
-/*         config->Defines = PushArrayAligned(arena, String, config->DefineCount, sizeof(Ptrsize)); */
-/*  */
-/*         config->IncludeDirectory = NULL; */
-/*         config->IncludeDirectoryCount = 0; */
-/*  */
-/*         config->SourceCount = 1; */
-/*         config->Source = PushArrayAligned(arena, String, config->DefineCount, sizeof(Ptrsize)); */
-/*  */
-/*         config->Source[0] = StringLiteral("main.c"); */
-/*  */
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Define")){
+            config->DefineCount = 1;
+            config->Defines = prsr.Token.Data.Property.Value;
+
+            if (!config->Defines.Length){
+                config->DefineCount = 0;
+            } else {
+                for (int i = 0; i < config->Defines.Length; i ++){
+                    if (config->Defines.Data[i] == ' '){
+                        config->Defines.Data[i] = 0;
+                        config->DefineCount ++;
+                    }
+                }
+            }
+        }
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "IncludeDirectory")){
+            config->IncludeDirectoryCount = 1;
+            config->IncludeDirectory = prsr.Token.Data.Property.Value;
+
+            if (!config->IncludeDirectory.Length){
+                config->IncludeDirectoryCount = 0;
+            } else {
+                for (int i = 0; i < config->IncludeDirectory.Length; i ++){
+                    if (config->IncludeDirectory.Data[i] == ' '){
+                        config->IncludeDirectory.Data[i] = 0;
+                        config->IncludeDirectoryCount ++;
+                    }
+                }
+            }
+        }
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Source")){
+            config->SourceCount = 1;
+            config->Source = prsr.Token.Data.Property.Value;
+
+            if (!config->Source.Length){
+                config->SourceCount = 0;
+            } else {
+                for (int i = 0; i < config->Source.Length; i ++){
+                    if (config->Source.Data[i] == ' '){
+                        config->Source.Data[i] = 0;
+                        config->SourceCount ++;
+                    }
+                }
+            }
+        }
         else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "BuildDirectory")){
             config->BuildDirectory.Length = prsr.Token.Data.Property.Value.Length + 1;
             config->BuildDirectory.Data = PushSize(scratch, config->BuildDirectory.Length);
@@ -128,14 +155,37 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
             config->Build.Data = PushSize(scratch, config->Build.Length);
             memcpy(config->Build.Data, prsr.Token.Data.Property.Value.Data, prsr.Token.Data.Property.Value.Length);
             config->Build.Data[prsr.Token.Data.Property.Value.Length] = 0;
-            LogInfo("Build : %s\n", config->Build.Data);
         }
-/*  */
-/*         config->LiraryDirectory = NULL; */
-/*         config->LibraryDirectoryCount = 0; */
-/*  */
-/*         config->Library = NULL; */
-/*         config->LibraryCount = 0; */
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "LibraryDirectory")){
+            config->LibraryDirectoryCount = 1;
+            config->LibraryDirectory = prsr.Token.Data.Property.Value;
+
+            if (!config->LibraryDirectory.Length){
+                config->LibraryDirectoryCount = 0;
+            } else {
+                for (int i = 0; i < config->LibraryDirectory.Length; i ++){
+                    if (config->LibraryDirectory.Data[i] == ' '){
+                        config->LibraryDirectory.Data[i] = 0;
+                        config->LibraryDirectoryCount ++;
+                    }
+                }
+            }
+        }
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Library")){
+            config->LibraryCount = 1;
+            config->Library = prsr.Token.Data.Property.Value;
+
+            if (!config->Library.Length){
+                config->LibraryCount = 0;
+            } else {
+                for (int i = 0; i < config->Library.Length; i ++){
+                    if (config->Library.Data[i] == ' '){
+                        config->Library.Data[i] = 0;
+                        config->LibraryCount ++;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -152,38 +202,38 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	OutCreate(&out, MemoryArenaAllocator(scratch));
 
 	// Defaults
-    if (compiler == Compiler_Kind_CL){
-        OutFormatted(&out, "cl -nologo -Zi -EHsc ");
-
-        if (config->Optimization)
-            OutFormatted(&out, "-O2 ");
-        else
-            OutFormatted(&out, "-Od ");
-
-        for (Uint32 i = 0; i < config->DefineCount; ++i)
-            OutFormatted(&out, "-D%s ", config->Defines[i].Data);
-
-        for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i)
-            OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data);
-
-        for (Uint32 i = 0; i < config->SourceCount; ++i)
-            OutFormatted(&out, "\"%s\" ", config->Source[i].Data);
-
-        // TODO: Make directory if not present, need to add OS api for making directory!
-        // Until then make "bin/int" directory manually :(
-        OutFormatted(&out, "-Fo\"%s/int/\" ", config->BuildDirectory.Data);
-        OutFormatted(&out, "-Fd\"%s/\" ", config->BuildDirectory.Data);
-        OutFormatted(&out, "-link ");
-        OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
-        OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
-
-        for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i)
-            OutFormatted(&out, "-LIBPATH:\"%s\" ", config->LiraryDirectory[i].Data);
-
-        for (Uint32 i = 0; i < config->LibraryCount; ++i)
-            OutFormatted(&out, "\"%s\" ", config->Library[i].Data);
-    }
-    else if (compiler == Compiler_Kind_GCC){
+/*     if (compiler == Compiler_Kind_CL){ */
+/*         OutFormatted(&out, "cl -nologo -Zi -EHsc "); */
+/*  */
+/*         if (config->Optimization) */
+/*             OutFormatted(&out, "-O2 "); */
+/*         else */
+/*             OutFormatted(&out, "-Od "); */
+/*  */
+/*         for (Uint32 i = 0; i < config->DefineCount; ++i) */
+/*             OutFormatted(&out, "-D%s ", config->Defines[i].Data); */
+/*  */
+/*         for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i) */
+/*             OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data); */
+/*  */
+/*         for (Uint32 i = 0; i < config->SourceCount; ++i) */
+/*             OutFormatted(&out, "\"%s\" ", config->Source[i].Data); */
+/*  */
+/*         // TODO: Make directory if not present, need to add OS api for making directory! */
+/*         // Until then make "bin/int" directory manually :( */
+/*         OutFormatted(&out, "-Fo\"%s/int/\" ", config->BuildDirectory.Data); */
+/*         OutFormatted(&out, "-Fd\"%s/\" ", config->BuildDirectory.Data); */
+/*         OutFormatted(&out, "-link "); */
+/*         OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data); */
+/*         OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data); */
+/*  */
+/*         for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i) */
+/*             OutFormatted(&out, "-LIBPATH:\"%s\" ", config->LiraryDirectory[i].Data); */
+/*  */
+/*         for (Uint32 i = 0; i < config->LibraryCount; ++i) */
+/*             OutFormatted(&out, "\"%s\" ", config->Library[i].Data); */
+/*     } */
+    if (compiler == Compiler_Kind_GCC){
         // TODO: Same as with cl
         OutFormatted(&out, "gcc -pipe ");
 
@@ -192,53 +242,83 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else
             OutFormatted(&out, "-g ");
 
-        for (Uint32 i = 0; i < config->DefineCount; ++i)
-            OutFormatted(&out, "-D%s ", config->Defines[i].Data);
+        if (config->DefineCount){
+            OutFormatted(&out, "-D%s ", config->Defines.Data);
+            for (Uint32 i = 0; i < config->Defines.Length; ++i){
+                if (!config->Defines.Data[i]){
+                    OutFormatted(&out, "-D%s ", config->Defines.Data + i + 1);
+                }
+            }
+        }
 
-        for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i)
-            OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data);
+        if (config->IncludeDirectoryCount){
+            OutFormatted(&out, "-I%s ", config->IncludeDirectory.Data);
+            for (Uint32 i = 0; i < config->IncludeDirectory.Length; ++i){
+                if (!config->IncludeDirectory.Data[i]){
+                    OutFormatted(&out, "-I%s ", config->IncludeDirectory.Data + i + 1);
+                }
+            }
+        }
 
-        for (Uint32 i = 0; i < config->SourceCount; ++i)
-            OutFormatted(&out, "%s ", config->Source[i].Data);
+        if (config->SourceCount){
+            OutFormatted(&out, "%s ", config->Source.Data);
+            for (Uint32 i = 0; i < config->Source.Length; ++i){
+                if (!config->Source.Data[i]){
+                    OutFormatted(&out, "%s ", config->Source.Data + i + 1);
+                }
+            }
+        }
 
         OutFormatted(&out, "-o%s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
 
-        for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i)
-            OutFormatted(&out, "-L%s ", config->LiraryDirectory[i].Data);
+        if (config->LibraryDirectoryCount){
+            OutFormatted(&out, "-L%s ", config->LibraryDirectory.Data);
+            for (Uint32 i = 0; i < config->LibraryDirectory.Length; ++i){
+                if (!config->LibraryDirectory.Data[i]){
+                    OutFormatted(&out, "-L%s ", config->LibraryDirectory.Data + i + 1);
+                }
+            }
+        }
 
-        for (Uint32 i = 0; i < config->LibraryCount; ++i)
-            OutFormatted(&out, "-l%s ", config->Library[i].Data);
+        if (config->LibraryCount){
+            OutFormatted(&out, "-l%s ", config->Library.Data);
+            for (Uint32 i = 0; i < config->Library.Length; ++i){
+                if (!config->Library.Data[i]){
+                    OutFormatted(&out, "-l%s ", config->Library.Data + i + 1);
+                }
+            }
+        }
     }
-    else if (compiler == Compiler_Kind_CLANG){
-        // TODO: Same as with cl
-        //       Could merge GCC and Clang since most flags are same
-        OutFormatted(&out, "clang -gcodeview -w ");
-
-        if (config->Optimization)
-            OutFormatted(&out, "-O2 ");
-        else
-            OutFormatted(&out, "-g ");
-
-        for (Uint32 i = 0; i < config->DefineCount; ++i)
-            OutFormatted(&out, "-D%s ", config->Defines[i].Data);
-
-        for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i)
-            OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data);
-
-        for (Uint32 i = 0; i < config->SourceCount; ++i)
-            OutFormatted(&out, "%s ", config->Source[i].Data);
-
-        if (PLATFORM_OS_WINDOWS)
-            OutFormatted(&out, "-o%s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
-        else if (PLATFORM_OS_LINUX)
-            OutFormatted(&out, "-o%s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
-
-        for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i)
-            OutFormatted(&out, "-L%s ", config->LiraryDirectory[i].Data);
-
-        for (Uint32 i = 0; i < config->LibraryCount; ++i)
-            OutFormatted(&out, "-l%s ", config->Library[i].Data);
-    }
+/*     else if (compiler == Compiler_Kind_CLANG){ */
+/*         // TODO: Same as with cl */
+/*         //       Could merge GCC and Clang since most flags are same */
+/*         OutFormatted(&out, "clang -gcodeview -w "); */
+/*  */
+/*         if (config->Optimization) */
+/*             OutFormatted(&out, "-O2 "); */
+/*         else */
+/*             OutFormatted(&out, "-g "); */
+/*  */
+/*         for (Uint32 i = 0; i < config->DefineCount; ++i) */
+/*             OutFormatted(&out, "-D%s ", config->Defines[i].Data); */
+/*  */
+/*         for (Uint32 i = 0; i < config->IncludeDirectoryCount; ++i) */
+/*             OutFormatted(&out, "-I%s ", config->IncludeDirectory[i].Data); */
+/*  */
+/*         for (Uint32 i = 0; i < config->SourceCount; ++i) */
+/*             OutFormatted(&out, "%s ", config->Source[i].Data); */
+/*  */
+/*         if (PLATFORM_OS_WINDOWS) */
+/*             OutFormatted(&out, "-o%s/%s.exe ", config->BuildDirectory.Data, config->Build.Data); */
+/*         else if (PLATFORM_OS_LINUX) */
+/*             OutFormatted(&out, "-o%s/%s.out ", config->BuildDirectory.Data, config->Build.Data); */
+/*  */
+/*         for (Uint32 i = 0; i < config->LibraryDirectoryCount; ++i) */
+/*             OutFormatted(&out, "-L%s ", config->LibraryDirectory[i].Data); */
+/*  */
+/*         for (Uint32 i = 0; i < config->LibraryCount; ++i) */
+/*             OutFormatted(&out, "-l%s ", config->Library[i].Data); */
+/*     } */
 
 	Push_Allocator point = PushThreadAllocator(MemoryArenaAllocator(ThreadScratchpadI(0)));
 	cmdline = OutBuildString(&out);
