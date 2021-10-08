@@ -1,5 +1,4 @@
 #include "os.h"
-#include<stdio.h>
 #define WIN32_MEAN_AND_LEAN
 #include <windows.h>
 
@@ -211,15 +210,15 @@ bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
 	return true;
 }
 
-bool  createDirectoryRecursively( char path1[])
+bool CreateDirectoryRecursively(char path[])
 {
 	wchar_t *dirPath=NULL;
-	const int len=strlen(path1);
+	const int len=strlen(path);
     for (int i = 0; i <len+1; i++)
     {
-        if (path1[i] == '/'||path1[i]=='\0' )
+        if (path[i] == '/'||path[i]=='\0' )
         {
-			dirPath= UnicodeToWideChar(path1,i);
+			dirPath= UnicodeToWideChar(path,i);
 			CreateDirectoryW(dirPath,NULL);
         }
     }

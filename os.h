@@ -50,3 +50,4 @@ typedef enum Compiler_Kind {
 Compiler_Kind DetectCompiler();
 
 bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline);
+bool CreateDirectoryRecursively(char path[]);
