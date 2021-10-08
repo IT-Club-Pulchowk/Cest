@@ -42,10 +42,10 @@ static inline bool CheckIfPathExists(char *path){
     struct stat tmp;
     if (stat(path, &tmp) == 0){
         if ((tmp.st_mode & S_IFDIR) == S_IFDIR){
+            return true;
+        } else {
             LogWarn ("%s: Path exists but is not a directory\n", path);
             return false;
-        } else {
-            return true;
         }
     }
     return false;
