@@ -196,7 +196,10 @@ Compiler_Kind DetectCompiler() {
 		return Compiler_Kind_CLANG;
 	}
 
-	LogError("Error: Failed to detect compiler!\n");
+	LogError("Error: Failed to detect compiler! Install one of the compilers from below...\n");
+	LogInfo("Visual Studio (MSVC): https://visualstudio.microsoft.com/ \n");
+	LogInfo("CLANG: https://releases.llvm.org/download.html \n");
+
 	return Compiler_Kind_NULL;
 }
 

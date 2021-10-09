@@ -304,6 +304,11 @@ int main(int argc, char *argv[]) {
         MegaBytes(128), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
 	Compiler_Kind compiler = DetectCompiler();
+    if (compiler == Compiler_Kind_NULL) {
+        LogInfo("CLANG: https://releases.llvm.org/download.html \n");
+        LogInfo("GCC: https://gcc.gnu.org/install/download.html \n");
+        return 1;
+    }
 
 	Memory_Arena *scratch = ThreadScratchpad();
 
