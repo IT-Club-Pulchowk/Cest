@@ -122,7 +122,11 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
     Muda_Parser prsr = MudaParseInit(data, length);
     while (MudaParseNext(&prsr)) {
         // Temporary
-        if (prsr.Token.Kind != Muda_Token_Property) continue;
+        if (prsr.Token.Kind == Muda_Token_Error) {
+            LogError ("%s at Line %d, Column %d", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
+            break;
+        }
+        else if (prsr.Token.Kind != Muda_Token_Property) continue;
 
         if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Type"))){
             if (StrMatch(prsr.Token.Data.Property.Value, StringLiteral("Project")))
