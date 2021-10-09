@@ -1,9 +1,8 @@
 #include "os.h"
+#include "zBase.h"
 #include "zBaseCRT.h"
 #include "stream.h"
 #include "muda_parser.h"
-#include <stdio.h>
-#include <string.h>
 
 void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
 	fprintf(stderr, "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
@@ -26,46 +25,81 @@ typedef enum Compile_Type {
 	Compile_Type_Solution,
 } Compile_Type;
 
+typedef struct Node {
+    String Data;
+    struct Node *Next;
+}Node;
+
+typedef struct String_List {
+    bool IsEmpty;
+    Node Head;
+    Node *Tail;
+}String_List;
+
 typedef struct Compiler_Config {
 	Compile_Type Type;
-
 	bool Optimization;
-
-	String Defines;
-
-	String IncludeDirectory;
-
-	String Source;
-
-	String BuildDirectory;
 	String Build;
-
-	String LibraryDirectory;
-
-	String Library;
+	String BuildDirectory;
+	String_List Defines;
+	String_List IncludeDirectory;
+	String_List Source;
+	String_List LibraryDirectory;
+	String_List Library;
 } Compiler_Config;
+
+static void ReadList(String_List *dst, String data){
+    if (data.Length <= 0){
+        dst->IsEmpty = true;
+        return;
+    }
+
+    dst->IsEmpty = false;
+    for (int i = 0; i < data.Length; i++) {
+        if (isspace(data.Data[i]))
+            data.Data[i] = 0;
+    }
+
+    dst->Head.Data.Data = data.Data;
+    dst->Head.Data.Length = strlen(data.Data);
+    dst->Head.Next = NULL;
+    dst->Tail = &dst->Head;
+
+    Memory_Arena *scratch = ThreadScratchpad();
+    for (int i = 0; i < data.Length; i++) {
+        if (!data.Data[i] && strlen(data.Data + i + 1)){
+            dst->Tail->Next = PushSize(scratch, sizeof(Node));
+            dst->Tail->Next->Data.Data = data.Data + i + 1;
+            dst->Tail->Next->Data.Length = strlen(data.Data + i + 1);
+            dst->Tail = dst->Tail->Next;
+            dst->Tail->Next = NULL;
+        }        
+    }
+}
 
 void SetDefaultCompilerConfig(Compiler_Config *config) {
 	Memory_Arena *arena = ThreadScratchpadI(1);
-
+    
 	// TODO: Use sensible default values
+
+	config->BuildDirectory = StringLiteral("./bin");
+	config->Build = StringLiteral("bootstrap");
 
 	config->Type = Compile_Type_Project;
 
 	config->Optimization = false;
 
-	config->Defines = StringLiteral("ASSERTION_HANDLED DEPRECATION_HANDLED _CRT_SECURE_NO_WARNINGS");
+    Uint8 str[] = "ASSERTION_HANDLED DEPRECATION_HANDLED _CRT_SECURE_NO_WARNINGS"; 
+	ReadList(&config->Defines, (String){strlen(str), str});
 
-	config->IncludeDirectory = (String) {0, 0};
+	config->IncludeDirectory.IsEmpty = true;
 
-	config->Source = StringLiteral("main.c");
+    Uint8 str2[] = "main.c"; 
+	ReadList(&config->Source, (String){strlen(str2), str2});
 
-	config->BuildDirectory = StringLiteral("./bin");
-	config->Build = StringLiteral("bootstrap");
+	config->LibraryDirectory.IsEmpty = true;
 
-	config->LibraryDirectory = (String){0, 0};
-
-	config->Library = (String){0, 0};
+	config->Library.IsEmpty = true;
 }
 
 void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
@@ -75,9 +109,8 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
     Muda_Parser prsr = MudaParseInit(data, length);
     while (MudaParseNext(&prsr)) {
         // Temporary
-        if (prsr.Token.Kind != Muda_Token_Property){
-            continue;
-        }
+        if (prsr.Token.Kind != Muda_Token_Property) continue;
+
         if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Type")){
             if (!strcmp((char *)prsr.Token.Data.Property.Value.Data, "Project"))
                 config->Type = Compile_Type_Project;
@@ -88,36 +121,6 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
         else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Optimization"))
             config->Optimization = !strcmp((char *)prsr.Token.Data.Property.Value.Data, "true");
 
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Define")){
-            config->Defines = prsr.Token.Data.Property.Value;
-
-            if (config->Defines.Length){
-                for (int i = 0; i < config->Defines.Length; i ++){
-                    if (isspace(config->Defines.Data[i]))
-                        config->Defines.Data[i] = 0;
-                }
-            }
-        }
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "IncludeDirectory")){
-            config->IncludeDirectory = prsr.Token.Data.Property.Value;
-
-            if (config->IncludeDirectory.Length){
-                for (int i = 0; i < config->IncludeDirectory.Length; i ++){
-                    if (isspace(config->IncludeDirectory.Data[i]))
-                        config->IncludeDirectory.Data[i] = 0;
-                }
-            }
-        }
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Source")){
-            config->Source = prsr.Token.Data.Property.Value;
-
-            if (config->Source.Length){
-                for (int i = 0; i < config->Source.Length; i ++){
-                    if (isspace(config->Source.Data[i]))
-                        config->Source.Data[i] = 0;
-                }
-            }
-        }
         else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "BuildDirectory")){
             config->BuildDirectory.Length = prsr.Token.Data.Property.Value.Length;
             config->BuildDirectory.Data = prsr.Token.Data.Property.Value.Data;
@@ -127,26 +130,21 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
             config->Build.Length = prsr.Token.Data.Property.Value.Length;
             config->Build.Data = prsr.Token.Data.Property.Value.Data;
         }
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "LibraryDirectory")){
-            config->LibraryDirectory = prsr.Token.Data.Property.Value;
 
-            if (config->LibraryDirectory.Length){
-                for (int i = 0; i < config->LibraryDirectory.Length; i ++){
-                    if (isspace(config->LibraryDirectory.Data[i]))
-                        config->LibraryDirectory.Data[i] = 0;
-                }
-            }
-        }
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Library")){
-            config->Library = prsr.Token.Data.Property.Value;
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Define"))
+            ReadList(&config->Defines, prsr.Token.Data.Property.Value);
 
-            if (config->Library.Length){
-                for (int i = 0; i < config->Library.Length; i ++){
-                    if (isspace(config->Library.Data[i]))
-                        config->Library.Data[i] = 0;
-                }
-            }
-        }
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "IncludeDirectory"))
+            ReadList(&config->IncludeDirectory, prsr.Token.Data.Property.Value);
+
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Source"))
+            ReadList(&config->Source, prsr.Token.Data.Property.Value);
+
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "LibraryDirectory"))
+            ReadList(&config->LibraryDirectory, prsr.Token.Data.Property.Value);
+
+        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Library"))
+            ReadList(&config->Library, prsr.Token.Data.Property.Value);
     }
 }
 
@@ -174,30 +172,27 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else
             OutFormatted(&out, "-Od ");
 
-        if (config->Defines.Length > 0){
-            OutFormatted(&out, "-D%s ", config->Defines.Data);
-            for (Uint32 i = 0; i < config->Defines.Length; ++i){
-                if (!config->Defines.Data[i] && *(config->Defines.Data + i + 1)){
-                    OutFormatted(&out, "-D%s ", config->Defines.Data + i + 1);
-                }
+        if (!config->Defines.IsEmpty){
+            Node *head = &config->Defines.Head;
+            while (head){
+                OutFormatted(&out, "-D%s ", head->Data.Data);
+                head = head->Next;
             }
         }
 
-        if (config->IncludeDirectory.Length > 0){
-            OutFormatted(&out, "-I%s ", config->IncludeDirectory.Data);
-            for (Uint32 i = 0; i < config->IncludeDirectory.Length; ++i){
-                if (!config->IncludeDirectory.Data[i] && *(config->IncludeDirectory.Data + i + 1)){
-                    OutFormatted(&out, "-I%s ", config->IncludeDirectory.Data + i + 1);
-                }
+        if (!config->IncludeDirectory.IsEmpty){
+            Node *head = &config->IncludeDirectory.Head;
+            while (head){
+                OutFormatted(&out, "-I%s ", head->Data.Data);
+                head = head->Next;
             }
         }
 
-        if (config->Source.Length > 0){
-            OutFormatted(&out, "\"%s\" ", config->Source.Data);
-            for (Uint32 i = 0; i < config->Source.Length; ++i){
-                if (!config->Source.Data[i] && *(config->Source.Data + i + 1)){
-                    OutFormatted(&out, "\"%s\" ", config->Source.Data + i + 1);
-                }
+        if (!config->Source.IsEmpty){
+            Node *head = &config->Source.Head;
+            while (head){
+                OutFormatted(&out, "\"%s\" ", head->Data.Data);
+                head = head->Next;
             }
         }
 
@@ -209,55 +204,49 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
         OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
 
-        if (config->LibraryDirectory.Length > 0){
-            OutFormatted(&out, "-LIBPATH:\"%s\" ", config->LibraryDirectory.Data);
-            for (Uint32 i = 0; i < config->LibraryDirectory.Length; ++i){
-                if (!config->LibraryDirectory.Data[i] && *(config->LibraryDirectory.Data + i + 1)){
-                    OutFormatted(&out, "-LIBPATH:\"%s\" ", config->LibraryDirectory.Data + i + 1);
-                }
+        if (!config->LibraryDirectory.IsEmpty) {
+            Node *head = &config->LibraryDirectory.Head;
+            while (head){
+                OutFormatted(&out, "-LIBPATH:\"%s\" ", head->Data.Data);
+                head = head->Next;
             }
         }
 
-        if (config->Library.Length > 0){
-            OutFormatted(&out, "\"%s\" ", config->Library.Data);
-            for (Uint32 i = 0; i < config->Library.Length; ++i){
-                if (!config->Library.Data[i] && *(config->Library.Data + i + 1)){
-                    OutFormatted(&out, "\"%s\" ", config->Library.Data + i + 1);
-                }
+        if (!config->Library.IsEmpty) {
+            Node *head = &config->Library.Head;
+            while (head){
+                OutFormatted(&out, "\"%s\" ", head->Data.Data);
+                head = head->Next;
             }
         }
     } else if (compiler == Compiler_Kind_GCC || compiler == Compiler_Kind_CLANG){
-        // TODO: Same as with cl
         if (compiler == Compiler_Kind_GCC) OutFormatted(&out, "gcc -pipe ");
         else OutFormatted(&out, "clang -gcodeview -w ");
 
         if (config->Optimization) OutFormatted(&out, "-O2 ");
         else OutFormatted(&out, "-g ");
 
-        if (config->Defines.Length > 0){
-            OutFormatted(&out, "-D%s ", config->Defines.Data);
-            for (Uint32 i = 0; i < config->Defines.Length; ++i){
-                if (!config->Defines.Data[i] && *(config->Defines.Data + i + 1)){
-                    OutFormatted(&out, "-D%s ", config->Defines.Data + i + 1);
-                }
+        if (!config->Defines.IsEmpty){
+            Node *head = &config->Defines.Head;
+            while (head){
+                OutFormatted(&out, "-D%s ", head->Data.Data);
+                head = head->Next;
             }
         }
 
-        if (config->IncludeDirectory.Length > 0){
-            OutFormatted(&out, "-I%s ", config->IncludeDirectory.Data);
-            for (Uint32 i = 0; i < config->IncludeDirectory.Length; ++i){
-                if (!config->IncludeDirectory.Data[i] && *(config->IncludeDirectory.Data + i + 1)){
-                    OutFormatted(&out, "-I%s ", config->IncludeDirectory.Data + i + 1);
-                }
+        if (!config->IncludeDirectory.IsEmpty){
+            Node *head = &config->IncludeDirectory.Head;
+            while (head){
+                OutFormatted(&out, "-I%s ", head->Data.Data);
+                head = head->Next;
             }
         }
 
-        if (config->Source.Length > 0){
-            OutFormatted(&out, "%s ", config->Source.Data);
-            for (Uint32 i = 0; i < config->Source.Length; ++i){
-                if (!config->Source.Data[i] && *(config->Source.Data + i + 1)){
-                    OutFormatted(&out, "%s ", config->Source.Data + i + 1);
-                }
+        if (!config->Source.IsEmpty){
+            Node *head = &config->Source.Head;
+            while (head){
+                OutFormatted(&out, "%s ", head->Data.Data);
+                head = head->Next;
             }
         }
 
@@ -266,21 +255,19 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else if (PLATFORM_OS_WINDOWS)
             OutFormatted(&out, "-o%s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
 
-        if (config->LibraryDirectory.Length > 0){
-            OutFormatted(&out, "-L%s ", config->LibraryDirectory.Data);
-            for (Uint32 i = 0; i < config->LibraryDirectory.Length; ++i){
-                if (!config->LibraryDirectory.Data[i] && *(config->LibraryDirectory.Data + i + 1)){
-                    OutFormatted(&out, "-L%s ", config->LibraryDirectory.Data + i + 1);
-                }
+        if (!config->LibraryDirectory.IsEmpty){
+            Node *head = &config->LibraryDirectory.Head;
+            while (head){
+                OutFormatted(&out, "-L%s ", head->Data.Data);
+                head = head->Next;
             }
         }
 
-        if (config->Library.Length > 0){
-            OutFormatted(&out, "-l%s ", config->Library.Data);
-            for (Uint32 i = 0; i < config->Library.Length; ++i){
-                if (!config->Library.Data[i] && *(config->Library.Data + i + 1)){
-                    OutFormatted(&out, "-l%s ", config->Library.Data + i + 1);
-                }
+        if (!config->Library.IsEmpty){
+            Node *head = &config->Library.Head;
+            while (head){
+                OutFormatted(&out, "-l%s ", head->Data.Data);
+                head = head->Next;
             }
         }
     }
@@ -290,7 +277,6 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	PopThreadAllocator(&point);
 
 	EndTemporaryMemory(&temp);
-
 
 	LogInfo("Command Line: %s\n", cmdline.Data);
 
