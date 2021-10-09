@@ -13,7 +13,25 @@ void DeprecateHandle(const char *file, int line, const char *proc) {
 	fprintf(stderr, "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
 }
 
-Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, void *user_context) {
+static String FormatStringV(Memory_Arena *arena, const char *fmt, va_list list) {
+    va_list args;
+    va_copy(args, list);
+    int len = 1 + vsnprintf(NULL, 0, fmt, args);
+    char *buf = (char *)PushSize(arena, len);
+    vsnprintf(buf, len, fmt, args);
+    va_end(args);
+    return (String){ len - 1, (uint8_t *)buf};
+}
+
+static String FormatString(Memory_Arena *arena, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    String string = FormatStringV(arena, fmt, args);
+    va_end(args);
+    return string;
+}
+
+static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, void *user_context) {
 	if (info->Atribute & File_Attribute_Hidden) return Directory_Iteration_Continue;
 	if (strcmp((char *)info->Name.Data, "bin") == 0) return Directory_Iteration_Continue;
 	LogInfo("%s - %zu bytes\n", info->Path.Data, info->Size);
@@ -160,8 +178,14 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Out_Stream out;
 	OutCreate(&out, MemoryArenaAllocator(scratch));
         
-    if (!CheckIfPathExists((char *)config->BuildDirectory.Data))
-        CreateDirectoryRecursively((char *)config->BuildDirectory.Data);
+    Uint32 result = CheckIfPathExists(config->BuildDirectory);
+    if (result == Path_Does_Not_Exist) {
+        CreateDirectoryRecursively(config->BuildDirectory);
+    }
+    else if (result == Path_Exist_File) {
+        String error = FormatString(scratch, "%s: Path exist but is a file");
+        FatalError(error.Data);
+    }
 
 	// Defaults
     if (compiler == Compiler_Kind_CL){
@@ -280,7 +304,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
 	LogInfo("Command Line: %s\n", cmdline.Data);
 
-	OsLaunchCompilation(compiler, cmdline);
+	LaunchCompilation(compiler, cmdline);
 }
 
 

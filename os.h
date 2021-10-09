@@ -38,19 +38,6 @@ static inline Directory_Iteration DirectoryIteratorPrint(const File_Info *info, 
 	return Directory_Iteration_Recurse;
 }
 
-static inline bool CheckIfPathExists(char *path){
-    struct stat tmp;
-    if (stat(path, &tmp) == 0){
-        if ((tmp.st_mode & S_IFDIR) == S_IFDIR){
-            return true;
-        } else {
-            LogWarn ("%s: Path exists but is not a directory\n", path);
-            return false;
-        }
-    }
-    return false;
-}
-
 bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *context);
 
 typedef enum Compiler_Kind {
@@ -63,5 +50,12 @@ typedef enum Compiler_Kind {
 
 Compiler_Kind DetectCompiler();
 
-bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline);
-bool CreateDirectoryRecursively(char path[]);
+enum {
+	Path_Exist_Directory,
+	Path_Exist_File,
+	Path_Does_Not_Exist
+};
+
+bool LaunchCompilation(Compiler_Kind compiler, String cmdline);
+Uint32 CheckIfPathExists(String path);
+bool CreateDirectoryRecursively(String path);

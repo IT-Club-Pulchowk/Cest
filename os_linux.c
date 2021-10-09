@@ -10,20 +10,6 @@
 #include <stdio.h>
 #include <string.h>
 
-Compiler_Kind DetectCompiler() {
-    if (!system("which gcc > /dev/null 2>&1")){
-        LogInfo("GCC Detected\n");
-        return Compiler_Kind_GCC;
-    }
-    if (!system("which clang > /dev/null 2>&1")){
-        LogInfo("CLANG Detected\n");
-        return Compiler_Kind_CLANG;
-    }
-
-    LogError("Error: Failed to detect compiler!\n");
-    return Compiler_Kind_NULL;
-}
-
 static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * name, const int name_len){
     struct statx stats;
     statx(dirfd, (char *)Path.Data, AT_SYMLINK_NOFOLLOW, STATX_ALL, &stats);
@@ -125,8 +111,21 @@ bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *conte
     return res;
 }
 
+Compiler_Kind DetectCompiler() {
+    if (!system("which gcc > /dev/null 2>&1")) {
+        LogInfo("GCC Detected\n");
+        return Compiler_Kind_GCC;
+    }
+    if (!system("which clang > /dev/null 2>&1")) {
+        LogInfo("CLANG Detected\n");
+        return Compiler_Kind_CLANG;
+    }
 
-bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
+    LogError("Error: Failed to detect compiler!\n");
+    return Compiler_Kind_NULL;
+}
+
+bool LaunchCompilation(Compiler_Kind compiler, String cmdline) {
     if (compiler != Compiler_Kind_NULL){
         system ((char *)cmdline.Data);
         return true;
@@ -134,17 +133,30 @@ bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
     return false;
 }
 
-bool CreateDirectoryRecursively(char path[]){
-	const int len=strlen(path);
+Uint32 CheckIfPathExists(String path) {
+    struct stat tmp;
+    if (stat(path.Data, &tmp) == 0) {
+        if ((tmp.st_mode & S_IFDIR) == S_IFDIR) {
+            return Path_Exist_Directory;
+        }
+        else {
+            return Path_Exist_File;
+        }
+    }
+    return Path_Does_Not_Exist;
+}
+
+bool CreateDirectoryRecursively(String path){
+    const int len = path.Length;
     for (int i = 0; i < len+1; i++) {
-        if (path[i] == '/' ) {
-            path[i] = '\0';
-			const char* dirPath = path;
-			mkdir(dirPath,S_IRWXU);
+        if (path.Data[i] == '/' ) {
+            path.Data[i] = '\0';
+			const char* dir = path.Data;
+			mkdir(dir, S_IRWXU);
             path[i] = '/';
         } else if(path[i] == '\0') {
-            const char* dirPath = path;
-            mkdir(dirPath,S_IRWXU);
+            const char* dir = path;
+            mkdir(dir, S_IRWXU);
         }
     }
 	return true;

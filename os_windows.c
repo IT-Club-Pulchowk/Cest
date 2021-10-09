@@ -1,41 +1,23 @@
 #include "os.h"
 #define WIN32_MEAN_AND_LEAN
 #include <windows.h>
+#include <shellapi.h>
 
-Compiler_Kind DetectCompiler() {
-	Memory_Arena *scratch = ThreadScratchpad();
-
-	DWORD length = 0;
-	if ((length = SearchPathW(NULL, L"cl", L".exe", 0, NULL, NULL))) {
-		Temporary_Memory temp = BeginTemporaryMemory(scratch);
-		wchar_t *dir = 0;
-		wchar_t *path = PushSize(scratch, sizeof(wchar_t) * (length + 1));
-		SearchPathW(NULL, L"cl", L".exe", length, path, &dir);
-		LogInfo("CL Detected: \"%S\"\n", path);
-		EndTemporaryMemory(&temp);
-		return Compiler_Kind_CL;
-	}
-	
-	length = 0;
-	if ((length = SearchPathW(NULL, L"clang", L".exe", 0, NULL, NULL))) {
-		Temporary_Memory temp = BeginTemporaryMemory(scratch);
-		wchar_t *dir = 0;
-		wchar_t *path = PushSize(scratch, sizeof(wchar_t) * (length + 1));
-		SearchPathW(NULL, L"clang", L".exe", length, path, &dir);
-		LogInfo("CLANG Detected: \"%S\"\n", path);
-		EndTemporaryMemory(&temp);
-		return Compiler_Kind_CLANG;
-	}
-
-	LogError("Error: Failed to detect compiler!\n");
-	return Compiler_Kind_NULL;
-}
+#pragma comment(lib, "Shlwapi.lib")
 
 static wchar_t *UnicodeToWideChar(const char *msg, int length) {
 	Memory_Arena *scratch = ThreadScratchpad();
 	wchar_t *result = (wchar_t *)PushSize(scratch, (length + 1) * sizeof(wchar_t));
-	MultiByteToWideChar(CP_UTF8, 0, msg, length, result, length + 1);
-	result[length] = 0;
+	int wlen = MultiByteToWideChar(CP_UTF8, 0, msg, length, result, length + 1);
+	result[wlen] = 0;
+	return result;
+}
+
+static wchar_t *UnicodeToWideCharLength(const char *msg, int length, int *out_length) {
+	Memory_Arena *scratch = ThreadScratchpad();
+	wchar_t *result = (wchar_t *)PushSize(scratch, (length + 1) * sizeof(wchar_t));
+	*out_length = MultiByteToWideChar(CP_UTF8, 0, msg, length, result, length + 1);
+	result[*out_length] = 0;
 	return result;
 }
 
@@ -189,8 +171,36 @@ bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *conte
 	return result;
 }
 
+Compiler_Kind DetectCompiler() {
+	Memory_Arena *scratch = ThreadScratchpad();
 
-bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
+	DWORD length = 0;
+	if ((length = SearchPathW(NULL, L"cl", L".exe", 0, NULL, NULL))) {
+		Temporary_Memory temp = BeginTemporaryMemory(scratch);
+		wchar_t *dir = 0;
+		wchar_t *path = PushSize(scratch, sizeof(wchar_t) * (length + 1));
+		SearchPathW(NULL, L"cl", L".exe", length, path, &dir);
+		LogInfo("CL Detected: \"%S\"\n", path);
+		EndTemporaryMemory(&temp);
+		return Compiler_Kind_CL;
+	}
+
+	length = 0;
+	if ((length = SearchPathW(NULL, L"clang", L".exe", 0, NULL, NULL))) {
+		Temporary_Memory temp = BeginTemporaryMemory(scratch);
+		wchar_t *dir = 0;
+		wchar_t *path = PushSize(scratch, sizeof(wchar_t) * (length + 1));
+		SearchPathW(NULL, L"clang", L".exe", length, path, &dir);
+		LogInfo("CLANG Detected: \"%S\"\n", path);
+		EndTemporaryMemory(&temp);
+		return Compiler_Kind_CLANG;
+	}
+
+	LogError("Error: Failed to detect compiler!\n");
+	return Compiler_Kind_NULL;
+}
+
+bool LaunchCompilation(Compiler_Kind compiler, String cmdline) {
 	Assert(compiler == Compiler_Kind_CL);
 
 	wchar_t *wcmdline = UnicodeToWideChar(cmdline.Data, (int)cmdline.Length);
@@ -210,17 +220,32 @@ bool OsLaunchCompilation(Compiler_Kind compiler, String cmdline) {
 	return true;
 }
 
-bool CreateDirectoryRecursively(char path[])
-{
-	wchar_t *dirPath=NULL;
-	const int len=strlen(path);
-    for (int i = 0; i <len+1; i++)
-    {
-        if (path[i] == '/'||path[i]=='\0' )
-        {
-			dirPath= UnicodeToWideChar(path,i);
-			CreateDirectoryW(dirPath,NULL);
+Uint32 CheckIfPathExists(String path) {
+	wchar_t *dir = UnicodeToWideChar(path.Data, path.Length);
+
+	if (PathFileExistsW(dir)) {
+		DWORD attr = GetFileAttributesW(dir);
+		if (attr != INVALID_FILE_ATTRIBUTES) {
+			if (attr & FILE_ATTRIBUTE_DIRECTORY) return Path_Exist_Directory;
+			return Path_Exist_File;
+		}
+		return Path_Exist_File;
+	}
+
+	return Path_Does_Not_Exist;
+}
+
+bool CreateDirectoryRecursively(String path) {
+	int len = 0;
+	wchar_t *dir = UnicodeToWideCharLength(path.Data, path.Length, &len);
+
+    for (int i = 0; i < len + 1; i++) {
+        if (dir[i] == (Uint16)'/' || dir[i] == 0 ) {
+			dir[i] = 0;
+			CreateDirectoryW(dir, NULL);
+			dir[i] = (Uint16)'/';
         }
     }
+
 	return true;
 }
