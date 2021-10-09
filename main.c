@@ -345,7 +345,6 @@ int main(int argc, char *argv[]) {
         SetDefaultCompilerConfig(&compiler_config);
     }
 
-
     Compile(&compiler_config, compiler);
 
 #if 0

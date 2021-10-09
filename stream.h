@@ -21,7 +21,7 @@ typedef struct Out_Stream {
 	Memory_Allocator Allocator;
 } Out_Stream;
 
-static inline void OutBuffer(Out_Stream *out, const void *ptr, Int64 size) {
+INLINE_PROCEDURE void OutBuffer(Out_Stream *out, const void *ptr, Int64 size) {
 	Uint8 *data = (Uint8 *)ptr;
 
 	while (size) {
@@ -44,7 +44,7 @@ static inline void OutBuffer(Out_Stream *out, const void *ptr, Int64 size) {
 	}
 }
 
-static inline void OutFormatted(Out_Stream *out, const char *fmt, ...) {
+INLINE_PROCEDURE void OutFormatted(Out_Stream *out, const char *fmt, ...) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
@@ -65,11 +65,11 @@ static inline void OutFormatted(Out_Stream *out, const char *fmt, ...) {
 	EndTemporaryMemory(&temp);
 }
 
-static inline Int64 OutGetSize(Out_Stream *out) {
+INLINE_PROCEDURE Int64 OutGetSize(Out_Stream *out) {
 	return out->Size;
 }
 
-static inline String OutBuildString(Out_Stream *out) {
+INLINE_PROCEDURE String OutBuildString(Out_Stream *out) {
 	String string;
 	string.Data = (Uint8 *)MemoryAllocate(out->Size + 1, &ThreadContext.Allocator);
 	string.Length = 0;
@@ -88,7 +88,7 @@ static inline String OutBuildString(Out_Stream *out) {
 	return string;
 }
 
-static inline void OutReset(Out_Stream *out) {
+INLINE_PROCEDURE void OutReset(Out_Stream *out) {
 	Assert(out->Tail->Next == NULL);	
 	struct Out_Stream_Bucket *buk = &out->Head;
 	while (buk) {
@@ -98,7 +98,7 @@ static inline void OutReset(Out_Stream *out) {
 	out->Size = 0;
 }
 
-static inline void OutCreate(Out_Stream *out, Memory_Allocator allocator) {
+INLINE_PROCEDURE void OutCreate(Out_Stream *out, Memory_Allocator allocator) {
 	out->Allocator = allocator;
 	out->Size = 0;
 	out->Head.Next = NULL;
@@ -106,7 +106,7 @@ static inline void OutCreate(Out_Stream *out, Memory_Allocator allocator) {
 	out->Tail = &out->Head;
 }
 
-static inline void OutDestroy(Out_Stream *out) {
+INLINE_PROCEDURE void OutDestroy(Out_Stream *out) {
 	while (out->Head.Next) {
 		struct Out_Stream_Bucket *buk = out->Head.Next;
 		out->Head.Next = buk->Next;

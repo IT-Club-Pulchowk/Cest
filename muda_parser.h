@@ -6,13 +6,6 @@
 #include "zBase.h"
 #include <ctype.h>
 
-#ifdef __linux
-    #define INLINE static inline
-#endif
-#if defined(_WIN32) || defined(_WIN64)
-    #define INLINE inline
-#endif
-
 #define MudaReportError(p, ...) snprintf(p->Token.Data.Error.Desc, sizeof(p->Token.Data.Error.Desc), __VA_ARGS__)
 
 typedef enum {
@@ -47,7 +40,7 @@ typedef struct Muda_Parser {
     Muda_Token Token;
 } Muda_Parser;
 
-INLINE Muda_Parser MudaParseInit(uint8_t *data, int64_t length) {
+INLINE_PROCEDURE Muda_Parser MudaParseInit(uint8_t *data, int64_t length) {
     Muda_Parser parser;
     parser.Ptr = data;
     parser.Pos = parser.Ptr;
@@ -55,7 +48,7 @@ INLINE Muda_Parser MudaParseInit(uint8_t *data, int64_t length) {
     return parser;
 }
 
-INLINE void GetLineNoAndColumn(uint8_t *cur, Muda_Parser *p){
+INLINE_PROCEDURE void GetLineNoAndColumn(uint8_t *cur, Muda_Parser *p){
     uint8_t *cpy = cur;
     p->Token.Data.Error.Column = 0;
     while (*cpy != '\n' && *cpy != '\r'){
@@ -71,7 +64,7 @@ INLINE void GetLineNoAndColumn(uint8_t *cur, Muda_Parser *p){
     }
 }
 
-INLINE bool MudaParseNext(Muda_Parser *p) {
+INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
     uint8_t *cur = p->Pos;
     while (*cur && isspace(*cur)) cur += 1;
     uint8_t *start = cur;

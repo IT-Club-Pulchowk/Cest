@@ -135,6 +135,14 @@
 #define TriggerBreakpoint() ((int *)0) = 0
 #endif
 
+#if PLATFORM_OS_WINDOWS == 1
+#define INLINE_PROCEDURE inline
+#elif PLATFORM_OS_LINUX == 1
+#define INLINE_PROCEDURE static inline
+#else
+#define INLINE_PROCEDURE inline
+#endif
+
 #if !defined(BUILD_DEBUG) && !defined(BUILD_DEVELOPER) && !defined(BUILD_RELEASE)
 #if defined(_DEBUG) || defined(DEBUG)
 #define BUILD_DEBUG
@@ -399,29 +407,29 @@ struct Exit_Scope_Help {
 };
 #define Defer const auto &_zConcat(defer__, __LINE__) = Exit_Scope_Help() + [&]()
 
-inline void *MemoryAllocate(Ptrsize size, Memory_Allocator *allocator = &ThreadContext.Allocator) {
+INLINE_PROCEDURE void *MemoryAllocate(Ptrsize size, Memory_Allocator *allocator = &ThreadContext.Allocator) {
 	return allocator->Allocate(size, allocator->Context);
 }
 
-inline void *MemoryReallocate(Ptrsize old_size, Ptrsize new_size, void *ptr, Memory_Allocator *allocator = &ThreadContext.Allocator) {
+INLINE_PROCEDURE void *MemoryReallocate(Ptrsize old_size, Ptrsize new_size, void *ptr, Memory_Allocator *allocator = &ThreadContext.Allocator) {
 	return allocator->Reallocate(ptr, old_size, new_size, allocator->Context);
 }
 
-inline void MemoryFree(void *ptr, Memory_Allocator *allocator = &ThreadContext.Allocator) {
+INLINE_PROCEDURE void MemoryFree(void *ptr, Memory_Allocator *allocator = &ThreadContext.Allocator) {
 	allocator->Free(ptr, allocator->Context);
 }
 
 #else
 
-static inline void *MemoryAllocate(Ptrsize size, Memory_Allocator *allocator) {
+INLINE_PROCEDURE void *MemoryAllocate(Ptrsize size, Memory_Allocator *allocator) {
 	return allocator->Allocate(size, allocator->Context);
 }
 
-static inline void *MemoryReallocate(Ptrsize old_size, Ptrsize new_size, void *ptr, Memory_Allocator *allocator) {
+INLINE_PROCEDURE void *MemoryReallocate(Ptrsize old_size, Ptrsize new_size, void *ptr, Memory_Allocator *allocator) {
 	return allocator->Reallocate(ptr, old_size, new_size, allocator->Context);
 }
 
-static inline void MemoryFree(void *ptr, Memory_Allocator *allocator) {
+INLINE_PROCEDURE void MemoryFree(void *ptr, Memory_Allocator *allocator) {
 	allocator->Free(ptr, allocator->Context);
 }
 
