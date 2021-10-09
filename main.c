@@ -3,6 +3,7 @@
 #include "zBaseCRT.h"
 #include "stream.h"
 #include "muda_parser.h"
+#include "lenstring.h"
 
 void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
 	fprintf(stderr, "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
@@ -13,27 +14,9 @@ void DeprecateHandle(const char *file, int line, const char *proc) {
 	fprintf(stderr, "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
 }
 
-static String FormatStringV(Memory_Arena *arena, const char *fmt, va_list list) {
-    va_list args;
-    va_copy(args, list);
-    int len = 1 + vsnprintf(NULL, 0, fmt, args);
-    char *buf = (char *)PushSize(arena, len);
-    vsnprintf(buf, len, fmt, args);
-    va_end(args);
-    return (String){ len - 1, (uint8_t *)buf};
-}
-
-static String FormatString(Memory_Arena *arena, const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    String string = FormatStringV(arena, fmt, args);
-    va_end(args);
-    return string;
-}
-
 static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, void *user_context) {
 	if (info->Atribute & File_Attribute_Hidden) return Directory_Iteration_Continue;
-	if (strcmp((char *)info->Name.Data, "bin") == 0) return Directory_Iteration_Continue;
+	if (StrMatch(info->Name, StringLiteral("bin"))) return Directory_Iteration_Continue;
 	LogInfo("%s - %zu bytes\n", info->Path.Data, info->Size);
 	return Directory_Iteration_Recurse;
 }
@@ -96,8 +79,6 @@ static void ReadList(String_List *dst, String data){
 }
 
 void SetDefaultCompilerConfig(Compiler_Config *config) {
-	Memory_Arena *arena = ThreadScratchpadI(1);
-    
 	// TODO: Use sensible default values
 
 	config->BuildDirectory = StringLiteral("./bin");
@@ -129,39 +110,39 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
         // Temporary
         if (prsr.Token.Kind != Muda_Token_Property) continue;
 
-        if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Type")){
-            if (!strcmp((char *)prsr.Token.Data.Property.Value.Data, "Project"))
+        if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Type"))){
+            if (StrMatch(prsr.Token.Data.Property.Value, StringLiteral("Project")))
                 config->Type = Compile_Type_Project;
             else
                 config->Type = Compile_Type_Solution;
         }
 
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Optimization"))
-            config->Optimization = !strcmp((char *)prsr.Token.Data.Property.Value.Data, "true");
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Optimization")))
+            config->Optimization = StrMatch(prsr.Token.Data.Property.Value, StringLiteral("true"));
 
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "BuildDirectory")){
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("BuildDirectory"))) {
             config->BuildDirectory.Length = prsr.Token.Data.Property.Value.Length;
             config->BuildDirectory.Data = prsr.Token.Data.Property.Value.Data;
         }
 
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Build")){
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Build"))) {
             config->Build.Length = prsr.Token.Data.Property.Value.Length;
             config->Build.Data = prsr.Token.Data.Property.Value.Data;
         }
 
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Define"))
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Define")))
             ReadList(&config->Defines, prsr.Token.Data.Property.Value);
 
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "IncludeDirectory"))
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("IncludeDirectory")))
             ReadList(&config->IncludeDirectory, prsr.Token.Data.Property.Value);
 
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Source"))
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Source")))
             ReadList(&config->Source, prsr.Token.Data.Property.Value);
 
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "LibraryDirectory"))
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("LibraryDirectory")))
             ReadList(&config->LibraryDirectory, prsr.Token.Data.Property.Value);
 
-        else if (!strcmp((char *)prsr.Token.Data.Property.Key.Data, "Library"))
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Library")))
             ReadList(&config->Library, prsr.Token.Data.Property.Value);
     }
 }
@@ -169,7 +150,7 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	String cmdline = {0, 0};
 
-	Memory_Arena *scratch = ThreadScratchpadI(1);
+	Memory_Arena *scratch = ThreadScratchpad();
 
 	Assert(config->Type == Compile_Type_Project);
 
@@ -183,7 +164,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         CreateDirectoryRecursively(config->BuildDirectory);
     }
     else if (result == Path_Exist_File) {
-        String error = FormatString(scratch, "%s: Path exist but is a file");
+        String error = FmtStr(scratch, "%s: Path exist but is a file", config->BuildDirectory.Data);
         FatalError(error.Data);
     }
 
@@ -296,9 +277,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
     }
 
-	Push_Allocator point = PushThreadAllocator(MemoryArenaAllocator(ThreadScratchpadI(0)));
 	cmdline = OutBuildString(&out);
-	PopThreadAllocator(&point);
 
 	EndTemporaryMemory(&temp);
 

@@ -324,6 +324,7 @@ extern "C" {
 
 	Memory_Arena *ThreadScratchpad();
 	Memory_Arena *ThreadScratchpadI(Uint32 i);
+	Memory_Arena *ThreadUnusedScratchpad();
 	void ResetThreadScratchpad();
 	Memory_Allocator ThreadScratchpadAllocator();
 
@@ -377,7 +378,7 @@ typedef struct String {
 #endif
 } String;
 #define StringLiteral(lit) (const String) { (Int64)(sizeof(lit) - 1), lit }
-
+#define StringMake(ch, len) (const String) { (Int64)(len), (Uint8 *)ch }
 
 #if defined(__cplusplus)
 

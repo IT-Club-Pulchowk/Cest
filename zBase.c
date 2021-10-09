@@ -123,17 +123,21 @@ extern "C" {
 	}
 
 	Memory_Arena *ThreadScratchpad() {
+		return &ThreadContext.Scratchpad.Arena[0];
+	}
+	
+	Memory_Arena *ThreadScratchpadI(Uint32 i) {
+		Assert(i < ArrayCount(ThreadContext.Scratchpad.Arena));
+		return &ThreadContext.Scratchpad.Arena[i];
+	}
+
+	Memory_Arena *ThreadUnusedScratchpad() {
 		for (uint32_t index = 0; ArrayCount(ThreadContext.Scratchpad.Arena); ++index) {
 			if (&ThreadContext.Scratchpad.Arena[index] != ThreadContext.Allocator.Context) {
 				return &ThreadContext.Scratchpad.Arena[index];
 			}
 		}
 		return 0;
-	}
-	
-	Memory_Arena *ThreadScratchpadI(Uint32 i) {
-		Assert(i < ArrayCount(ThreadContext.Scratchpad.Arena));
-		return &ThreadContext.Scratchpad.Arena[i];
 	}
 
 	void ResetThreadScratchpad() {
