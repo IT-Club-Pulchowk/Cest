@@ -12,7 +12,7 @@ typedef enum {
     Muda_Token_Section,
     Muda_Token_Property,
     Muda_Token_Comment,
-    Muda_Token_Error,
+    Muda_Token_Error
 }Muda_Token_Kind;
 
 typedef struct Muda_Token {
@@ -51,7 +51,7 @@ INLINE_PROCEDURE Muda_Parser MudaParseInit(uint8_t *data, int64_t length) {
 INLINE_PROCEDURE void GetLineNoAndColumn(uint8_t *cur, Muda_Parser *p){
     uint8_t *cpy = cur;
     p->Token.Data.Error.Column = 0;
-    while (*cpy != '\n' && *cpy != '\r'){
+    while (*cpy != '\n' && *cpy != '\r' && cpy > p->Ptr){
         cpy--;
         p->Token.Data.Error.Column ++;
     }
@@ -97,11 +97,13 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
         } else {
             p->Token.Kind = Muda_Token_Error;
             p->Pos = cur;
-            if (*cur){
+            if (*(cur - 1) != '\n' && *(cur - 1) != '\r'){
                 GetLineNoAndColumn(cur, p);
                 MudaReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
             } else{
+                cur -= 2;
                 GetLineNoAndColumn(cur, p);
+                p->Token.Data.Error.Line ++;
                 MudaReportError(p, "Missing ']'");
             }
             return false;
@@ -114,7 +116,6 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
         cur ++;
         start = cur;
         while (*cur && !(*cur == '\r' || *cur == '\n')) cur += 1;
-        *cur = 0;
         p->Token.Kind = Muda_Token_Comment;
         p->Token.Data.Comment.Data = start;
         p->Token.Data.Comment.Length = cur - start;
@@ -125,19 +126,18 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
         return true;
     } else if (isalnum(*cur) || *cur > 125) {
         // Property
-        while (*cur && (isalnum(*cur) || *cur > 125) && *cur != '=' && *cur != ':') cur += 1;
-        while (*cur && isspace(*cur) && *cur != '=' && *cur != ':') cur += 1;
+        while (*cur && (isalnum(*cur) || *cur > 125) && *cur != '=' && *cur != ':' && *cur != ';') cur += 1;
+        while (*cur && isspace(*cur) && *cur != '=' && *cur != ':' && *cur != ';') cur += 1;
 
-        if (!*cur || (*cur != '=' && *cur != ':')){
+        if (*cur != ':' && *cur != '='){
             p->Token.Kind = Muda_Token_Error;
             p->Pos = cur;
-            if (*cur){
-                GetLineNoAndColumn(cur, p);
+            GetLineNoAndColumn(cur, p);
+            p->Token.Data.Error.Line ++;
+            if (*cur && *cur != ';')
                 MudaReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
-            } else {
-                GetLineNoAndColumn(cur, p);
+            else
                 MudaReportError(p, "Property name without assignment");
-            }
             return false;
         }
 

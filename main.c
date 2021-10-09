@@ -122,11 +122,7 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
     Muda_Parser prsr = MudaParseInit(data, length);
     while (MudaParseNext(&prsr)) {
         // Temporary
-        if (prsr.Token.Kind == Muda_Token_Error) {
-            LogError ("%s at Line %d, Column %d", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
-            break;
-        }
-        else if (prsr.Token.Kind != Muda_Token_Property) continue;
+        if (prsr.Token.Kind != Muda_Token_Property) continue;
 
         if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Type"))){
             if (StrMatch(prsr.Token.Data.Property.Value, StringLiteral("Project")))
@@ -163,6 +159,8 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Library")))
             ReadList(&config->Library, prsr.Token.Data.Property.Value);
     }
+    if (prsr.Token.Kind == Muda_Token_Error)
+        LogError ("%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
 }
 
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
@@ -313,6 +311,7 @@ int main(int argc, char *argv[]) {
 
 	Compiler_Config compiler_config;
 
+    SetDefaultCompilerConfig(&compiler_config);
     if (config_file.Length) {
         FILE *fp = fopen(config_file.Data, "rb");
         fseek(fp, 0L, SEEK_END);
@@ -324,11 +323,7 @@ int main(int argc, char *argv[]) {
         config[size] = 0;
         fclose(fp);
 
-        SetDefaultCompilerConfig(&compiler_config);
         LoadCompilerConfig(&compiler_config, config, size);
-    }
-    else {
-        SetDefaultCompilerConfig(&compiler_config);
     }
 
     {
