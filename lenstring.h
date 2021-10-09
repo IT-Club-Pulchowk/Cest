@@ -42,6 +42,24 @@ INLINE_PROCEDURE Int64 StrCopy(String src, char *const dst, Int64 dst_size, Int6
 	return copied;
 }
 
+INLINE_PROCEDURE String StrDuplicate(String src) {
+	String dst;
+	dst.Data = MemoryAllocate(src.Length + 1, &ThreadContext.Allocator);
+	memcpy(dst.Data, src.Data, src.Length);
+	dst.Length = src.Length;
+	dst.Data[dst.Length] = 0;
+	return dst;
+}
+
+INLINE_PROCEDURE String StrDuplicateArena(String src, Memory_Arena *arena) {
+	String dst;
+	dst.Data = PushSize(arena, src.Length + 1);
+	memcpy(dst.Data, src.Data, src.Length);
+	dst.Length = src.Length;
+	dst.Data[dst.Length] = 0;
+	return dst;
+}
+
 INLINE_PROCEDURE String SubStr(String str, Int64 index, Int64 count) {
 	Assert(index < str.Length);
 	count = (Int64)Minimum(str.Length, count);
