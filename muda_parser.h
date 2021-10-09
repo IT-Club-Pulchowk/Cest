@@ -125,10 +125,10 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
         return true;
     } else if (isalnum(*cur) || *cur > 125) {
         // Property
-        while (*cur && (isalnum(*cur) || *cur > 125) && *cur != '=') cur += 1;
-        while (*cur && isspace(*cur) && *cur != '=') cur += 1;
+        while (*cur && (isalnum(*cur) || *cur > 125) && *cur != '=' && *cur != ':') cur += 1;
+        while (*cur && isspace(*cur) && *cur != '=' && *cur != ':') cur += 1;
 
-        if (!*cur || *cur != '='){
+        if (!*cur || (*cur != '=' && *cur != ':')){
             p->Token.Kind = Muda_Token_Error;
             p->Pos = cur;
             if (*cur){
@@ -147,13 +147,13 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             cur --;
         }
         cur ++;
-        if (*cur != '=')
+        if (*cur != '=' && *cur != ':')
             *cur = 0;
 
         p->Token.Kind = Muda_Token_Property;
         p->Token.Data.Property.Key.Data = start;
         p->Token.Data.Property.Key.Length = cur - start;
-        while (*cur != '=') cur += 1;
+        while (*cur != '=' && *cur != ':') cur += 1;
 
         *cur = 0;
         cur ++;
