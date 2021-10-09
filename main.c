@@ -29,14 +29,14 @@ typedef enum Compile_Type {
 
 #define MAX_NODE_DATA_COUNT 8
 
-typedef struct Node {
+typedef struct String_List_Node {
     String Data[MAX_NODE_DATA_COUNT];
-    struct Node *Next;
-}Node;
+    struct String_List_Node *Next;
+}String_List_Node;
 
 typedef struct String_List {
-    Node Head;
-    Node *Tail;
+    String_List_Node Head;
+    String_List_Node *Tail;
     Uint32 Used;
 }String_List;
 
@@ -56,7 +56,7 @@ static void AddToList(String_List *dst, Uint8* data){
     Memory_Arena *scratch = ThreadScratchpad();
     if (dst->Used == MAX_NODE_DATA_COUNT){
         dst->Used = 0;
-        dst->Tail->Next = PushSize(scratch, sizeof(Node));
+        dst->Tail->Next = PushSize(scratch, sizeof(String_List_Node));
         dst->Tail = dst->Tail->Next;
         dst->Tail->Next = NULL;
     }
@@ -76,6 +76,11 @@ static void ClearList(String_List *lst){
 }
 
 static void ReadList(String_List *dst, String data){
+    if (data.Length <= 0){
+        ClearList(dst);
+        return;
+    }
+
     for (int i = 0; i < data.Length; i++) {
         if (isspace(data.Data[i]))
             data.Data[i] = 0;
@@ -188,17 +193,17 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else
             OutFormatted(&out, "-Od ");
 
-        for (Node* ntr = &config->Defines.Head; ntr; ntr = ntr->Next){
+        for (String_List_Node* ntr = &config->Defines.Head; ntr && config->Defines.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->Defines.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data);
         }
 
-        for (Node* ntr = &config->IncludeDirectory.Head; ntr; ntr = ntr->Next){
+        for (String_List_Node* ntr = &config->IncludeDirectory.Head; ntr && config->IncludeDirectory.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->IncludeDirectory.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "-I%s ", ntr->Data[i].Data);
         }
 
-        for (Node* ntr = &config->Source.Head; ntr; ntr = ntr->Next){
+        for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->Source.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
         }
@@ -211,12 +216,12 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
         OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
 
-        for (Node* ntr = &config->LibraryDirectory.Head; ntr; ntr = ntr->Next){
+        for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->LibraryDirectory.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "-LIBPATH:\"%s\" ", ntr->Data[i].Data);
         }
 
-        for (Node* ntr = &config->Library.Head; ntr; ntr = ntr->Next){
+        for (String_List_Node* ntr = &config->Library.Head; ntr && config->Library.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->Library.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
         }
@@ -227,17 +232,17 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         if (config->Optimization) OutFormatted(&out, "-O2 ");
         else OutFormatted(&out, "-g ");
 
-        for (Node* ntr = &config->Defines.Head; ntr; ntr = ntr->Next){
+        for (String_List_Node* ntr = &config->Defines.Head; ntr && config->Defines.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->Defines.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data);
         }
 
-        for (Node* ntr = &config->IncludeDirectory.Head; ntr; ntr = ntr->Next){
+        for (String_List_Node* ntr = &config->IncludeDirectory.Head; ntr && config->IncludeDirectory.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->IncludeDirectory.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "-I%s ", ntr->Data[i].Data);
         }
 
-        for (Node* ntr = &config->Source.Head; ntr; ntr = ntr->Next){
+        for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->Source.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
         }
@@ -247,12 +252,12 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else if (PLATFORM_OS_WINDOWS)
             OutFormatted(&out, "-o%s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
 
-        for (Node* ntr = &config->LibraryDirectory.Head; ntr; ntr = ntr->Next){
+        for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->LibraryDirectory.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "-L%s ", ntr->Data[i].Data);
         }
 
-        for (Node* ntr = &config->Library.Head; ntr; ntr = ntr->Next){
+        for (String_List_Node* ntr = &config->Library.Head; ntr && config->Library.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->Library.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "-l%s ", ntr->Data[i].Data);
         }
