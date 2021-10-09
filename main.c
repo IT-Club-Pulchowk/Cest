@@ -27,15 +27,17 @@ typedef enum Compile_Type {
 	Compile_Type_Solution,
 } Compile_Type;
 
+#define MAX_NODE_DATA_COUNT 8
+
 typedef struct Node {
-    String Data;
+    String Data[MAX_NODE_DATA_COUNT];
     struct Node *Next;
 }Node;
 
 typedef struct String_List {
-    bool IsEmpty;
     Node Head;
     Node *Tail;
+    Uint32 Used;
 }String_List;
 
 typedef struct Compiler_Config {
@@ -50,32 +52,44 @@ typedef struct Compiler_Config {
 	String_List Library;
 } Compiler_Config;
 
-static void ReadList(String_List *dst, String data){
-    if (data.Length <= 0){
-        dst->IsEmpty = true;
-        return;
+static void AddToList(String_List *dst, Uint8* data){
+    Memory_Arena *scratch = ThreadScratchpad();
+    if (dst->Used == MAX_NODE_DATA_COUNT){
+        dst->Used = 0;
+        dst->Tail->Next = PushSize(scratch, sizeof(Node));
+        dst->Tail = dst->Tail->Next;
+        dst->Tail->Next = NULL;
     }
+    dst->Tail->Data[dst->Used].Data = data;
+    dst->Tail->Data[dst->Used].Length = strlen(data);
+    dst->Used++;
+}
 
-    dst->IsEmpty = false;
+static void ClearList(String_List *lst){
+    lst->Used = 0;
+    lst->Head.Next = NULL;
+    for (int i = 0; i < MAX_NODE_DATA_COUNT; i++) {
+        lst->Head.Data[i].Data = NULL;        
+        lst->Head.Data[i].Length = 0;        
+    }
+    lst->Tail = &lst->Head;
+}
+
+static void ReadList(String_List *dst, String data){
     for (int i = 0; i < data.Length; i++) {
         if (isspace(data.Data[i]))
             data.Data[i] = 0;
     }
 
-    dst->Head.Data.Data = data.Data;
-    dst->Head.Data.Length = strlen(data.Data);
+    dst->Head.Data[0].Data = data.Data;
+    dst->Head.Data[0].Length = strlen(data.Data);
+    dst->Used = 1;
     dst->Head.Next = NULL;
     dst->Tail = &dst->Head;
 
-    Memory_Arena *scratch = ThreadScratchpad();
     for (int i = 0; i < data.Length; i++) {
-        if (!data.Data[i] && strlen(data.Data + i + 1)){
-            dst->Tail->Next = PushSize(scratch, sizeof(Node));
-            dst->Tail->Next->Data.Data = data.Data + i + 1;
-            dst->Tail->Next->Data.Length = strlen(data.Data + i + 1);
-            dst->Tail = dst->Tail->Next;
-            dst->Tail->Next = NULL;
-        }        
+        if (!data.Data[i] && strlen(data.Data + i + 1) > 0)
+            AddToList(dst, data.Data + i + 1);
     }
 }
 
@@ -92,14 +106,8 @@ void SetDefaultCompilerConfig(Compiler_Config *config) {
     Uint8 str[] = "ASSERTION_HANDLED DEPRECATION_HANDLED _CRT_SECURE_NO_WARNINGS"; 
 	ReadList(&config->Defines, (String){strlen(str), str});
 
-	config->IncludeDirectory.IsEmpty = true;
-
     Uint8 str2[] = "main.c"; 
 	ReadList(&config->Source, (String){strlen(str2), str2});
-
-	config->LibraryDirectory.IsEmpty = true;
-
-	config->Library.IsEmpty = true;
 }
 
 void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
@@ -171,7 +179,6 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         String error = FmtStr(scratch, "%s: Path exist but is a file!\n", config->BuildDirectory.Data);
         FatalError(error.Data);
     }
-
 	// Defaults
     if (compiler == Compiler_Kind_CL){
         OutFormatted(&out, "cl -nologo -Zi -EHsc ");
@@ -181,28 +188,19 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else
             OutFormatted(&out, "-Od ");
 
-        if (!config->Defines.IsEmpty){
-            Node *head = &config->Defines.Head;
-            while (head){
-                OutFormatted(&out, "-D%s ", head->Data.Data);
-                head = head->Next;
-            }
+        for (Node* ntr = &config->Defines.Head; ntr; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->Defines.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data);
         }
 
-        if (!config->IncludeDirectory.IsEmpty){
-            Node *head = &config->IncludeDirectory.Head;
-            while (head){
-                OutFormatted(&out, "-I%s ", head->Data.Data);
-                head = head->Next;
-            }
+        for (Node* ntr = &config->IncludeDirectory.Head; ntr; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->IncludeDirectory.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "-I%s ", ntr->Data[i].Data);
         }
 
-        if (!config->Source.IsEmpty){
-            Node *head = &config->Source.Head;
-            while (head){
-                OutFormatted(&out, "\"%s\" ", head->Data.Data);
-                head = head->Next;
-            }
+        for (Node* ntr = &config->Source.Head; ntr; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->Source.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
         }
 
         // TODO: Make directory if not present, need to add OS api for making directory!
@@ -213,20 +211,14 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
         OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
 
-        if (!config->LibraryDirectory.IsEmpty) {
-            Node *head = &config->LibraryDirectory.Head;
-            while (head){
-                OutFormatted(&out, "-LIBPATH:\"%s\" ", head->Data.Data);
-                head = head->Next;
-            }
+        for (Node* ntr = &config->LibraryDirectory.Head; ntr; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->LibraryDirectory.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "-LIBPATH:\"%s\" ", ntr->Data[i].Data);
         }
 
-        if (!config->Library.IsEmpty) {
-            Node *head = &config->Library.Head;
-            while (head){
-                OutFormatted(&out, "\"%s\" ", head->Data.Data);
-                head = head->Next;
-            }
+        for (Node* ntr = &config->Library.Head; ntr; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->Library.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
         }
     } else if (compiler == Compiler_Kind_GCC || compiler == Compiler_Kind_CLANG){
         if (compiler == Compiler_Kind_GCC) OutFormatted(&out, "gcc -pipe ");
@@ -235,28 +227,19 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         if (config->Optimization) OutFormatted(&out, "-O2 ");
         else OutFormatted(&out, "-g ");
 
-        if (!config->Defines.IsEmpty){
-            Node *head = &config->Defines.Head;
-            while (head){
-                OutFormatted(&out, "-D%s ", head->Data.Data);
-                head = head->Next;
-            }
+        for (Node* ntr = &config->Defines.Head; ntr; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->Defines.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data);
         }
 
-        if (!config->IncludeDirectory.IsEmpty){
-            Node *head = &config->IncludeDirectory.Head;
-            while (head){
-                OutFormatted(&out, "-I%s ", head->Data.Data);
-                head = head->Next;
-            }
+        for (Node* ntr = &config->IncludeDirectory.Head; ntr; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->IncludeDirectory.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "-I%s ", ntr->Data[i].Data);
         }
 
-        if (!config->Source.IsEmpty){
-            Node *head = &config->Source.Head;
-            while (head){
-                OutFormatted(&out, "%s ", head->Data.Data);
-                head = head->Next;
-            }
+        for (Node* ntr = &config->Source.Head; ntr; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->Source.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
         }
 
         if (PLATFORM_OS_LINUX)
@@ -264,20 +247,14 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else if (PLATFORM_OS_WINDOWS)
             OutFormatted(&out, "-o%s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
 
-        if (!config->LibraryDirectory.IsEmpty){
-            Node *head = &config->LibraryDirectory.Head;
-            while (head){
-                OutFormatted(&out, "-L%s ", head->Data.Data);
-                head = head->Next;
-            }
+        for (Node* ntr = &config->LibraryDirectory.Head; ntr; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->LibraryDirectory.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "-L%s ", ntr->Data[i].Data);
         }
 
-        if (!config->Library.IsEmpty){
-            Node *head = &config->Library.Head;
-            while (head){
-                OutFormatted(&out, "-l%s ", head->Data.Data);
-                head = head->Next;
-            }
+        for (Node* ntr = &config->Library.Head; ntr; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->Library.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "-l%s ", ntr->Data[i].Data);
         }
     }
 

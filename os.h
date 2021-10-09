@@ -1,6 +1,5 @@
 #pragma once
 #include "zBase.h"
-#include <sys/stat.h>
 
 typedef enum File_Attribute {
 	File_Attribute_Archive = 0x1,
