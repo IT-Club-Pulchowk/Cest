@@ -58,3 +58,5 @@ enum {
 bool LaunchCompilation(Compiler_Kind compiler, String cmdline);
 Uint32 CheckIfPathExists(String path);
 bool CreateDirectoryRecursively(String path);
+
+String GetGlobalConfigurationFile();

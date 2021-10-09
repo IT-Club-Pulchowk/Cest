@@ -2,8 +2,11 @@
 #define WIN32_MEAN_AND_LEAN
 #include <windows.h>
 #include <shellapi.h>
+#include <UserEnv.h>
 
 #pragma comment(lib, "Shlwapi.lib")
+#pragma comment(lib, "Userenv.lib")
+#pragma comment(lib, "Advapi32.lib")
 
 static wchar_t *UnicodeToWideChar(const char *msg, int length) {
 	Memory_Arena *scratch = ThreadScratchpad();
@@ -196,7 +199,10 @@ Compiler_Kind DetectCompiler() {
 		return Compiler_Kind_CLANG;
 	}
 
-	LogError("Error: Failed to detect compiler!\n");
+	LogError("Error: Failed to detect compiler! Install one of the compilers from below...\n");
+	LogInfo("Visual Studio (MSVC): https://visualstudio.microsoft.com/ \n");
+	LogInfo("CLANG: https://releases.llvm.org/download.html \n");
+
 	return Compiler_Kind_NULL;
 }
 
@@ -242,10 +248,33 @@ bool CreateDirectoryRecursively(String path) {
     for (int i = 0; i < len + 1; i++) {
         if (dir[i] == (Uint16)'/' || dir[i] == 0 ) {
 			dir[i] = 0;
-			CreateDirectoryW(dir, NULL);
+			if (!CreateDirectoryW(dir, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) return false;
 			dir[i] = (Uint16)'/';
         }
     }
 
 	return true;
+}
+
+String GetGlobalConfigurationFile() {
+	HANDLE token = INVALID_HANDLE_VALUE;
+	if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token)) {
+		DWORD length = 0;
+		GetUserProfileDirectoryW(token, NULL, &length);
+		length += 1;
+		Memory_Arena *scratch = ThreadScratchpad();
+		wchar_t *wpath = PushSize(scratch, length * sizeof(wchar_t));
+		if (GetUserProfileDirectoryW(token, wpath, &length)) {
+			const char MudaRelativePath[] = "/muda/muda.config";
+			int allocation_size = 2 * length * sizeof(char) + sizeof(MudaRelativePath);
+			char *path = PushSize(scratch, allocation_size);
+			length = WideCharToMultiByte(CP_UTF8, 0, wpath, length - 1, path, allocation_size, 0, 0);
+			Assert(length + sizeof(MudaRelativePath) < allocation_size);
+			memcpy(path + length, MudaRelativePath, sizeof(MudaRelativePath));
+			return StringMake(path, length + sizeof(MudaRelativePath) - 1);
+		}
+	}
+
+	// in case we fail, we'll use this as backup
+	return StringLiteral("C:/muda/muda.config");
 }

@@ -121,7 +121,9 @@ Compiler_Kind DetectCompiler() {
         return Compiler_Kind_CLANG;
     }
 
-    LogError("Error: Failed to detect compiler!\n");
+    LogError("Error: Failed to detect compiler! Install one of the compilers from below...\n");
+    LogInfo("CLANG: https://releases.llvm.org/download.html \n");
+    LogInfo("GCC: https://gcc.gnu.org/install/download.html \n");
     return Compiler_Kind_NULL;
 }
 
@@ -151,13 +153,17 @@ bool CreateDirectoryRecursively(String path){
     for (int i = 0; i < len+1; i++) {
         if (path.Data[i] == '/' ) {
             path.Data[i] = '\0';
-			const Uint8* dir = path.Data;
-			mkdir((char *)dir, S_IRWXU);
+			const char* dir = path.Data;
+            if (mkdir(dir, S_IRWXU) == -1 && errno != EEXIST) return false;
             path.Data[i] = '/';
         } else if(path.Data[i] == '\0') {
-            const Uint8* dir = path.Data;
-            mkdir((char *)dir, S_IRWXU);
+            const char* dir = path.Data;
+            mkdir(dir, S_IRWXU);
         }
     }
 	return true;
+}
+
+String GetGlobalConfigurationFile() {
+    return StringLiteral("~/muda/config.muda");
 }

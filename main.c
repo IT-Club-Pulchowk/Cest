@@ -170,10 +170,13 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         
     Uint32 result = CheckIfPathExists(config->BuildDirectory);
     if (result == Path_Does_Not_Exist) {
-        CreateDirectoryRecursively(config->BuildDirectory);
+        if (!CreateDirectoryRecursively(config->BuildDirectory)) {
+            String error = FmtStr(scratch, "Failed to create directory %s!", config->BuildDirectory.Data);
+            FatalError(error.Data);
+        }
     }
     else if (result == Path_Exist_File) {
-        String error = FmtStr(scratch, "%s: Path exist but is a file", config->BuildDirectory.Data);
+        String error = FmtStr(scratch, "%s: Path exist but is a file!\n", config->BuildDirectory.Data);
         FatalError(error.Data);
     }
 	// Defaults
@@ -281,26 +284,46 @@ int main(int argc, char *argv[]) {
         MegaBytes(128), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
 	Compiler_Kind compiler = DetectCompiler();
+    if (compiler == Compiler_Kind_NULL) {
+        return 1;
+    }
 
 	Memory_Arena *scratch = ThreadScratchpad();
 
-	// TODO: Error checking
-	FILE *fp = fopen("sample.muda", "rb");
-	fseek(fp, 0L, SEEK_END);
-	int size = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
+    String config_file = { 0,0 };
 
-	Uint8 *config = PushSize(scratch, size + 1);
-	fread(config, size, 1, fp);
-	config[size] = 0;
-	fclose(fp);
-	
+    const String LocalMudaFile = StringLiteral("build.muda");
+    if (CheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
+        config_file = LocalMudaFile;
+    } else {
+        String global_muda_file = GetGlobalConfigurationFile();
+        if (CheckIfPathExists(global_muda_file) == Path_Exist_File) {
+            config_file = global_muda_file;
+        }
+    }
+
 	Compiler_Config compiler_config;
-	SetDefaultCompilerConfig(&compiler_config);
-    LoadCompilerConfig(&compiler_config, config, size);
 
-    if (compiler != Compiler_Kind_NULL)
-        Compile(&compiler_config, compiler);
+    if (config_file.Length) {
+        FILE *fp = fopen(config_file.Data, "rb");
+        fseek(fp, 0L, SEEK_END);
+        int size = ftell(fp);
+        fseek(fp, 0L, SEEK_SET);
+
+        Uint8 *config = PushSize(scratch, size + 1);
+        fread(config, size, 1, fp);
+        config[size] = 0;
+        fclose(fp);
+
+        SetDefaultCompilerConfig(&compiler_config);
+        LoadCompilerConfig(&compiler_config, config, size);
+    }
+    else {
+        SetDefaultCompilerConfig(&compiler_config);
+    }
+
+
+    Compile(&compiler_config, compiler);
 
 #if 0
 	if (argc != 2) {
