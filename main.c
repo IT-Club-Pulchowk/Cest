@@ -1,9 +1,10 @@
 #include "os.h"
 #include "zBase.h"
-#include "zBaseCRT.h"
 #include "stream.h"
 #include "muda_parser.h"
 #include "lenstring.h"
+
+#include <stdlib.h>
 
 void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
 	fprintf(stderr, "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
@@ -286,9 +287,21 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	LaunchCompilation(compiler, cmdline);
 }
 
+static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
+    FILE *fp = ((kind == Log_Kind_Info) ? stdout : stderr);
+    vfprintf(fp, fmt, list);
+}
+
+static void FatalErrorProcedure(const char *message) {
+    fprintf(stderr, "%s", message);
+    exit(1);
+}
 
 int main(int argc, char *argv[]) {
-	InitThreadContextCrt(MegaBytes(512));
+    Memory_Arena arena = MemoryArenaCreate(MegaBytes(512));
+
+    InitThreadContext(MemoryArenaAllocator(&arena), 
+        MegaBytes(128), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
 	Compiler_Kind compiler = DetectCompiler();
 
@@ -327,7 +340,6 @@ int main(int argc, char *argv[]) {
 }
 
 #include "zBase.c"
-#include "zBaseCRT.c"
 
 #if PLATFORM_OS_WINDOWS == 1
 #include "os_windows.c"
