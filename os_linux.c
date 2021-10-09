@@ -151,12 +151,12 @@ bool CreateDirectoryRecursively(String path){
     for (int i = 0; i < len+1; i++) {
         if (path.Data[i] == '/' ) {
             path.Data[i] = '\0';
-			const char* dir = path.Data;
-			mkdir(dir, S_IRWXU);
-            path[i] = '/';
-        } else if(path[i] == '\0') {
-            const char* dir = path;
-            mkdir(dir, S_IRWXU);
+			const Uint8* dir = path.Data;
+			mkdir((char *)dir, S_IRWXU);
+            path.Data[i] = '/';
+        } else if(path.Data[i] == '\0') {
+            const Uint8* dir = path.Data;
+            mkdir((char *)dir, S_IRWXU);
         }
     }
 	return true;
