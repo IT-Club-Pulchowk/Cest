@@ -154,7 +154,7 @@ bool CreateDirectoryRecursively(String path){
         if (path.Data[i] == '/' ) {
             path.Data[i] = '\0';
 			const char* dir = path.Data;
-			mkdir(dir, S_IRWXU);
+            if (mkdir(dir, S_IRWXU) == -1 && errno != EEXIST) return false;
             path[i] = '/';
         } else if(path[i] == '\0') {
             const char* dir = path;

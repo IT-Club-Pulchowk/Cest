@@ -248,7 +248,7 @@ bool CreateDirectoryRecursively(String path) {
     for (int i = 0; i < len + 1; i++) {
         if (dir[i] == (Uint16)'/' || dir[i] == 0 ) {
 			dir[i] = 0;
-			CreateDirectoryW(dir, NULL);
+			if (!CreateDirectoryW(dir, NULL) && GetLastError() != ERROR_ALREADY_EXISTS) return false;
 			dir[i] = (Uint16)'/';
         }
     }

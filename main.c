@@ -162,10 +162,13 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         
     Uint32 result = CheckIfPathExists(config->BuildDirectory);
     if (result == Path_Does_Not_Exist) {
-        CreateDirectoryRecursively(config->BuildDirectory);
+        if (!CreateDirectoryRecursively(config->BuildDirectory)) {
+            String error = FmtStr(scratch, "Failed to create directory %s!", config->BuildDirectory.Data);
+            FatalError(error.Data);
+        }
     }
     else if (result == Path_Exist_File) {
-        String error = FmtStr(scratch, "%s: Path exist but is a file", config->BuildDirectory.Data);
+        String error = FmtStr(scratch, "%s: Path exist but is a file!\n", config->BuildDirectory.Data);
         FatalError(error.Data);
     }
 
