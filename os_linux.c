@@ -163,3 +163,7 @@ bool CreateDirectoryRecursively(String path){
     }
 	return true;
 }
+
+String GetGlobalConfigurationFile() {
+    return StringLiteral("~/muda/config.muda");
+}

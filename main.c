@@ -305,30 +305,45 @@ int main(int argc, char *argv[]) {
 
 	Compiler_Kind compiler = DetectCompiler();
     if (compiler == Compiler_Kind_NULL) {
-        LogInfo("CLANG: https://releases.llvm.org/download.html \n");
-        LogInfo("GCC: https://gcc.gnu.org/install/download.html \n");
         return 1;
     }
 
 	Memory_Arena *scratch = ThreadScratchpad();
 
-	// TODO: Error checking
-	FILE *fp = fopen("sample.muda", "rb");
-	fseek(fp, 0L, SEEK_END);
-	int size = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
+    String config_file = { 0,0 };
 
-	Uint8 *config = PushSize(scratch, size + 1);
-	fread(config, size, 1, fp);
-	config[size] = 0;
-	fclose(fp);
-	
+    const String LocalMudaFile = StringLiteral("build.muda");
+    if (CheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
+        config_file = LocalMudaFile;
+    } else {
+        String global_muda_file = GetGlobalConfigurationFile();
+        if (CheckIfPathExists(global_muda_file) == Path_Exist_File) {
+            config_file = global_muda_file;
+        }
+    }
+
 	Compiler_Config compiler_config;
-	SetDefaultCompilerConfig(&compiler_config);
-    LoadCompilerConfig(&compiler_config, config, size);
 
-    if (compiler != Compiler_Kind_NULL)
-        Compile(&compiler_config, compiler);
+    if (config_file.Length) {
+        FILE *fp = fopen(config_file.Data, "rb");
+        fseek(fp, 0L, SEEK_END);
+        int size = ftell(fp);
+        fseek(fp, 0L, SEEK_SET);
+
+        Uint8 *config = PushSize(scratch, size + 1);
+        fread(config, size, 1, fp);
+        config[size] = 0;
+        fclose(fp);
+
+        SetDefaultCompilerConfig(&compiler_config);
+        LoadCompilerConfig(&compiler_config, config, size);
+    }
+    else {
+        SetDefaultCompilerConfig(&compiler_config);
+    }
+
+
+    Compile(&compiler_config, compiler);
 
 #if 0
 	if (argc != 2) {
