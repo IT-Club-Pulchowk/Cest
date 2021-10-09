@@ -331,6 +331,22 @@ int main(int argc, char *argv[]) {
         SetDefaultCompilerConfig(&compiler_config);
     }
 
+    {
+        Temporary_Memory temp = BeginTemporaryMemory(scratch);
+
+        Out_Stream out;
+        OutCreate(&out, MemoryArenaAllocator(scratch));
+
+        for (int argi = 1; argi < argc; ++argi) {
+            OutFormatted(&out, "%s ", argv[argi]);
+        }
+
+        String cmd_line = OutBuildString(&out);
+        LoadCompilerConfig(&compiler_config, cmd_line.Data, cmd_line.Length);
+
+        EndTemporaryMemory(&temp);
+    }
+
     Compile(&compiler_config, compiler);
 
 #if 0

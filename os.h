@@ -60,5 +60,3 @@ Uint32 CheckIfPathExists(String path);
 bool CreateDirectoryRecursively(String path);
 
 String GetGlobalConfigurationFile();
-
-String GetCommandLineArgumentString(int argc, char *argv[]);
