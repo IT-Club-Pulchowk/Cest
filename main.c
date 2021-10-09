@@ -52,7 +52,7 @@ typedef struct Compiler_Config {
 	String_List Library;
 } Compiler_Config;
 
-static void AddToList(String_List *dst, Uint8* data){
+static void AddToList(String_List *dst, String string){
     Memory_Arena *scratch = ThreadScratchpad();
     if (dst->Used == MAX_NODE_DATA_COUNT){
         dst->Used = 0;
@@ -60,8 +60,7 @@ static void AddToList(String_List *dst, Uint8* data){
         dst->Tail = dst->Tail->Next;
         dst->Tail->Next = NULL;
     }
-    dst->Tail->Data[dst->Used].Data = data;
-    dst->Tail->Data[dst->Used].Length = strlen(data);
+    dst->Tail->Data[dst->Used] = string;
     dst->Used++;
 }
 
@@ -76,26 +75,32 @@ static void ClearList(String_List *lst){
 }
 
 static void ReadList(String_List *dst, String data){
-    if (data.Length <= 0){
-        ClearList(dst);
-        return;
-    }
+    Memory_Arena *scratch = ThreadScratchpad();
 
-    for (int i = 0; i < data.Length; i++) {
-        if (isspace(data.Data[i]))
-            data.Data[i] = 0;
-    }
+    Int64 prev_pos = 0;
+    Int64 curr_pos = 0;
 
-    dst->Head.Data[0].Data = data.Data;
-    dst->Head.Data[0].Length = strlen(data.Data);
-    dst->Used = 1;
-    dst->Head.Next = NULL;
-    dst->Tail = &dst->Head;
+    while (curr_pos < data.Length) {
+        // Remove prefixed spaces (postfix spaces in the case of 2+ iterations)
+        while (curr_pos < data.Length && isspace(data.Data[curr_pos])) 
+            curr_pos += 1;
+        prev_pos = curr_pos;
 
-    for (int i = 0; i < data.Length; i++) {
-        if (!data.Data[i] && strlen(data.Data + i + 1) > 0)
-            AddToList(dst, data.Data + i + 1);
+        // Count number of characters in the string
+        while (curr_pos < data.Length && !isspace(data.Data[curr_pos])) 
+            curr_pos += 1;
+
+        AddToList(dst, StrDuplicateArena(StringMake(data.Data + prev_pos, curr_pos - prev_pos), scratch));
     }
+}
+
+void CompilerConfigInit(Compiler_Config *config) {
+    memset(config, 0, sizeof(*config));
+    config->Defines.Tail = &config->Defines.Head;
+    config->IncludeDirectory.Tail = &config->IncludeDirectory.Head;
+    config->Source.Tail = &config->Source.Head;
+    config->LibraryDirectory.Tail = &config->Source.Head;
+    config->Library.Tail = &config->Source.Head;
 }
 
 void SetDefaultCompilerConfig(Compiler_Config *config) {
@@ -291,9 +296,9 @@ int main(int argc, char *argv[]) {
         MegaBytes(128), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
 	Compiler_Kind compiler = DetectCompiler();
-    if (compiler == Compiler_Kind_NULL) {
-        return 1;
-    }
+    //if (compiler == Compiler_Kind_NULL) {
+    //    return 1;
+    //}
 
 	Memory_Arena *scratch = ThreadScratchpad();
 
@@ -310,6 +315,9 @@ int main(int argc, char *argv[]) {
     }
 
 	Compiler_Config compiler_config;
+    CompilerConfigInit(&compiler_config);
+
+    SetDefaultCompilerConfig(&compiler_config);
 
     SetDefaultCompilerConfig(&compiler_config);
     if (config_file.Length) {
