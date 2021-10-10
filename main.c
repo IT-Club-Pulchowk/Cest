@@ -312,56 +312,37 @@ static void FatalErrorProcedure(const char *message) {
 }
 
 void LogCompilerConfig(Compiler_Config conf){
-	Memory_Arena *scratch = ThreadScratchpad();
-	Temporary_Memory temp = BeginTemporaryMemory(scratch);
+    LogInfo("\nType                : %s", conf.Type == Compile_Type_Project ? "Project" : "Solution");
+    LogInfo("\nOptimization        : %s", conf.Optimization ? "True" : "False");
+    LogInfo("\nBuild               : %s", conf.Build.Data);
+    LogInfo("\nBuild Directory     : %s", conf.BuildDirectory.Data);
 
-	Out_Stream out;
-	OutCreate(&out, MemoryArenaAllocator(scratch));
-
-    ThreadContext.Allocator = MemoryArenaAllocator(scratch);
-    for (String_List_Node* ntr = &conf.Defines.Head; ntr && conf.Defines.Used; ntr = ntr->Next){
-        int len = ntr->Next ? 8 : conf.Defines.Used;
-        for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
-    }
-    String defines = OutBuildString(&out);
-    OutReset(&out);
-    for (String_List_Node* ntr = &conf.IncludeDirectory.Head; ntr && conf.IncludeDirectory.Used; ntr = ntr->Next){
-        int len = ntr->Next ? 8 : conf.IncludeDirectory.Used;
-        for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
-    }
-    String incdir = OutBuildString(&out);
-    OutReset(&out);
+    LogInfo("\nSource              : ");
     for (String_List_Node* ntr = &conf.Source.Head; ntr && conf.Source.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.Source.Used;
-        for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) LogInfo("%s ", ntr->Data[i].Data);
     }
-    String sources = OutBuildString(&out);
-    OutReset(&out);
+    LogInfo("\nDefines             : ");
+    for (String_List_Node* ntr = &conf.Defines.Head; ntr && conf.Defines.Used; ntr = ntr->Next){
+        int len = ntr->Next ? 8 : conf.Defines.Used;
+        for (int i = 0; i < len; i ++) LogInfo("%s ", ntr->Data[i].Data);
+    }
+    LogInfo("\nInclude Directories : ");
+    for (String_List_Node* ntr = &conf.IncludeDirectory.Head; ntr && conf.IncludeDirectory.Used; ntr = ntr->Next){
+        int len = ntr->Next ? 8 : conf.IncludeDirectory.Used;
+        for (int i = 0; i < len; i ++) LogInfo("%s ", ntr->Data[i].Data);
+    }
+    LogInfo("\nLibrary Directories : ");
     for (String_List_Node* ntr = &conf.LibraryDirectory.Head; ntr && conf.LibraryDirectory.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.LibraryDirectory.Used;
-        for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) LogInfo("%s ", ntr->Data[i].Data);
     }
-    String libdir = OutBuildString(&out);
-    OutReset(&out);
+    LogInfo("\nLibraries           : ");
     for (String_List_Node* ntr = &conf.Library.Head; ntr && conf.Library.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.Library.Used;
-        for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) LogInfo("%s ", ntr->Data[i].Data);
     }
-    String libs = OutBuildString(&out);
-    ThreadContext.Allocator = NullMemoryAllocator();
-    OutDestroy(&out);
-
-    LogInfo("Type                : %s\n", conf.Type == Compile_Type_Project ? "Project" : "Solution");
-    LogInfo("Optimization        : %s\n", conf.Optimization ? "True" : "False");
-    LogInfo("Build               : %s\n", conf.Build.Data);
-    LogInfo("Source              : %s\n", sources.Data);
-    LogInfo("Build Directory     : %s\n", conf.BuildDirectory.Data);
-    LogInfo("Defines             : %s\n", defines.Data);
-    LogInfo("Include Directories : %s\n", incdir.Data);
-    LogInfo("Libraries           : %s\n", libs.Data);
-    LogInfo("Library Directories : %s\n", libdir.Data);
-
-    EndTemporaryMemory(&temp);
+    LogInfo("\n");
 }
 
 
@@ -396,7 +377,7 @@ static const Muda_Option Options[] = {
 void OptHelp() {
     // Dont judge me pls I was bored
     OptVersion();
-    LogInfo("To use Muda, just call it as follows:\n\tpath/to/muda [-flags] [build_script]\n\n");
+    LogInfo("Usage:\n\tpath/to/muda [-flags] [build_script]\n\n");
     LogInfo("Flags:\n");
 
     for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
