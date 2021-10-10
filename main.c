@@ -314,6 +314,27 @@ static void FatalErrorProcedure(const char *message) {
 int main(int argc, char *argv[]) {
     InitThreadContext(NullMemoryAllocator(), MegaBytes(512), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
+    // If there are 2 arguments, then the 2nd argument could be options
+    // Options are the strings that start with "-", we don't allow "- options", only allow "-option"
+    if (argc == 2 && argv[1][0] == '-') {
+        String option = StringMake(argv[1] + 1, strlen(argv[1] + 1));
+
+        const String Options[] = {
+            StringLiteral("default"), // print default configuration
+            StringLiteral("setup") // take input from user to setup build.muda file
+        };
+
+        for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
+            if (StrMatchCaseInsensitive(option, Options[opt_i])) {
+                // launch function
+                return 0;
+            }
+        }
+
+        LogError("ERROR: Unrecognized option: %s", option.Data);
+        return 1;
+    }
+
 	Compiler_Kind compiler = OsDetectCompiler();
     if (compiler == Compiler_Kind_NULL) {
         return 1;
