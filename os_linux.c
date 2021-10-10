@@ -232,3 +232,7 @@ void OsConsoleWrite(const char *fmt, ...) {
 void OsConsoleWriteV(const char *fmt, va_list list) {
     vprintf(fmt, list);
 }
+
+Uint32 OsConsoleRead(char *buffer, Uint32 size) {
+    Unimplemented();
+}

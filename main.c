@@ -420,8 +420,6 @@ void OptDefault() {
     LogInfo("\n");
 }
 
-#define ConsoleRead(...) OsConsoleWrite("\n");
-
 void OptSetup() {
     OptVersion();
 
@@ -435,29 +433,29 @@ void OptSetup() {
     // Type = Solution
     // Optimization = false
 
-    OsConsoleWrite("Build Directory (default: %s) # ", def.BuildDirectory.Data);
-    ConsoleRead();
+    // TODO: We are not using what we have input from console yet... :(
+    char read_buffer[256];
 
-    const char *extension = "build";
-    if (PLATFORM_OS_WINDOWS) extension = "exe";
-    if (PLATFORM_OS_LINUX) extension = "out";
-    OsConsoleWrite("Build Executable (default: %s.%s) # ", def.Build.Data, extension);
-    ConsoleRead();
+    OsConsoleWrite("Build Directory (default: %s) # ", def.BuildDirectory.Data);
+    OsConsoleRead(read_buffer, sizeof(read_buffer));
+
+    OsConsoleWrite("Build Executable (default: %s) # ", def.Build.Data);
+    OsConsoleRead(read_buffer, sizeof(read_buffer));
 
     OsConsoleWrite("Defines # ");
-    ConsoleRead();
+    OsConsoleRead(read_buffer, sizeof(read_buffer));
 
     OsConsoleWrite("Include Directory # ");
-    ConsoleRead();
+    OsConsoleRead(read_buffer, sizeof(read_buffer));
 
     OsConsoleWrite("Source (default: %s) # ", def.Source.Head.Data[0].Data);
-    ConsoleRead();
+    OsConsoleRead(read_buffer, sizeof(read_buffer));
 
     OsConsoleWrite("Library Directory # ");
-    ConsoleRead();
+    OsConsoleRead(read_buffer, sizeof(read_buffer));
 
     OsConsoleWrite("Input Library # ");
-    ConsoleRead();
+    OsConsoleRead(read_buffer, sizeof(read_buffer));
 
     OsConsoleWrite("\n");
 }

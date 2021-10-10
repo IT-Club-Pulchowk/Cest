@@ -81,3 +81,5 @@ void OsConsoleOut(void *fp, const char *fmt, ...);
 void OsConsoleOutV(void *fp, const char *fmt, va_list list);
 void OsConsoleWrite(const char *fmt, ...);
 void OsConsoleWriteV(const char *fmt, va_list list);
+
+Uint32 OsConsoleRead(char *buffer, Uint32 size);

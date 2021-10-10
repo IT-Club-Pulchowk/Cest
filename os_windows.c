@@ -379,3 +379,22 @@ void OsConsoleWriteV(const char *fmt, va_list list) {
 	WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wout, (DWORD)len, &written, NULL);
 	EndTemporaryMemory(&temp);
 }
+
+Uint32 OsConsoleRead(char *buffer, Uint32 size) {
+	Memory_Arena *scratch = ThreadScratchpad();
+	Temporary_Memory temp = BeginTemporaryMemory(scratch);
+
+	DWORD characters_to_read = size / 2 + 1;
+	DWORD characters_read = 0;
+	wchar_t *wbuffer = PushSize(scratch, characters_to_read);
+
+	ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE), wbuffer, characters_to_read, &characters_read, NULL);
+
+	int len = WideCharToMultiByte(CP_UTF8, 0, wbuffer, characters_read, buffer, size, 0, 0);
+	if (len >= size) len = size - 1;
+	buffer[len] = 0;
+
+	EndTemporaryMemory(&temp);
+
+	return len;
+}
