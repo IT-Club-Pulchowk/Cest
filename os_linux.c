@@ -127,12 +127,8 @@ Compiler_Kind DetectCompiler() {
     return Compiler_Kind_NULL;
 }
 
-bool LaunchCompilation(Compiler_Kind compiler, String cmdline) {
-    if (compiler != Compiler_Kind_NULL){
-        system ((char *)cmdline.Data);
-        return true;
-    }
-    return false;
+bool LaunchCompilation(String cmdline) {
+    return !system((char *)cmdline.Data);
 }
 
 Uint32 CheckIfPathExists(String path) {

@@ -206,7 +206,7 @@ Compiler_Kind DetectCompiler() {
 	return Compiler_Kind_NULL;
 }
 
-bool ExecuteCommandLine(Compiler_Kind compiler, String cmdline) {
+bool ExecuteCommandLine(String cmdline) {
 	wchar_t *wcmdline = UnicodeToWideChar(cmdline.Data, (int)cmdline.Length);
 
 	STARTUPINFOW start_up = { sizeof(start_up) };
