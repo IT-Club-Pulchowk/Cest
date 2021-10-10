@@ -59,4 +59,4 @@ bool OsExecuteCommandLine(String cmdline);
 Uint32 OsCheckIfPathExists(String path);
 bool OsCreateDirectoryRecursively(String path);
 
-String OsGetGlobalConfigurationFile();
+String OsGetUserConfigurationPath(String path);

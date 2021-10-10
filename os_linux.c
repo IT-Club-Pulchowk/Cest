@@ -1,5 +1,6 @@
 #include "os.h"
 #include "zBase.h"
+#include "lenstring.h"
 
 #include <errno.h>
 #include <sys/stat.h>
@@ -160,6 +161,7 @@ bool OsCreateDirectoryRecursively(String path){
 	return true;
 }
 
-String OsGetGlobalConfigurationFile() {
-    return StringLiteral("~/muda/config.muda");
+String OsGetUserConfigurationPath(String path) {
+    Memory_Arena *scratch = ThreadScratchpad();
+    return FmtStr(scratch, "~/%s", path.Data);
 }

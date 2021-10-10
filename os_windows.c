@@ -1,4 +1,6 @@
 #include "os.h"
+#include "lenstring.h"
+
 #define WIN32_MEAN_AND_LEAN
 #include <windows.h>
 #include <shellapi.h>
@@ -253,25 +255,20 @@ bool OsCreateDirectoryRecursively(String path) {
 	return true;
 }
 
-String OsGetGlobalConfigurationFile() {
+String OsGetUserConfigurationPath(String path) {
+	Memory_Arena *scratch = ThreadScratchpad();
+
 	HANDLE token = INVALID_HANDLE_VALUE;
 	if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token)) {
 		DWORD length = 0;
 		GetUserProfileDirectoryW(token, NULL, &length);
 		length += 1;
-		Memory_Arena *scratch = ThreadScratchpad();
 		wchar_t *wpath = PushSize(scratch, length * sizeof(wchar_t));
 		if (GetUserProfileDirectoryW(token, wpath, &length)) {
-			const char MudaRelativePath[] = "/muda/muda.config";
-			int allocation_size = 2 * length * sizeof(char) + sizeof(MudaRelativePath);
-			char *path = PushSize(scratch, allocation_size);
-			length = WideCharToMultiByte(CP_UTF8, 0, wpath, length - 1, path, allocation_size, 0, 0);
-			Assert(length + sizeof(MudaRelativePath) < allocation_size);
-			memcpy(path + length, MudaRelativePath, sizeof(MudaRelativePath));
-			return StringMake(path, length + sizeof(MudaRelativePath) - 1);
+			return FmtStr(scratch, "%S/%s", wpath, path.Data);
 		}
 	}
 
 	// in case we fail, we'll use this as backup
-	return StringLiteral("C:/muda/muda.config");
+	return FmtStr(scratch, "C:/%s", path.Data);
 }

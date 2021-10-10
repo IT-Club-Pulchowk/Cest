@@ -330,7 +330,7 @@ int main(int argc, char *argv[]) {
     if (OsCheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
         config_file = LocalMudaFile;
     } else {
-        String global_muda_file = OsGetGlobalConfigurationFile();
+        String global_muda_file = OsGetUserConfigurationPath(StringLiteral("muda/config.muda"));
         if (OsCheckIfPathExists(global_muda_file) == Path_Exist_File) {
             config_file = global_muda_file;
         }
