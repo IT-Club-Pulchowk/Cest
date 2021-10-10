@@ -10,6 +10,7 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 
 static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * name, const int name_len){
     struct statx stats;
@@ -234,5 +235,18 @@ void OsConsoleWriteV(const char *fmt, va_list list) {
 }
 
 Uint32 OsConsoleRead(char *buffer, Uint32 size) {
-    Unimplemented();
+    struct termios raw;
+    tcgetattr(STDIN_FILENO, &raw);
+    raw.c_lflag &= ~(ICANON);
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+	Uint32 len = 0;
+    char c = 0;
+    memset(buffer, 0, size + 1);
+
+    while (read(STDIN_FILENO, &c, 1) && c != '\n' && len < size){
+        *(buffer ++) = c;
+        len ++;
+    }
+
+	return len;
 }
