@@ -192,8 +192,12 @@ bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
     else read_size = size;
 
     int fd = (int)handle.PlatformFileHandle;
-    read(fd, buffer, size);
-	return true;
+    read(fd, buffer, read_size);
+    if (errno != 0) {
+        LogError("%s: Error: %s\n", __PRETTY_FUNCTION__, strerror(errno));
+        return false;
+    } else
+        return true;
 }
 
 void OsCloseFile(File_Handle handle) {
