@@ -319,7 +319,6 @@ int main(int argc, char *argv[]) {
 
     SetDefaultCompilerConfig(&compiler_config);
 
-    SetDefaultCompilerConfig(&compiler_config);
     if (config_file.Length) {
         FILE *fp = fopen(config_file.Data, "rb");
         fseek(fp, 0L, SEEK_END);
