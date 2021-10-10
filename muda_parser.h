@@ -12,6 +12,7 @@ typedef enum {
     Muda_Token_Section,
     Muda_Token_Property,
     Muda_Token_Comment,
+    Muda_Token_Tag,
     Muda_Token_Error
 }Muda_Token_Kind;
 
@@ -22,12 +23,15 @@ typedef struct Muda_Token {
         struct {
             String Key;
             String Value;
-            String *Values;
         } Property;
         struct{
             char Desc[256];
             uint32_t Line, Column;
         }Error;
+        struct {
+            String Title;
+            String Value;
+        }Tag;
     } Data;
 
     Muda_Token_Kind Kind;
@@ -50,14 +54,14 @@ INLINE_PROCEDURE Muda_Parser MudaParseInit(uint8_t *data, int64_t length) {
 
 INLINE_PROCEDURE void GetLineNoAndColumn(uint8_t *cur, Muda_Parser *p){
     uint8_t *cpy = cur;
-    p->Token.Data.Error.Column = 0;
+    p->Token.Data.Error.Column = 1;
     while (*cpy != '\n' && *cpy != '\r' && cpy > p->Ptr){
         cpy--;
         p->Token.Data.Error.Column ++;
     }
 
     cpy = cur;
-    p->Token.Data.Error.Line = 0;
+    p->Token.Data.Error.Line = 1;
     while (cpy > p->Ptr + 1){
         p->Token.Data.Error.Line += (*cpy == '\n' || *cpy == '\r');
         cpy --;
@@ -103,7 +107,6 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             } else{
                 cur -= 2;
                 GetLineNoAndColumn(cur, p);
-                p->Token.Data.Error.Line ++;
                 MudaReportError(p, "Missing ']'");
             }
             return false;
@@ -124,6 +127,45 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
         if (*cur && (*cur == '\r' || *cur == '\n')) cur += 1;
         p->Pos = cur;
         return true;
+    } else if (*cur == '@') {
+        // Tag
+        cur ++;
+        while (isspace(*cur)) cur ++;
+        start = cur;
+        while (*cur && (isalnum(*cur) || *cur > 125)) cur += 1;
+
+        if (!isspace(*cur)){
+            p->Token.Kind = Muda_Token_Error;
+            p->Pos = cur;
+            GetLineNoAndColumn(cur, p);
+            MudaReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
+            return 0;
+        }
+
+        p->Token.Kind = Muda_Token_Tag;
+        p->Token.Data.Tag.Title.Data = start;
+        p->Token.Data.Tag.Title.Length = cur - start;
+        if (*cur != '\r' && *cur != '\n'){
+            *cur = 0;
+            cur ++;
+        }
+
+        while (*cur && isspace(*cur) && *cur != '\n' && *cur != '\r') cur ++;
+        if (*cur == '\r' || *cur == '\n'){
+            *cur = 0;
+            p->Token.Data.Tag.Value.Data = NULL;
+            p->Token.Data.Tag.Value.Length = 0;
+        } else {
+            p->Token.Data.Tag.Value.Data = cur;
+            while (*cur && *cur != '\r' && *cur != '\n') cur ++;
+            *cur = 0;
+            p->Token.Data.Tag.Value.Length = cur - p->Token.Data.Tag.Value.Data;
+        }
+
+        cur += 1;
+        if (*cur && (*cur == '\r' || *cur == '\n')) cur += 1;
+        p->Pos = cur;
+        return true;
     } else if (isalnum(*cur) || *cur > 125) {
         // Property
         while (*cur && (isalnum(*cur) || *cur > 125) && *cur != '=' && *cur != ':' && *cur != ';') cur += 1;
@@ -133,7 +175,6 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             p->Token.Kind = Muda_Token_Error;
             p->Pos = cur;
             GetLineNoAndColumn(cur, p);
-            p->Token.Data.Error.Line ++;
             if (*cur && *cur != ';')
                 MudaReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
             else
@@ -179,7 +220,6 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             while (*cur && *cur != '\r' && *cur != '\n') cur ++;
             cur --;
             GetLineNoAndColumn(cur, p);
-            p->Token.Data.Error.Line ++;
             MudaReportError(p, "Missing ';'");
             return false;
         }

@@ -128,6 +128,12 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
     Muda_Parser prsr = MudaParseInit(data, length);
     while (MudaParseNext(&prsr)) {
         // Temporary
+        if (prsr.Token.Kind == Muda_Token_Tag){
+            if (prsr.Token.Data.Tag.Value.Data)
+                LogInfo("[TAG] %s : %s\n", prsr.Token.Data.Tag.Title.Data, prsr.Token.Data.Tag.Value.Data);
+            else 
+                LogInfo("[TAG] %s\n", prsr.Token.Data.Tag.Title.Data);
+        }
         if (prsr.Token.Kind != Muda_Token_Property) continue;
 
         if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Type"))){
