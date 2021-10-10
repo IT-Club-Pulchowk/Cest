@@ -1,4 +1,4 @@
-#include "os.h"
+﻿#include "os.h"
 #include "zBase.h"
 #include "stream.h"
 #include "muda_parser.h"
@@ -467,7 +467,7 @@ void OptSetup() {
 
 void OptVersion() {
     LogInfo("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
-    LogInfo("Muda v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+    LogInfo(u8"Muda (ムダ) v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
 }
 
 int main(int argc, char *argv[]) {

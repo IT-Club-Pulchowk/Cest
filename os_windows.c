@@ -346,7 +346,14 @@ void OsConsoleWrite(const char *fmt, ...) {
 }
 
 void OsConsoleWriteV(const char *fmt, va_list list) {
-	vprintf(fmt, list);
+	Memory_Arena *scratch = ThreadScratchpad();
+	Temporary_Memory temp = BeginTemporaryMemory(scratch);
+	String out = FmtStrV(scratch, fmt, list);
+	int len = 0;
+	wchar_t *wout = UnicodeToWideCharLength(out.Data, out.Length, &len);
+	DWORD written = 0;
+	WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wout, (DWORD)len, &written, NULL);
+	EndTemporaryMemory(&temp);
 }
 
 void OsConsoleError(const char *fmt, ...) {
@@ -357,5 +364,12 @@ void OsConsoleError(const char *fmt, ...) {
 }
 
 void OsConsoleErrorV(const char *fmt, va_list list) {
-	vfprintf(stderr, fmt, list);
+	Memory_Arena *scratch = ThreadScratchpad();
+	Temporary_Memory temp = BeginTemporaryMemory(scratch);
+	String out = FmtStrV(scratch, fmt, list);
+	int len = 0;
+	wchar_t *wout = UnicodeToWideCharLength(out.Data, out.Length, &len);
+	DWORD written = 0;
+	WriteConsoleW(GetStdHandle(STD_ERROR_HANDLE), wout, (DWORD)len, &written, NULL);
+	EndTemporaryMemory(&temp);
 }
