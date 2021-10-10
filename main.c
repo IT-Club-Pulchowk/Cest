@@ -329,6 +329,7 @@ int main(int argc, char *argv[]) {
         config_path = LocalMudaFile;
     }
     else {
+        /* printf("PATH: %s\n", StringLiteral("muda/config.muda").Data); */
         String muda_user_path = OsGetUserConfigurationPath(StringLiteral("muda/config.muda"));
         if (OsCheckIfPathExists(muda_user_path) == Path_Exist_File) {
             config_path = muda_user_path;

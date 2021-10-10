@@ -14,19 +14,19 @@ if [ "$1" == "optimize" ]; then
     CLANGFLAGS="-O2 -gcodeview"
 fi
 
-echo ------------------------------
-echo Building With GCC
-echo ------------------------------
-if command -v gcc &> /dev/null
-then
-    pushd bin
-    gcc -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion $GCCFLAGS $SOURCEFILES -o $OUTPUTFILE
-    popd
-    exit
-else
-    echo GCC Not Found
-    echo ------------------------------
-fi
+# echo ------------------------------
+# echo Building With GCC
+# echo ------------------------------
+# if command -v gcc &> /dev/null
+# then
+#     pushd bin
+#     gcc -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion $GCCFLAGS $SOURCEFILES -o $OUTPUTFILE
+#     popd
+#     exit
+# else
+#     echo GCC Not Found
+#     echo ------------------------------
+# fi
 
 echo ------------------------------
 echo Building With Clang
