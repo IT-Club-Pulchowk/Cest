@@ -291,6 +291,7 @@ extern "C" {
 	} Memory_Allocator;
 
 	Memory_Allocator MemoryArenaAllocator(Memory_Arena *arena);
+	Memory_Allocator NullMemoryAllocator();
 
 	typedef enum Log_Kind {
 		Log_Kind_Info,

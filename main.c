@@ -170,8 +170,6 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
 }
 
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
-	String cmdline = {0, 0};
-
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	Assert(config->Type == Compile_Type_Project);
@@ -277,9 +275,9 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
 
         if (PLATFORM_OS_LINUX)
-            OutFormatted(&out, "-o%s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
+            OutFormatted(&out, "-o %s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
         else if (PLATFORM_OS_WINDOWS)
-            OutFormatted(&out, "-o%s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
+            OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
 
         for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->LibraryDirectory.Used;
@@ -292,13 +290,15 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
     }
 
-	cmdline = OutBuildString(&out);
+    ThreadContext.Allocator = MemoryArenaAllocator(scratch);
+    String cmd_line = OutBuildString(&out);
+    ThreadContext.Allocator = NullMemoryAllocator();
+
+	LogInfo("Command Line: %s\n", cmd_line.Data);
+
+	OsExecuteCommandLine(cmd_line);
 
 	EndTemporaryMemory(&temp);
-
-	LogInfo("Command Line: %s\n", cmdline.Data);
-
-	OsExecuteCommandLine(cmdline);
 }
 
 static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
@@ -312,10 +312,7 @@ static void FatalErrorProcedure(const char *message) {
 }
 
 int main(int argc, char *argv[]) {
-    Memory_Arena arena = MemoryArenaCreate(MegaBytes(512));
-
-    InitThreadContext(MemoryArenaAllocator(&arena), 
-        MegaBytes(128), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
+    InitThreadContext(NullMemoryAllocator(), MegaBytes(512), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
 	Compiler_Kind compiler = OsDetectCompiler();
     if (compiler == Compiler_Kind_NULL) {
@@ -363,7 +360,9 @@ int main(int argc, char *argv[]) {
             OutFormatted(&out, "%s ", argv[argi]);
         }
 
+        ThreadContext.Allocator = MemoryArenaAllocator(scratch);
         String cmd_line = OutBuildString(&out);
+        ThreadContext.Allocator = NullMemoryAllocator();
         LoadCompilerConfig(&compiler_config, cmd_line.Data, cmd_line.Length);
 
         EndTemporaryMemory(&temp);
