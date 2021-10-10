@@ -7,12 +7,12 @@
 #include <stdlib.h>
 
 void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
-    OsConsoleError("%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
+    OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
 	TriggerBreakpoint();
 }
 
 void DeprecateHandle(const char *file, int line, const char *proc) {
-    OsConsoleError("Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
+    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
 }
 
 static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, void *user_context) {
@@ -308,10 +308,8 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 }
 
 static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
-    if (kind == Log_Kind_Info)
-        OsConsoleWriteV(fmt, list);
-    else
-        OsConsoleErrorV(fmt, list);
+    void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
+    OsConsoleOutV(fp, fmt, list);
 }
 
 static void FatalErrorProcedure(const char *message) {

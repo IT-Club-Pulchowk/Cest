@@ -336,7 +336,31 @@ void OsSetupConsole() {
 	SetConsoleOutputCP(CP_UTF8);
 }
 
-#include <stdio.h>
+void *OsGetStdOutputHandle() {
+	return GetStdHandle(STD_OUTPUT_HANDLE);
+}
+
+void *OsGetErrorOutputHandle() {
+	return GetStdHandle(STD_ERROR_HANDLE);
+}
+
+void OsConsoleOut(void *fp, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	OsConsoleOutV(fp, fmt, args);
+	va_end(args);
+}
+
+void OsConsoleOutV(void *fp, const char *fmt, va_list list) {
+	Memory_Arena *scratch = ThreadScratchpad();
+	Temporary_Memory temp = BeginTemporaryMemory(scratch);
+	String out = FmtStrV(scratch, fmt, list);
+	int len = 0;
+	wchar_t *wout = UnicodeToWideCharLength(out.Data, out.Length, &len);
+	DWORD written = 0;
+	WriteConsoleW((HANDLE)fp, wout, (DWORD)len, &written, NULL);
+	EndTemporaryMemory(&temp);
+}
 
 void OsConsoleWrite(const char *fmt, ...) {
 	va_list args;
@@ -353,23 +377,5 @@ void OsConsoleWriteV(const char *fmt, va_list list) {
 	wchar_t *wout = UnicodeToWideCharLength(out.Data, out.Length, &len);
 	DWORD written = 0;
 	WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wout, (DWORD)len, &written, NULL);
-	EndTemporaryMemory(&temp);
-}
-
-void OsConsoleError(const char *fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	OsConsoleErrorV(fmt, args);
-	va_end(args);
-}
-
-void OsConsoleErrorV(const char *fmt, va_list list) {
-	Memory_Arena *scratch = ThreadScratchpad();
-	Temporary_Memory temp = BeginTemporaryMemory(scratch);
-	String out = FmtStrV(scratch, fmt, list);
-	int len = 0;
-	wchar_t *wout = UnicodeToWideCharLength(out.Data, out.Length, &len);
-	DWORD written = 0;
-	WriteConsoleW(GetStdHandle(STD_ERROR_HANDLE), wout, (DWORD)len, &written, NULL);
 	EndTemporaryMemory(&temp);
 }

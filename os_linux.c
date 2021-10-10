@@ -203,6 +203,25 @@ void OsSetupConsole() {
     // we have nothing to do here :)
 }
 
+void *OsGetStdOutputHandle() {
+    return stdout;
+}
+
+void *OsGetErrorOutputHandle() {
+    return stderr;
+}
+
+void OsConsoleOut(void *fp, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vfprintf((FILE *)fp, fmt, args);
+    va_end(args);
+}
+
+void OsConsoleOutV(void *fp, const char *fmt, va_list list) {
+    vfprintf((FILE *)fp, fmt, args);
+}
+
 void OsConsoleWrite(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
@@ -210,17 +229,7 @@ void OsConsoleWrite(const char *fmt, ...) {
     va_end(args);
 }
 
-void OsConsoleWriteV(const char *fmt, , va_list list) {
-    vprintf(fmt, list);
+void OsConsoleWriteV(const char *fmt, va_list list) {
+    vprintf(fmt, args);
 }
 
-void OsConsoleError(const char *fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-}
-
-void OsConsoleErrorV(const char *fmt, , va_list list) {
-    vfprintf(stderr, fmt, list);
-}

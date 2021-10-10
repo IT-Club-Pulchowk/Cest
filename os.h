@@ -74,8 +74,10 @@ void OsCloseFile(File_Handle handle);
 
 void OsSetupConsole();
 
+void *OsGetStdOutputHandle();
+void *OsGetErrorOutputHandle();
+
+void OsConsoleOut(void *fp, const char *fmt, ...);
+void OsConsoleOutV(void *fp, const char *fmt, va_list list);
 void OsConsoleWrite(const char *fmt, ...);
 void OsConsoleWriteV(const char *fmt, va_list list);
-
-void OsConsoleError(const char *fmt, ...);
-void OsConsoleErrorV(const char *fmt, va_list list);
