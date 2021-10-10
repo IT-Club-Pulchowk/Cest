@@ -144,7 +144,6 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
             if (prsr.Token.Data.Tag.Value.Data){
                 Uint32 major, minor, patch;
                 sscanf (prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch);
-                printf("\n\n%d||%d||%d\n\n", major, minor, patch);
                 version = MudaMakeVersion(major, minor, patch);
             } else {
                 LogError("Error: Version info missing\n");

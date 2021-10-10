@@ -210,7 +210,7 @@ void OsConsoleWrite(const char *fmt, ...) {
     va_end(args);
 }
 
-void OsConsoleWriteV(const char *fmt, , va_list list) {
+void OsConsoleWriteV(const char *fmt, va_list list) {
     vprintf(fmt, list);
 }
 
@@ -221,6 +221,6 @@ void OsConsoleError(const char *fmt, ...) {
     va_end(args);
 }
 
-void OsConsoleErrorV(const char *fmt, , va_list list) {
+void OsConsoleErrorV(const char *fmt, va_list list) {
     vfprintf(stderr, fmt, list);
 }
