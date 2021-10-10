@@ -341,7 +341,7 @@ void OsSetupConsole() {
 void OsConsoleWrite(const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	vprintf(fmt, args);
+	OsConsoleWriteV(fmt, args);
 	va_end(args);
 }
 
@@ -352,7 +352,7 @@ void OsConsoleWriteV(const char *fmt, va_list list) {
 void OsConsoleError(const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	vfprintf(stderr, fmt, args);
+	OsConsoleErrorV(fmt, args);
 	va_end(args);
 }
 
