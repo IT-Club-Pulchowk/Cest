@@ -52,6 +52,17 @@ typedef struct Compiler_Config {
 	String_List Library;
 } Compiler_Config;
 
+#define MUDA_VERSION_MAJOR 0
+#define MUDA_VERSION_MINOR 1
+#define MUDA_VERSION_PATCH 0
+
+INLINE_PROCEDURE Uint32 MudaMakeVersion(Uint32 major, Uint32 minor, Uint32 patch) {
+    Assert(major <= UINT8_MAX && minor <= UINT8_MAX && patch <= UINT16_MAX);
+    Uint32 version = patch | (minor << 16) | (major << 24);
+    return version;
+}
+
+
 static bool IsListEmpty(String_List *list) {
     return list->Head.Next == NULL && list->Used == 0;
 }
@@ -126,6 +137,24 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
 	Memory_Arena *scratch = ThreadScratchpad();
     
     Muda_Parser prsr = MudaParseInit(data, length);
+    Uint32 version;
+
+    if (MudaParseNext(&prsr)){
+        if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
+            if (prsr.Token.Data.Tag.Value.Data){
+                Uint32 major, minor, patch;
+                sscanf (prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch);
+                version = MudaMakeVersion(major, minor, patch);
+            } else {
+                LogError("Error: Version info missing\n");
+                return;
+            }
+        } else {
+            LogError("Error: Version tag missing at top of file\n");
+            return;
+        }
+    }
+
     while (MudaParseNext(&prsr)) {
         // Temporary
         if (prsr.Token.Kind == Muda_Token_Tag){
@@ -349,17 +378,6 @@ void PrintCompilerConfig(Compiler_Config conf){
         for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
     }
     OsConsoleWrite("\n");
-}
-
-
-#define MUDA_VERSION_MAJOR 0
-#define MUDA_VERSION_MINOR 1
-#define MUDA_VERSION_PATCH 0
-
-INLINE_PROCEDURE Uint32 MudaMakeVersion(Uint32 major, Uint32 minor, Uint32 patch) {
-    Assert(major <= UINT8_MAX && minor <= UINT8_MAX && patch <= UINT16_MAX);
-    Uint32 version = patch | (minor << 16) | (major << 24);
-    return version;
 }
 
 typedef struct Muda_Option {
