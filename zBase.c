@@ -32,6 +32,10 @@ extern "C" {
 		arena->CurrentPos = 0;
 	}
 
+	Ptrsize MemoryArenaSizeLeft(Memory_Arena *arena) {
+		return arena->Reserved - arena->CurrentPos;
+	}
+
 	void *PushSize(Memory_Arena *arena, Ptrsize size) {
 		void *ptr = 0;
 		if (arena->CurrentPos + size <= arena->Reserved) {

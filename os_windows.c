@@ -272,3 +272,61 @@ String OsGetUserConfigurationPath(String path) {
 	// in case we fail, we'll use this as backup
 	return FmtStr(scratch, "C:/%s", path.Data);
 }
+
+File_Handle OsOpenFile(const String path) {
+	wchar_t *wpath = UnicodeToWideChar(path.Data, path.Length);
+	HANDLE whandle = CreateFileW(wpath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+
+	File_Handle handle;
+	handle.PlatformFileHandle = whandle;
+	return handle;
+}
+
+bool OsFileHandleIsValid(File_Handle handle) {
+	return handle.PlatformFileHandle != INVALID_HANDLE_VALUE;
+}
+
+Ptrsize OsGetFileSize(File_Handle handle) {
+	LARGE_INTEGER size;
+	if (GetFileSizeEx(handle.PlatformFileHandle, &size)) {
+		return size.QuadPart;
+	}
+	return 0;
+}
+
+bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
+	// this is done because ReadFile can with blocks of DWORD and not LARGE_INTEGER
+	DWORD read_size = 0;
+	if (size > UINT32_MAX)
+		read_size = UINT32_MAX;
+	else
+		read_size = size;
+
+	DWORD read_bytes = 0;
+	Uint8 *end_ptr = buffer + size;
+	for (Uint8 *read_ptr = (Uint8 *)buffer; read_ptr < end_ptr; read_ptr += read_bytes) {
+		// resetting *read_bytes* because docs says to (for next loop)
+		read_bytes = 0;
+		BOOL res = ReadFile(handle.PlatformFileHandle, read_ptr, read_size, &read_bytes, 0);
+		if (res && (read_bytes == 0 || read_bytes == size)) {
+			// END OF FILE reached
+			break;
+		}
+		else {
+			// if no error is registered, it is regarded as success
+			if (GetLastError()) { 
+				return false;
+				break;
+			}
+			else {
+				break;
+			}
+		}
+	}
+
+	return true;
+}
+
+void OsCloseFile(File_Handle handle) {
+	CloseHandle(handle.PlatformFileHandle);
+}

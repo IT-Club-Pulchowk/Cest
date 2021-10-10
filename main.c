@@ -337,18 +337,35 @@ int main(int argc, char *argv[]) {
 
     if (config_path.Length) {
         Memory_Arena *scratch = ThreadScratchpad();
+        Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
-        FILE *fp = fopen(config_path.Data, "rb");
-        fseek(fp, 0L, SEEK_END);
-        int size = ftell(fp);
-        fseek(fp, 0L, SEEK_SET);
+        File_Handle fp = OsOpenFile(config_path);
+        if (OsFileHandleIsValid(fp)) {
+            Ptrsize size = OsGetFileSize(fp);
+            Ptrsize left_size = MemoryArenaSizeLeft(scratch);
 
-        Uint8 *content = PushSize(scratch, size + 1);
-        fread(content, size, 1, fp);
-        content[size] = 0;
-        fclose(fp);
+            if (size > left_size) {
+                float max_size = (float)left_size / (1024 * 1024);
+                String error = FmtStr(scratch, "Fatal Error: File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
+                FatalError(error.Data);
+            }
 
-        LoadCompilerConfig(&config, content, size);
+            Uint8 *buffer = PushSize(scratch, size + 1);
+            if (OsReadFile(fp, buffer, size)) {
+                buffer[size] = 0;
+                LoadCompilerConfig(&config, buffer, size);
+            }
+            else {
+                LogError("ERROR: Could not read the configuration file %s!\n", config_path.Data);
+            }
+
+            OsCloseFile(fp);
+        }
+        else {
+            LogError("ERROR: Could not open the configuration file %s!\n", config_path.Data);
+        }
+
+        EndTemporaryMemory(&temp);
     }
 
     {

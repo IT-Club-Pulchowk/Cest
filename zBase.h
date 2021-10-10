@@ -261,6 +261,7 @@ extern "C" {
 	Memory_Arena MemoryArenaCreate(Ptrsize max_size);
 	void MemoryArenaDestroy(Memory_Arena *arena);
 	void MemoryArenaReset(Memory_Arena *arena);
+	Ptrsize MemoryArenaSizeLeft(Memory_Arena *arena);
 
 	void *PushSize(Memory_Arena *arena, Ptrsize size);
 	void *PushSizeAligned(Memory_Arena *arena, Ptrsize size, Uint32 alignment);
