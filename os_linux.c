@@ -187,14 +187,9 @@ Ptrsize OsGetFileSize(File_Handle handle) {
 }
 
 bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
-	Uint32 read_size = 0;
-	if (size > UINT32_MAX) read_size = UINT32_MAX;
-    else read_size = size;
-
     int fd = (int)handle.PlatformFileHandle;
-    read(fd, buffer, read_size);
+    read(fd, buffer, size);
     if (errno != 0) {
-        LogError("%s: Error: %s\n", __PRETTY_FUNCTION__, strerror(errno));
         return false;
     } else
         return true;
