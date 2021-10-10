@@ -198,3 +198,7 @@ bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
 void OsCloseFile(File_Handle handle) {
 	close((int)handle.PlatformFileHandle);
 }
+
+void OsSetupConsole() {
+    // we have nothing to do here :)
+}

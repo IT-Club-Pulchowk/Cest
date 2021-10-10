@@ -330,3 +330,8 @@ bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
 void OsCloseFile(File_Handle handle) {
 	CloseHandle(handle.PlatformFileHandle);
 }
+
+void OsSetupConsole() {
+	SetConsoleCP(CP_UTF8);
+	SetConsoleOutputCP(CP_UTF8);
+}

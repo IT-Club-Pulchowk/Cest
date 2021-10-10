@@ -396,8 +396,46 @@ void OptDefault() {
     LogInfo("\n");
 }
 
+#define ConsoleRead(...) printf("\n");
+
 void OptSetup() {
-    return;
+    OptVersion();
+
+    printf("Muda Configuration:\n");
+
+    Compiler_Config def;
+    CompilerConfigInit(&def);
+    PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
+
+    // We take these as default
+    // Type = Solution
+    // Optimization = false
+
+    printf("Build Directory (default: %s) # ", def.BuildDirectory.Data);
+    ConsoleRead();
+
+    const char *extension = "build";
+    if (PLATFORM_OS_WINDOWS) extension = "exe";
+    if (PLATFORM_OS_LINUX) extension = "out";
+    printf("Build Executable (default: %s.%s) # ", def.Build.Data, extension);
+    ConsoleRead();
+
+    printf("Defines # ");
+    ConsoleRead();
+
+    printf("Include Directory # ");
+    ConsoleRead();
+
+    printf("Source (default: %s) # ", def.Source.Head.Data[0].Data);
+    ConsoleRead();
+
+    printf("Library Directory # ");
+    ConsoleRead();
+
+    printf("Input Library # ");
+    ConsoleRead();
+
+    printf("\n");
 }
 
 void OptVersion() {
@@ -407,6 +445,8 @@ void OptVersion() {
 
 int main(int argc, char *argv[]) {
     InitThreadContext(NullMemoryAllocator(), MegaBytes(512), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
+
+    OsSetupConsole();
 
     // If there are 2 arguments, then the 2nd argument could be options
     // Options are the strings that start with "-", we don't allow "- options", only allow "-option"
@@ -452,10 +492,10 @@ int main(int argc, char *argv[]) {
         File_Handle fp = OsOpenFile(config_path);
         if (OsFileHandleIsValid(fp)) {
             Ptrsize size = OsGetFileSize(fp);
-            Ptrsize left_size = MemoryArenaSizeLeft(scratch);
+            const Ptrsize MAX_ALLOWED_MUDA_FILE_SIZE = MegaBytes(32);
 
-            if (size > left_size) {
-                float max_size = (float)left_size / (1024 * 1024);
+            if (size > MAX_ALLOWED_MUDA_FILE_SIZE) {
+                float max_size = (float)MAX_ALLOWED_MUDA_FILE_SIZE / (1024 * 1024);
                 String error = FmtStr(scratch, "Fatal Error: File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
                 FatalError(error.Data);
             }
