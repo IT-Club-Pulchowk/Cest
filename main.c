@@ -128,6 +128,12 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
     Muda_Parser prsr = MudaParseInit(data, length);
     while (MudaParseNext(&prsr)) {
         // Temporary
+        if (prsr.Token.Kind == Muda_Token_Tag){
+            if (prsr.Token.Data.Tag.Value.Data)
+                LogInfo("[TAG] %s : %s\n", prsr.Token.Data.Tag.Title.Data, prsr.Token.Data.Tag.Value.Data);
+            else 
+                LogInfo("[TAG] %s\n", prsr.Token.Data.Tag.Title.Data);
+        }
         if (prsr.Token.Kind != Muda_Token_Property) continue;
 
         if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Type"))){
@@ -311,38 +317,38 @@ static void FatalErrorProcedure(const char *message) {
     exit(1);
 }
 
-void LogCompilerConfig(Compiler_Config conf){
-    LogInfo("\nType                : %s", conf.Type == Compile_Type_Project ? "Project" : "Solution");
-    LogInfo("\nOptimization        : %s", conf.Optimization ? "True" : "False");
-    LogInfo("\nBuild               : %s", conf.Build.Data);
-    LogInfo("\nBuild Directory     : %s", conf.BuildDirectory.Data);
+void PrintCompilerConfig(Compiler_Config conf){
+    printf("\nType                : %s", conf.Type == Compile_Type_Project ? "Project" : "Solution");
+    printf("\nOptimization        : %s", conf.Optimization ? "True" : "False");
+    printf("\nBuild               : %s", conf.Build.Data);
+    printf("\nBuild Directory     : %s", conf.BuildDirectory.Data);
 
-    LogInfo("\nSource              : ");
+    printf("\nSource              : ");
     for (String_List_Node* ntr = &conf.Source.Head; ntr && conf.Source.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.Source.Used;
-        for (int i = 0; i < len; i ++) LogInfo("%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) printf("%s ", ntr->Data[i].Data);
     }
-    LogInfo("\nDefines             : ");
+    printf("\nDefines             : ");
     for (String_List_Node* ntr = &conf.Defines.Head; ntr && conf.Defines.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.Defines.Used;
-        for (int i = 0; i < len; i ++) LogInfo("%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) printf("%s ", ntr->Data[i].Data);
     }
-    LogInfo("\nInclude Directories : ");
+    printf("\nInclude Directories : ");
     for (String_List_Node* ntr = &conf.IncludeDirectory.Head; ntr && conf.IncludeDirectory.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.IncludeDirectory.Used;
-        for (int i = 0; i < len; i ++) LogInfo("%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) printf("%s ", ntr->Data[i].Data);
     }
-    LogInfo("\nLibrary Directories : ");
+    printf("\nLibrary Directories : ");
     for (String_List_Node* ntr = &conf.LibraryDirectory.Head; ntr && conf.LibraryDirectory.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.LibraryDirectory.Used;
-        for (int i = 0; i < len; i ++) LogInfo("%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) printf("%s ", ntr->Data[i].Data);
     }
-    LogInfo("\nLibraries           : ");
+    printf("\nLibraries           : ");
     for (String_List_Node* ntr = &conf.Library.Head; ntr && conf.Library.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.Library.Used;
-        for (int i = 0; i < len; i ++) LogInfo("%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) printf("%s ", ntr->Data[i].Data);
     }
-    LogInfo("\n");
+    printf("\n");
 }
 
 
@@ -392,7 +398,7 @@ void OptDefault() {
     Compiler_Config def;
     CompilerConfigInit(&def);
     PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
-    LogCompilerConfig(def);
+    PrintCompilerConfig(def);
     LogInfo("\n");
 }
 

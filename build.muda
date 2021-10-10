@@ -1,3 +1,5 @@
+@version 0.1.0
+@author ronejfourn
 # Configuration for compiler
 
 # Type, BuildDirectory, Build, Optimization may be defined only onced for each OS
@@ -13,6 +15,7 @@ Source : main.c; # Array of Strings
 IncludeDirectory = .; # Array of Strings
 LibraryDirectory = ; # Array of Strings
 Library = ; # Array of Strings
+@     here        hello
 
 [WINDOWS]
 # Same as above but only parse for windows
@@ -21,5 +24,6 @@ Library = ; # Array of Strings
 # Same as above but only parse for LINUX
 
 [ALL]
+@everyone
 # Same as above but parse for every OS again
 
