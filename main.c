@@ -369,6 +369,12 @@ void LogCompilerConfig(Compiler_Config conf){
 #define MUDA_VERSION_MINOR 1
 #define MUDA_VERSION_PATCH 0
 
+INLINE_PROCEDURE Uint32 MudaMakeVersion(Uint32 major, Uint32 minor, Uint32 patch) {
+    Assert(major <= UINT8_MAX && minor <= UINT8_MAX && patch <= UINT16_MAX);
+    Uint32 version = patch | (minor << 16) | (major << 24);
+    return version;
+}
+
 typedef struct Muda_Option {
     String Name;
     String Desc;
