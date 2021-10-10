@@ -218,8 +218,8 @@ void OsConsoleOut(void *fp, const char *fmt, ...) {
     va_end(args);
 }
 
-void OsConsoleWriteV(const char *fmt, , va_list list) {
-    vprintf(fmt, list);
+void OsConsoleOutV(void *fp, const char *fmt, va_list list) {
+    vfprintf((FILE *)fp, fmt, list);
 }
 
 void OsConsoleWrite(const char *fmt, ...) {
@@ -230,6 +230,5 @@ void OsConsoleWrite(const char *fmt, ...) {
 }
 
 void OsConsoleWriteV(const char *fmt, va_list list) {
-    vprintf(fmt, args);
+    vprintf(fmt, list);
 }
-
