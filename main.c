@@ -319,38 +319,58 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-	Memory_Arena *scratch = ThreadScratchpad();
+    Compiler_Config config;
+    CompilerConfigInit(&config);
 
-    String config_file = { 0,0 };
+    String config_path = { 0,0 };
 
     const String LocalMudaFile = StringLiteral("build.muda");
     if (OsCheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
-        config_file = LocalMudaFile;
-    } else {
-        String global_muda_file = OsGetUserConfigurationPath(StringLiteral("muda/config.muda"));
-        if (OsCheckIfPathExists(global_muda_file) == Path_Exist_File) {
-            config_file = global_muda_file;
+        config_path = LocalMudaFile;
+    }
+    else {
+        String muda_user_path = OsGetUserConfigurationPath(StringLiteral("muda/config.muda"));
+        if (OsCheckIfPathExists(muda_user_path) == Path_Exist_File) {
+            config_path = muda_user_path;
         }
     }
 
-	Compiler_Config compiler_config;
-    CompilerConfigInit(&compiler_config);
+    if (config_path.Length) {
+        Memory_Arena *scratch = ThreadScratchpad();
+        Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
-    if (config_file.Length) {
-        FILE *fp = fopen(config_file.Data, "rb");
-        fseek(fp, 0L, SEEK_END);
-        int size = ftell(fp);
-        fseek(fp, 0L, SEEK_SET);
+        File_Handle fp = OsOpenFile(config_path);
+        if (OsFileHandleIsValid(fp)) {
+            Ptrsize size = OsGetFileSize(fp);
+            Ptrsize left_size = MemoryArenaSizeLeft(scratch);
 
-        Uint8 *config = PushSize(scratch, size + 1);
-        fread(config, size, 1, fp);
-        config[size] = 0;
-        fclose(fp);
+            if (size > left_size) {
+                float max_size = (float)left_size / (1024 * 1024);
+                String error = FmtStr(scratch, "Fatal Error: File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
+                FatalError(error.Data);
+            }
 
-        LoadCompilerConfig(&compiler_config, config, size);
+            Uint8 *buffer = PushSize(scratch, size + 1);
+            if (OsReadFile(fp, buffer, size)) {
+                buffer[size] = 0;
+                LoadCompilerConfig(&config, buffer, size);
+            }
+            else {
+                LogError("ERROR: Could not read the configuration file %s!\n", config_path.Data);
+            }
+
+            OsCloseFile(fp);
+        }
+        else {
+            LogError("ERROR: Could not open the configuration file %s!\n", config_path.Data);
+        }
+
+        EndTemporaryMemory(&temp);
     }
 
     {
+        Memory_Arena *scratch = ThreadScratchpad();
+
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
         Out_Stream out;
@@ -363,14 +383,14 @@ int main(int argc, char *argv[]) {
         ThreadContext.Allocator = MemoryArenaAllocator(scratch);
         String cmd_line = OutBuildString(&out);
         ThreadContext.Allocator = NullMemoryAllocator();
-        LoadCompilerConfig(&compiler_config, cmd_line.Data, cmd_line.Length);
+        LoadCompilerConfig(&config, cmd_line.Data, cmd_line.Length);
 
         EndTemporaryMemory(&temp);
     }
 
-    PushDefaultCompilerConfig(&compiler_config, compiler);
+    PushDefaultCompilerConfig(&config, compiler);
 
-    Compile(&compiler_config, compiler);
+    Compile(&config, compiler);
 
 	return 0;
 }
