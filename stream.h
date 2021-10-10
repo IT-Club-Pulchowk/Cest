@@ -44,6 +44,10 @@ INLINE_PROCEDURE void OutBuffer(Out_Stream *out, const void *ptr, Int64 size) {
 	}
 }
 
+INLINE_PROCEDURE void OutString(Out_Stream *out, String string) {
+	OutBuffer(out, string.Data, string.Length);
+}
+
 INLINE_PROCEDURE void OutFormatted(Out_Stream *out, const char *fmt, ...) {
 	Memory_Arena *scratch = ThreadScratchpad();
 

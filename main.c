@@ -345,27 +345,59 @@ void LogCompilerConfig(Compiler_Config conf){
     LogInfo("\n");
 }
 
+
+#define MUDA_VERSION_MAJOR 0
+#define MUDA_VERSION_MINOR 1
+#define MUDA_VERSION_PATCH 0
+
+typedef struct Muda_Option {
+    String Name;
+    String Desc;
+    void (*Proc)();
+} Muda_Option;
+
+void OptHelp();
+void OptDefault();
+void OptSetup();
+void OptVersion();
+
+static const Muda_Option Options[] = {
+    { StringLiteralExpand("version"), StringLiteralExpand("Check the version of Muda installed"), OptVersion },
+    { StringLiteralExpand("default"), StringLiteralExpand("Display default configuration"), OptDefault },
+    { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup },
+    { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp },
+};
+
 void OptHelp() {
     // Dont judge me pls I was bored
-    LogInfo("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
-    LogInfo("Usage:\n\tpath/to/muda [-flags] path/to/target/directory\n\n");
-    LogInfo("Flags:\n\t-help   : shows the help screen\n\t-default: shows the default configuration\n\t-setup  : setup a config file\n\n");
-    LogInfo("Repo:\n\thttps://github.com/IT-Club-Pulchowk/muda\n");
+    OptVersion();
+    LogInfo("Usage:\n\tpath/to/muda [-flags] [build_script]\n\n");
+    LogInfo("Flags:\n");
+
+    for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
+        LogInfo("\t-%-10s: %s\n", Options[opt_i].Name.Data, Options[opt_i].Desc.Data);
+    }
+
+    LogInfo("\nRepository:\n\thttps://github.com/IT-Club-Pulchowk/muda\n\n");
 }
 
-void OptDefault(){
+void OptDefault() {
     LogInfo(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
     Compiler_Config def;
     CompilerConfigInit(&def);
     PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
     LogCompilerConfig(def);
+    LogInfo("\n");
 }
 
-void OptSetup(){
+void OptSetup() {
     return;
 }
 
-void (*OptFunctionDispatcher[])() = {OptHelp, OptDefault, OptSetup};
+void OptVersion() {
+    LogInfo("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
+    LogInfo("Muda v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+}
 
 int main(int argc, char *argv[]) {
     InitThreadContext(NullMemoryAllocator(), MegaBytes(512), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
@@ -375,16 +407,9 @@ int main(int argc, char *argv[]) {
     if (argc == 2 && argv[1][0] == '-') {
         String option = StringMake(argv[1] + 1, strlen(argv[1] + 1));
 
-        const String Options[] = {
-            StringLiteral("help"), // prints help message, everything and repo for the project as well :)
-            StringLiteral("default"), // print default configuration
-            StringLiteral("setup") // take input from user to setup build.muda file
-        };
-
         for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
-            if (StrMatchCaseInsensitive(option, Options[opt_i])) {
-                // launch function
-                OptFunctionDispatcher[opt_i]();
+            if (StrMatchCaseInsensitive(option, Options[opt_i].Name)) {
+                Options[opt_i].Proc();
                 return 0;
             }
         }
