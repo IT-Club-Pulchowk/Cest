@@ -155,11 +155,11 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
         p->Token.Data.Property.Key.Length = cur - start;
         while (*cur != '=' && *cur != ':') cur += 1;
 
-        *cur = 0;
+        /* *cur = 0; */
         cur ++;
         while (*cur && isspace(*cur)) cur ++;
         start2 = cur; 
-        while (*cur && *cur != ';') cur += 1;
+        while (*cur && *cur != ';' && *cur != '=' && *cur != ':' && *cur != '[' && *cur != ']') cur += 1;
         if (*cur == ';'){
             cur --;
             while (isspace(*cur)){
@@ -174,8 +174,12 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             while (*cur != ';') cur += 1;
         } else {
             p->Token.Kind = Muda_Token_Error;
-            p->Pos = cur;
+            cur --;
+            for (; *cur != '=' && *cur != ':' && cur > p->Ptr; cur --);
+            while (*cur && *cur != '\r' && *cur != '\n') cur ++;
+            cur --;
             GetLineNoAndColumn(cur, p);
+            p->Token.Data.Error.Line ++;
             MudaReportError(p, "Missing ';'");
             return false;
         }
