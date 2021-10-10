@@ -457,6 +457,7 @@ void OptSetup() {
     // Optimization = false
 
     // TODO: We are not using what we have input from console yet... :(
+    // TODO: Remove white spaces at start and end of the string as well
     char read_buffer[256];
 
     OsConsoleWrite("Build Directory (default: %s) # ", def.BuildDirectory.Data);
