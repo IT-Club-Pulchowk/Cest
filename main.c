@@ -71,10 +71,6 @@ static void AddToList(String_List *dst, String string){
 static void ClearList(String_List *lst){
     lst->Used = 0;
     lst->Head.Next = NULL;
-    for (int i = 0; i < MAX_NODE_DATA_COUNT; i++) {
-        lst->Head.Data[i].Data = NULL;        
-        lst->Head.Data[i].Length = 0;        
-    }
     lst->Tail = &lst->Head;
 }
 
