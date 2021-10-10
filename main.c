@@ -7,12 +7,12 @@
 #include <stdlib.h>
 
 void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
-	fprintf(stderr, "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
+    OsConsoleError("%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
 	TriggerBreakpoint();
 }
 
 void DeprecateHandle(const char *file, int line, const char *proc) {
-	fprintf(stderr, "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
+    OsConsoleError("Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
 }
 
 static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, void *user_context) {
@@ -327,52 +327,60 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 }
 
 static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
-    FILE *fp = ((kind == Log_Kind_Info) ? stdout : stderr);
-    vfprintf(fp, fmt, list);
+    if (kind == Log_Kind_Info)
+        OsConsoleWriteV(fmt, list);
+    else
+        OsConsoleErrorV(fmt, list);
 }
 
 static void FatalErrorProcedure(const char *message) {
-    fprintf(stderr, "%s", message);
+    OsConsoleWrite("%s", message);
     exit(1);
 }
 
 void PrintCompilerConfig(Compiler_Config conf){
-    printf("\nType                : %s", conf.Type == Compile_Type_Project ? "Project" : "Solution");
-    printf("\nOptimization        : %s", conf.Optimization ? "True" : "False");
-    printf("\nBuild               : %s", conf.Build.Data);
-    printf("\nBuild Directory     : %s", conf.BuildDirectory.Data);
+    OsConsoleWrite("\nType                : %s", conf.Type == Compile_Type_Project ? "Project" : "Solution");
+    OsConsoleWrite("\nOptimization        : %s", conf.Optimization ? "True" : "False");
+    OsConsoleWrite("\nBuild               : %s", conf.Build.Data);
+    OsConsoleWrite("\nBuild Directory     : %s", conf.BuildDirectory.Data);
 
-    printf("\nSource              : ");
+    OsConsoleWrite("\nSource              : ");
     for (String_List_Node* ntr = &conf.Source.Head; ntr && conf.Source.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.Source.Used;
-        for (int i = 0; i < len; i ++) printf("%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
     }
-    printf("\nDefines             : ");
+    OsConsoleWrite("\nDefines             : ");
     for (String_List_Node* ntr = &conf.Defines.Head; ntr && conf.Defines.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.Defines.Used;
-        for (int i = 0; i < len; i ++) printf("%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
     }
-    printf("\nInclude Directories : ");
+    OsConsoleWrite("\nInclude Directories : ");
     for (String_List_Node* ntr = &conf.IncludeDirectory.Head; ntr && conf.IncludeDirectory.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.IncludeDirectory.Used;
-        for (int i = 0; i < len; i ++) printf("%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
     }
-    printf("\nLibrary Directories : ");
+    OsConsoleWrite("\nLibrary Directories : ");
     for (String_List_Node* ntr = &conf.LibraryDirectory.Head; ntr && conf.LibraryDirectory.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.LibraryDirectory.Used;
-        for (int i = 0; i < len; i ++) printf("%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
     }
-    printf("\nLibraries           : ");
+    OsConsoleWrite("\nLibraries           : ");
     for (String_List_Node* ntr = &conf.Library.Head; ntr && conf.Library.Used; ntr = ntr->Next){
         int len = ntr->Next ? 8 : conf.Library.Used;
-        for (int i = 0; i < len; i ++) printf("%s ", ntr->Data[i].Data);
+        for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
     }
-    printf("\n");
+    OsConsoleWrite("\n");
 }
 
 #define MUDA_VERSION_MAJOR 0
 #define MUDA_VERSION_MINOR 1
 #define MUDA_VERSION_PATCH 0
+
+INLINE_PROCEDURE Uint32 MudaMakeVersion(Uint32 major, Uint32 minor, Uint32 patch) {
+    Assert(major <= UINT8_MAX && minor <= UINT8_MAX && patch <= UINT16_MAX);
+    Uint32 version = patch | (minor << 16) | (major << 24);
+    return version;
+}
 
 typedef struct Muda_Option {
     String Name;
@@ -414,8 +422,46 @@ void OptDefault() {
     LogInfo("\n");
 }
 
+#define ConsoleRead(...) OsConsoleWrite("\n");
+
 void OptSetup() {
-    return;
+    OptVersion();
+
+    OsConsoleWrite("Muda Configuration:\n");
+
+    Compiler_Config def;
+    CompilerConfigInit(&def);
+    PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
+
+    // We take these as default
+    // Type = Solution
+    // Optimization = false
+
+    OsConsoleWrite("Build Directory (default: %s) # ", def.BuildDirectory.Data);
+    ConsoleRead();
+
+    const char *extension = "build";
+    if (PLATFORM_OS_WINDOWS) extension = "exe";
+    if (PLATFORM_OS_LINUX) extension = "out";
+    OsConsoleWrite("Build Executable (default: %s.%s) # ", def.Build.Data, extension);
+    ConsoleRead();
+
+    OsConsoleWrite("Defines # ");
+    ConsoleRead();
+
+    OsConsoleWrite("Include Directory # ");
+    ConsoleRead();
+
+    OsConsoleWrite("Source (default: %s) # ", def.Source.Head.Data[0].Data);
+    ConsoleRead();
+
+    OsConsoleWrite("Library Directory # ");
+    ConsoleRead();
+
+    OsConsoleWrite("Input Library # ");
+    ConsoleRead();
+
+    OsConsoleWrite("\n");
 }
 
 void OptVersion() {
@@ -425,6 +471,8 @@ void OptVersion() {
 
 int main(int argc, char *argv[]) {
     InitThreadContext(NullMemoryAllocator(), MegaBytes(512), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
+
+    OsSetupConsole();
 
     // If there are 2 arguments, then the 2nd argument could be options
     // Options are the strings that start with "-", we don't allow "- options", only allow "-option"
@@ -470,10 +518,10 @@ int main(int argc, char *argv[]) {
         File_Handle fp = OsOpenFile(config_path);
         if (OsFileHandleIsValid(fp)) {
             Ptrsize size = OsGetFileSize(fp);
-            Ptrsize left_size = MemoryArenaSizeLeft(scratch);
+            const Ptrsize MAX_ALLOWED_MUDA_FILE_SIZE = MegaBytes(32);
 
-            if (size > left_size) {
-                float max_size = (float)left_size / (1024 * 1024);
+            if (size > MAX_ALLOWED_MUDA_FILE_SIZE) {
+                float max_size = (float)MAX_ALLOWED_MUDA_FILE_SIZE / (1024 * 1024);
                 String error = FmtStr(scratch, "Fatal Error: File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
                 FatalError(error.Data);
             }

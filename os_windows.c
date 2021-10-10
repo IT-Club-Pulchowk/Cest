@@ -330,3 +330,32 @@ bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
 void OsCloseFile(File_Handle handle) {
 	CloseHandle(handle.PlatformFileHandle);
 }
+
+void OsSetupConsole() {
+	SetConsoleCP(CP_UTF8);
+	SetConsoleOutputCP(CP_UTF8);
+}
+
+#include <stdio.h>
+
+void OsConsoleWrite(const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	OsConsoleWriteV(fmt, args);
+	va_end(args);
+}
+
+void OsConsoleWriteV(const char *fmt, va_list list) {
+	vprintf(fmt, list);
+}
+
+void OsConsoleError(const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	OsConsoleErrorV(fmt, args);
+	va_end(args);
+}
+
+void OsConsoleErrorV(const char *fmt, va_list list) {
+	vfprintf(stderr, fmt, list);
+}
