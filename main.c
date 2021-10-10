@@ -52,6 +52,10 @@ typedef struct Compiler_Config {
 	String_List Library;
 } Compiler_Config;
 
+static bool IsListEmpty(String_List *list) {
+    return list->Head.Next == NULL && list->Used == 0;
+}
+
 static void AddToList(String_List *dst, String string){
     Memory_Arena *scratch = ThreadScratchpad();
     if (dst->Used == MAX_NODE_DATA_COUNT){
@@ -67,10 +71,6 @@ static void AddToList(String_List *dst, String string){
 static void ClearList(String_List *lst){
     lst->Used = 0;
     lst->Head.Next = NULL;
-    for (int i = 0; i < MAX_NODE_DATA_COUNT; i++) {
-        lst->Head.Data[i].Data = NULL;        
-        lst->Head.Data[i].Length = 0;        
-    }
     lst->Tail = &lst->Head;
 }
 
@@ -103,21 +103,22 @@ void CompilerConfigInit(Compiler_Config *config) {
     config->Library.Tail = &config->Source.Head;
 }
 
-void SetDefaultCompilerConfig(Compiler_Config *config) {
-	// TODO: Use sensible default values
+void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {
+    if (config->BuildDirectory.Length == 0) {
+        config->BuildDirectory = StringLiteral("./bin");
+    }
 
-	config->BuildDirectory = StringLiteral("./bin");
-	config->Build = StringLiteral("bootstrap");
+    if (config->Build.Length == 0) {
+        config->Build = StringLiteral("ouput");
+    }
 
-	config->Type = Compile_Type_Project;
+    if (IsListEmpty(&config->Source)) {
+        AddToList(&config->Source, StringLiteral("*.c"));
+    }
 
-	config->Optimization = false;
-
-    Uint8 str[] = "ASSERTION_HANDLED DEPRECATION_HANDLED _CRT_SECURE_NO_WARNINGS"; 
-	ReadList(&config->Defines, (String){strlen(str), str});
-
-    Uint8 str2[] = "main.c"; 
-	ReadList(&config->Source, (String){strlen(str2), str2});
+    if (compiler == Compiler_Kind_CL && IsListEmpty(&config->Defines)) {
+        AddToList(&config->Defines, StringLiteral("_CRT_SECURE_NO_WARNINGS"));
+    }
 }
 
 void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
@@ -169,8 +170,6 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
 }
 
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
-	String cmdline = {0, 0};
-
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	Assert(config->Type == Compile_Type_Project);
@@ -180,9 +179,9 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Out_Stream out;
 	OutCreate(&out, MemoryArenaAllocator(scratch));
         
-    Uint32 result = CheckIfPathExists(config->BuildDirectory);
+    Uint32 result = OsCheckIfPathExists(config->BuildDirectory);
     if (result == Path_Does_Not_Exist) {
-        if (!CreateDirectoryRecursively(config->BuildDirectory)) {
+        if (!OsCreateDirectoryRecursively(config->BuildDirectory)) {
             String error = FmtStr(scratch, "Failed to create directory %s!", config->BuildDirectory.Data);
             FatalError(error.Data);
         }
@@ -191,8 +190,29 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         String error = FmtStr(scratch, "%s: Path exist but is a file!\n", config->BuildDirectory.Data);
         FatalError(error.Data);
     }
-	// Defaults
+
     if (compiler == Compiler_Kind_CL){
+        // For CL, we output intermediate files to "BuildDirectory/int"
+        String intermediate;
+        if (config->BuildDirectory.Data[config->BuildDirectory.Length - 1] == '/') {
+            intermediate = FmtStr(scratch, "%sint", config->BuildDirectory.Data);
+        }
+        else {
+            intermediate = FmtStr(scratch, "%s/int", config->BuildDirectory.Data);
+        }
+
+        result = OsCheckIfPathExists(intermediate);
+        if (result == Path_Does_Not_Exist) {
+            if (!OsCreateDirectoryRecursively(intermediate)) {
+                String error = FmtStr(scratch, "Failed to create directory %s!", intermediate.Data);
+                FatalError(error.Data);
+            }
+        }
+        else if (result == Path_Exist_File) {
+            String error = FmtStr(scratch, "%s: Path exist but is a file!\n", intermediate.Data);
+            FatalError(error.Data);
+        }
+
         OutFormatted(&out, "cl -nologo -Zi -EHsc ");
 
         if (config->Optimization)
@@ -255,9 +275,9 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
 
         if (PLATFORM_OS_LINUX)
-            OutFormatted(&out, "-o%s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
+            OutFormatted(&out, "-o %s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
         else if (PLATFORM_OS_WINDOWS)
-            OutFormatted(&out, "-o%s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
+            OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
 
         for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->LibraryDirectory.Used;
@@ -270,13 +290,15 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
     }
 
-	cmdline = OutBuildString(&out);
+    ThreadContext.Allocator = MemoryArenaAllocator(scratch);
+    String cmd_line = OutBuildString(&out);
+    ThreadContext.Allocator = NullMemoryAllocator();
+
+	LogInfo("Command Line: %s\n", cmd_line.Data);
+
+	OsExecuteCommandLine(cmd_line);
 
 	EndTemporaryMemory(&temp);
-
-	LogInfo("Command Line: %s\n", cmdline.Data);
-
-	LaunchCompilation(compiler, cmdline);
 }
 
 static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
@@ -290,34 +312,29 @@ static void FatalErrorProcedure(const char *message) {
 }
 
 int main(int argc, char *argv[]) {
-    Memory_Arena arena = MemoryArenaCreate(MegaBytes(512));
+    InitThreadContext(NullMemoryAllocator(), MegaBytes(512), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
-    InitThreadContext(MemoryArenaAllocator(&arena), 
-        MegaBytes(128), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
-
-	Compiler_Kind compiler = DetectCompiler();
-    //if (compiler == Compiler_Kind_NULL) {
-    //    return 1;
-    //}
+	Compiler_Kind compiler = OsDetectCompiler();
+    if (compiler == Compiler_Kind_NULL) {
+        return 1;
+    }
 
 	Memory_Arena *scratch = ThreadScratchpad();
 
     String config_file = { 0,0 };
 
     const String LocalMudaFile = StringLiteral("build.muda");
-    if (CheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
+    if (OsCheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
         config_file = LocalMudaFile;
     } else {
-        String global_muda_file = GetGlobalConfigurationFile();
-        if (CheckIfPathExists(global_muda_file) == Path_Exist_File) {
+        String global_muda_file = OsGetUserConfigurationPath(StringLiteral("muda/config.muda"));
+        if (OsCheckIfPathExists(global_muda_file) == Path_Exist_File) {
             config_file = global_muda_file;
         }
     }
 
 	Compiler_Config compiler_config;
     CompilerConfigInit(&compiler_config);
-
-    SetDefaultCompilerConfig(&compiler_config);
 
     if (config_file.Length) {
         FILE *fp = fopen(config_file.Data, "rb");
@@ -343,24 +360,17 @@ int main(int argc, char *argv[]) {
             OutFormatted(&out, "%s ", argv[argi]);
         }
 
+        ThreadContext.Allocator = MemoryArenaAllocator(scratch);
         String cmd_line = OutBuildString(&out);
+        ThreadContext.Allocator = NullMemoryAllocator();
         LoadCompilerConfig(&compiler_config, cmd_line.Data, cmd_line.Length);
 
         EndTemporaryMemory(&temp);
     }
 
+    PushDefaultCompilerConfig(&compiler_config, compiler);
+
     Compile(&compiler_config, compiler);
-
-#if 0
-	if (argc != 2) {
-		LogError("\nUsage: %s <directory name>\n", argv[0]);
-		return 1;
-	}
-
-	const char *dir = argv[1];
-
-	IterateDirectroy(dir, DirectoryIteratorPrintNoBin, NULL);
-#endif
 
 	return 0;
 }

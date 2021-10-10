@@ -1,5 +1,6 @@
 #include "os.h"
 #include "zBase.h"
+#include "lenstring.h"
 
 #include <errno.h>
 #include <sys/stat.h>
@@ -80,7 +81,7 @@ static bool IterateInternal(const String path, Directory_Iterator iterator, void
     return true;
 }
 
-bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *context) {
+bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *context) {
 	Memory_Arena *scratch = ThreadScratchpad();
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
@@ -111,7 +112,7 @@ bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *conte
     return res;
 }
 
-Compiler_Kind DetectCompiler() {
+Compiler_Kind OsDetectCompiler() {
     if (!system("which gcc > /dev/null 2>&1")) {
         LogInfo("GCC Detected\n");
         return Compiler_Kind_GCC;
@@ -127,15 +128,11 @@ Compiler_Kind DetectCompiler() {
     return Compiler_Kind_NULL;
 }
 
-bool LaunchCompilation(Compiler_Kind compiler, String cmdline) {
-    if (compiler != Compiler_Kind_NULL){
-        system ((char *)cmdline.Data);
-        return true;
-    }
-    return false;
+bool LaunchCompilation(String cmdline) {
+    return !system((char *)cmdline.Data);
 }
 
-Uint32 CheckIfPathExists(String path) {
+Uint32 OsCheckIfPathExists(String path) {
     struct stat tmp;
     if (stat(path.Data, &tmp) == 0) {
         if ((tmp.st_mode & S_IFDIR) == S_IFDIR) {
@@ -148,7 +145,7 @@ Uint32 CheckIfPathExists(String path) {
     return Path_Does_Not_Exist;
 }
 
-bool CreateDirectoryRecursively(String path){
+bool OsCreateDirectoryRecursively(String path){
     const int len = path.Length;
     for (int i = 0; i < len+1; i++) {
         if (path.Data[i] == '/' ) {
@@ -164,6 +161,7 @@ bool CreateDirectoryRecursively(String path){
 	return true;
 }
 
-String GetGlobalConfigurationFile() {
-    return StringLiteral("~/muda/config.muda");
+String OsGetUserConfigurationPath(String path) {
+    Memory_Arena *scratch = ThreadScratchpad();
+    return FmtStr(scratch, "~/%s", path.Data);
 }

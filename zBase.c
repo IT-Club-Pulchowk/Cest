@@ -111,6 +111,19 @@ extern "C" {
 		return allocator;
 	}
 
+	static void *NullMemoryAllocate(Ptrsize size, void *ptr) { return NULL; }
+	static void *NullMemoryReallocate(void *ptr, Ptrsize prev_size, Ptrsize size, void *ctx) { return NULL; }
+	static void NullMemoryFree(void *ptr, void *context) {}
+
+	Memory_Allocator NullMemoryAllocator() {
+		Memory_Allocator allocator;
+		allocator.Allocate = NullMemoryAllocate;
+		allocator.Reallocate = NullMemoryReallocate;
+		allocator.Free = NullMemoryFree;
+		allocator.Context = NULL;
+		return allocator;
+	}
+
 	Push_Allocator PushThreadAllocator(Memory_Allocator to_push) {
 		Push_Allocator pushed;
 		pushed.Pushed = ThreadContext.Allocator;

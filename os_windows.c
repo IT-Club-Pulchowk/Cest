@@ -1,4 +1,6 @@
 #include "os.h"
+#include "lenstring.h"
+
 #define WIN32_MEAN_AND_LEAN
 #include <windows.h>
 #include <shellapi.h>
@@ -133,7 +135,7 @@ static bool IterateDirectroyInternal(String path, Directory_Iterator iterator, v
 	return true;
 }
 
-bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *context) {
+bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *context) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
@@ -174,7 +176,7 @@ bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *conte
 	return result;
 }
 
-Compiler_Kind DetectCompiler() {
+Compiler_Kind OsDetectCompiler() {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	DWORD length = 0;
@@ -206,16 +208,13 @@ Compiler_Kind DetectCompiler() {
 	return Compiler_Kind_NULL;
 }
 
-bool LaunchCompilation(Compiler_Kind compiler, String cmdline) {
-	Assert(compiler == Compiler_Kind_CL);
-
+bool OsExecuteCommandLine(String cmdline) {
 	wchar_t *wcmdline = UnicodeToWideChar(cmdline.Data, (int)cmdline.Length);
 
 	STARTUPINFOW start_up = { sizeof(start_up) };
 	PROCESS_INFORMATION process;
 	memset(&process, 0, sizeof(process));
 
-	// TODO: Use security attributes??
 	CreateProcessW(NULL, wcmdline, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &start_up, &process);
 
 	WaitForSingleObject(process.hProcess, INFINITE);
@@ -226,7 +225,7 @@ bool LaunchCompilation(Compiler_Kind compiler, String cmdline) {
 	return true;
 }
 
-Uint32 CheckIfPathExists(String path) {
+Uint32 OsCheckIfPathExists(String path) {
 	wchar_t *dir = UnicodeToWideChar(path.Data, path.Length);
 
 	if (PathFileExistsW(dir)) {
@@ -241,7 +240,7 @@ Uint32 CheckIfPathExists(String path) {
 	return Path_Does_Not_Exist;
 }
 
-bool CreateDirectoryRecursively(String path) {
+bool OsCreateDirectoryRecursively(String path) {
 	int len = 0;
 	wchar_t *dir = UnicodeToWideCharLength(path.Data, path.Length, &len);
 
@@ -256,25 +255,20 @@ bool CreateDirectoryRecursively(String path) {
 	return true;
 }
 
-String GetGlobalConfigurationFile() {
+String OsGetUserConfigurationPath(String path) {
+	Memory_Arena *scratch = ThreadScratchpad();
+
 	HANDLE token = INVALID_HANDLE_VALUE;
 	if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token)) {
 		DWORD length = 0;
 		GetUserProfileDirectoryW(token, NULL, &length);
 		length += 1;
-		Memory_Arena *scratch = ThreadScratchpad();
 		wchar_t *wpath = PushSize(scratch, length * sizeof(wchar_t));
 		if (GetUserProfileDirectoryW(token, wpath, &length)) {
-			const char MudaRelativePath[] = "/muda/muda.config";
-			int allocation_size = 2 * length * sizeof(char) + sizeof(MudaRelativePath);
-			char *path = PushSize(scratch, allocation_size);
-			length = WideCharToMultiByte(CP_UTF8, 0, wpath, length - 1, path, allocation_size, 0, 0);
-			Assert(length + sizeof(MudaRelativePath) < allocation_size);
-			memcpy(path + length, MudaRelativePath, sizeof(MudaRelativePath));
-			return StringMake(path, length + sizeof(MudaRelativePath) - 1);
+			return FmtStr(scratch, "%S/%s", wpath, path.Data);
 		}
 	}
 
 	// in case we fail, we'll use this as backup
-	return StringLiteral("C:/muda/muda.config");
+	return FmtStr(scratch, "C:/%s", path.Data);
 }

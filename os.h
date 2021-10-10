@@ -37,7 +37,7 @@ INLINE_PROCEDURE Directory_Iteration DirectoryIteratorPrint(const File_Info *inf
 	return Directory_Iteration_Recurse;
 }
 
-bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *context);
+bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *context);
 
 typedef enum Compiler_Kind {
 	Compiler_Kind_NULL,
@@ -47,7 +47,7 @@ typedef enum Compiler_Kind {
 	Compiler_Kind_GCC,
 } Compiler_Kind;
 
-Compiler_Kind DetectCompiler();
+Compiler_Kind OsDetectCompiler();
 
 enum {
 	Path_Exist_Directory,
@@ -55,8 +55,8 @@ enum {
 	Path_Does_Not_Exist
 };
 
-bool LaunchCompilation(Compiler_Kind compiler, String cmdline);
-Uint32 CheckIfPathExists(String path);
-bool CreateDirectoryRecursively(String path);
+bool OsExecuteCommandLine(String cmdline);
+Uint32 OsCheckIfPathExists(String path);
+bool OsCreateDirectoryRecursively(String path);
 
-String GetGlobalConfigurationFile();
+String OsGetUserConfigurationPath(String path);
