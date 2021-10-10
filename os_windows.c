@@ -207,8 +207,6 @@ Compiler_Kind DetectCompiler() {
 }
 
 bool LaunchCompilation(Compiler_Kind compiler, String cmdline) {
-	Assert(compiler == Compiler_Kind_CL);
-
 	wchar_t *wcmdline = UnicodeToWideChar(cmdline.Data, (int)cmdline.Length);
 
 	STARTUPINFOW start_up = { sizeof(start_up) };

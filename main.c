@@ -52,6 +52,10 @@ typedef struct Compiler_Config {
 	String_List Library;
 } Compiler_Config;
 
+static bool IsListEmpty(String_List *list) {
+    return list->Head.Next == NULL && list->Used == 0;
+}
+
 static void AddToList(String_List *dst, String string){
     Memory_Arena *scratch = ThreadScratchpad();
     if (dst->Used == MAX_NODE_DATA_COUNT){
@@ -103,21 +107,22 @@ void CompilerConfigInit(Compiler_Config *config) {
     config->Library.Tail = &config->Source.Head;
 }
 
-void SetDefaultCompilerConfig(Compiler_Config *config) {
-	// TODO: Use sensible default values
+void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {
+    if (config->BuildDirectory.Length == 0) {
+        config->BuildDirectory = StringLiteral("./bin");
+    }
 
-	config->BuildDirectory = StringLiteral("./bin");
-	config->Build = StringLiteral("bootstrap");
+    if (config->Build.Length == 0) {
+        config->Build = StringLiteral("ouput");
+    }
 
-	config->Type = Compile_Type_Project;
+    if (IsListEmpty(&config->Source)) {
+        AddToList(&config->Source, StringLiteral("*.c"));
+    }
 
-	config->Optimization = false;
-
-    Uint8 str[] = "ASSERTION_HANDLED DEPRECATION_HANDLED _CRT_SECURE_NO_WARNINGS"; 
-	ReadList(&config->Defines, (String){strlen(str), str});
-
-    Uint8 str2[] = "main.c"; 
-	ReadList(&config->Source, (String){strlen(str2), str2});
+    if (compiler == Compiler_Kind_CL && IsListEmpty(&config->Defines)) {
+        AddToList(&config->Defines, StringLiteral("_CRT_SECURE_NO_WARNINGS"));
+    }
 }
 
 void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
@@ -191,8 +196,29 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         String error = FmtStr(scratch, "%s: Path exist but is a file!\n", config->BuildDirectory.Data);
         FatalError(error.Data);
     }
-	// Defaults
+
     if (compiler == Compiler_Kind_CL){
+        // For CL, we output intermediate files to "BuildDirectory/int"
+        String intermediate;
+        if (config->BuildDirectory.Data[config->BuildDirectory.Length - 1] == '/') {
+            intermediate = FmtStr(scratch, "%sint", config->BuildDirectory.Data);
+        }
+        else {
+            intermediate = FmtStr(scratch, "%s/int", config->BuildDirectory.Data);
+        }
+
+        result = CheckIfPathExists(intermediate);
+        if (result == Path_Does_Not_Exist) {
+            if (!CreateDirectoryRecursively(intermediate)) {
+                String error = FmtStr(scratch, "Failed to create directory %s!", intermediate.Data);
+                FatalError(error.Data);
+            }
+        }
+        else if (result == Path_Exist_File) {
+            String error = FmtStr(scratch, "%s: Path exist but is a file!\n", intermediate.Data);
+            FatalError(error.Data);
+        }
+
         OutFormatted(&out, "cl -nologo -Zi -EHsc ");
 
         if (config->Optimization)
@@ -296,9 +322,9 @@ int main(int argc, char *argv[]) {
         MegaBytes(128), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
 	Compiler_Kind compiler = DetectCompiler();
-    //if (compiler == Compiler_Kind_NULL) {
-    //    return 1;
-    //}
+    if (compiler == Compiler_Kind_NULL) {
+        return 1;
+    }
 
 	Memory_Arena *scratch = ThreadScratchpad();
 
@@ -317,9 +343,6 @@ int main(int argc, char *argv[]) {
 	Compiler_Config compiler_config;
     CompilerConfigInit(&compiler_config);
 
-    SetDefaultCompilerConfig(&compiler_config);
-
-    SetDefaultCompilerConfig(&compiler_config);
     if (config_file.Length) {
         FILE *fp = fopen(config_file.Data, "rb");
         fseek(fp, 0L, SEEK_END);
@@ -350,18 +373,9 @@ int main(int argc, char *argv[]) {
         EndTemporaryMemory(&temp);
     }
 
+    PushDefaultCompilerConfig(&compiler_config, compiler);
+
     Compile(&compiler_config, compiler);
-
-#if 0
-	if (argc != 2) {
-		LogError("\nUsage: %s <directory name>\n", argv[0]);
-		return 1;
-	}
-
-	const char *dir = argv[1];
-
-	IterateDirectroy(dir, DirectoryIteratorPrintNoBin, NULL);
-#endif
 
 	return 0;
 }
