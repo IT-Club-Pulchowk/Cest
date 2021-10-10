@@ -364,6 +364,11 @@ void LogCompilerConfig(Compiler_Config conf){
     EndTemporaryMemory(&temp);
 }
 
+
+#define MUDA_VERSION_MAJOR 0
+#define MUDA_VERSION_MINOR 1
+#define MUDA_VERSION_PATCH 0
+
 typedef struct Muda_Option {
     String Name;
     String Desc;
@@ -373,16 +378,18 @@ typedef struct Muda_Option {
 void OptHelp();
 void OptDefault();
 void OptSetup();
+void OptVersion();
 
 static const Muda_Option Options[] = {
-    { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp },
+    { StringLiteralExpand("version"), StringLiteralExpand("Check the version of Muda installed"), OptVersion },
     { StringLiteralExpand("default"), StringLiteralExpand("Display default configuration"), OptDefault },
     { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup },
+    { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp },
 };
 
 void OptHelp() {
     // Dont judge me pls I was bored
-    LogInfo("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
+    OptVersion();
     LogInfo("To use Muda, just call it as follows:\n\tpath/to/muda [-flags] [build_script]\n\n");
     LogInfo("Flags:\n");
 
@@ -404,6 +411,11 @@ void OptDefault() {
 
 void OptSetup() {
     return;
+}
+
+void OptVersion() {
+    LogInfo("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
+    LogInfo("Muda v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
 }
 
 int main(int argc, char *argv[]) {
