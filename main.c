@@ -56,12 +56,20 @@ typedef struct Compiler_Config {
 #define MUDA_VERSION_MINOR 1
 #define MUDA_VERSION_PATCH 0
 
+#define MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR 0
+#define MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR 1
+#define MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH 0
+
 INLINE_PROCEDURE Uint32 MudaMakeVersion(Uint32 major, Uint32 minor, Uint32 patch) {
     Assert(major <= UINT8_MAX && minor <= UINT8_MAX && patch <= UINT16_MAX);
     Uint32 version = patch | (minor << 16) | (major << 24);
     return version;
 }
 
+#define MUDA_CURRENT_VERSION MudaMakeVersion(MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH)
+#define MUDA_BACKWARDS_COMPATIBLE_VERSION MudaMakeVersion(MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR, \
+                                                            MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR, \
+                                                            MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH)
 
 static bool IsListEmpty(String_List *list) {
     return list->Head.Next == NULL && list->Used == 0;
@@ -137,22 +145,37 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
 	Memory_Arena *scratch = ThreadScratchpad();
     
     Muda_Parser prsr = MudaParseInit(data, length);
-    Uint32 version;
+
+    Uint32 version = 0;
+    Uint32 major = 0, minor = 0, patch = 0;
 
     if (MudaParseNext(&prsr)){
         if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
             if (prsr.Token.Data.Tag.Value.Data){
-                Uint32 major, minor, patch;
-                sscanf (prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch);
+                if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3) {
+                    FatalError("Error: Bad file version\n");
+                }
                 version = MudaMakeVersion(major, minor, patch);
             } else {
-                LogError("Error: Version info missing\n");
-                return;
+                FatalError("Error: Version info missing\n");
             }
         } else {
-            LogError("Error: Version tag missing at top of file\n");
-            return;
+            FatalError("Error: Version tag missing at top of file\n");
         }
+    }
+
+    if (version < MUDA_BACKWARDS_COMPATIBLE_VERSION || version > MUDA_CURRENT_VERSION) {
+        String error = FmtStr(scratch, "Version %d.%d.%d not supported. \n"
+            "Minimum version supported: %d.%d.%d\n"
+            "Current version: %d.%d.%d\n",
+            major, minor, patch,
+            MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR,
+            MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR,
+            MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH,
+            MUDA_VERSION_MAJOR,
+            MUDA_VERSION_MINOR,
+            MUDA_VERSION_PATCH);
+        FatalError(error.Data);
     }
 
     while (MudaParseNext(&prsr)) {
