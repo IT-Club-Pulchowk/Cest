@@ -128,7 +128,7 @@ Compiler_Kind OsDetectCompiler() {
     return Compiler_Kind_NULL;
 }
 
-bool LaunchCompilation(String cmdline) {
+bool OsExecuteCommandLine(String cmdline) {
     return !system((char *)cmdline.Data);
 }
 
