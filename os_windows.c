@@ -133,7 +133,7 @@ static bool IterateDirectroyInternal(String path, Directory_Iterator iterator, v
 	return true;
 }
 
-bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *context) {
+bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *context) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
@@ -174,7 +174,7 @@ bool IterateDirectroy(const char *path, Directory_Iterator iterator, void *conte
 	return result;
 }
 
-Compiler_Kind DetectCompiler() {
+Compiler_Kind OsDetectCompiler() {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	DWORD length = 0;
@@ -206,7 +206,7 @@ Compiler_Kind DetectCompiler() {
 	return Compiler_Kind_NULL;
 }
 
-bool ExecuteCommandLine(String cmdline) {
+bool OsExecuteCommandLine(String cmdline) {
 	wchar_t *wcmdline = UnicodeToWideChar(cmdline.Data, (int)cmdline.Length);
 
 	STARTUPINFOW start_up = { sizeof(start_up) };
@@ -223,7 +223,7 @@ bool ExecuteCommandLine(String cmdline) {
 	return true;
 }
 
-Uint32 CheckIfPathExists(String path) {
+Uint32 OsCheckIfPathExists(String path) {
 	wchar_t *dir = UnicodeToWideChar(path.Data, path.Length);
 
 	if (PathFileExistsW(dir)) {
@@ -238,7 +238,7 @@ Uint32 CheckIfPathExists(String path) {
 	return Path_Does_Not_Exist;
 }
 
-bool CreateDirectoryRecursively(String path) {
+bool OsCreateDirectoryRecursively(String path) {
 	int len = 0;
 	wchar_t *dir = UnicodeToWideCharLength(path.Data, path.Length, &len);
 
@@ -253,7 +253,7 @@ bool CreateDirectoryRecursively(String path) {
 	return true;
 }
 
-String GetGlobalConfigurationFile() {
+String OsGetGlobalConfigurationFile() {
 	HANDLE token = INVALID_HANDLE_VALUE;
 	if (OpenProcessToken(GetCurrentProcess(), TOKEN_READ, &token)) {
 		DWORD length = 0;

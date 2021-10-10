@@ -181,9 +181,9 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Out_Stream out;
 	OutCreate(&out, MemoryArenaAllocator(scratch));
         
-    Uint32 result = CheckIfPathExists(config->BuildDirectory);
+    Uint32 result = OsCheckIfPathExists(config->BuildDirectory);
     if (result == Path_Does_Not_Exist) {
-        if (!CreateDirectoryRecursively(config->BuildDirectory)) {
+        if (!OsCreateDirectoryRecursively(config->BuildDirectory)) {
             String error = FmtStr(scratch, "Failed to create directory %s!", config->BuildDirectory.Data);
             FatalError(error.Data);
         }
@@ -203,9 +203,9 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
             intermediate = FmtStr(scratch, "%s/int", config->BuildDirectory.Data);
         }
 
-        result = CheckIfPathExists(intermediate);
+        result = OsCheckIfPathExists(intermediate);
         if (result == Path_Does_Not_Exist) {
-            if (!CreateDirectoryRecursively(intermediate)) {
+            if (!OsCreateDirectoryRecursively(intermediate)) {
                 String error = FmtStr(scratch, "Failed to create directory %s!", intermediate.Data);
                 FatalError(error.Data);
             }
@@ -298,7 +298,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
 	LogInfo("Command Line: %s\n", cmdline.Data);
 
-	ExecuteCommandLine(cmdline);
+	OsExecuteCommandLine(cmdline);
 }
 
 static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
@@ -317,7 +317,7 @@ int main(int argc, char *argv[]) {
     InitThreadContext(MemoryArenaAllocator(&arena), 
         MegaBytes(128), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
-	Compiler_Kind compiler = DetectCompiler();
+	Compiler_Kind compiler = OsDetectCompiler();
     if (compiler == Compiler_Kind_NULL) {
         return 1;
     }
@@ -327,11 +327,11 @@ int main(int argc, char *argv[]) {
     String config_file = { 0,0 };
 
     const String LocalMudaFile = StringLiteral("build.muda");
-    if (CheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
+    if (OsCheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
         config_file = LocalMudaFile;
     } else {
-        String global_muda_file = GetGlobalConfigurationFile();
-        if (CheckIfPathExists(global_muda_file) == Path_Exist_File) {
+        String global_muda_file = OsGetGlobalConfigurationFile();
+        if (OsCheckIfPathExists(global_muda_file) == Path_Exist_File) {
             config_file = global_muda_file;
         }
     }
