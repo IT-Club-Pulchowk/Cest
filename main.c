@@ -109,7 +109,7 @@ void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) 
     }
 
     if (config->Build.Length == 0) {
-        config->Build = StringLiteral("ouput");
+        config->Build = StringLiteral("output");
     }
 
     if (IsListEmpty(&config->Source)) {

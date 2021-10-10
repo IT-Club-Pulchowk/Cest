@@ -6,9 +6,9 @@
 #include <sys/stat.h>
 #include <bits/statx.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <dirent.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <string.h>
 
 static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * name, const int name_len){
@@ -164,4 +164,38 @@ bool OsCreateDirectoryRecursively(String path){
 String OsGetUserConfigurationPath(String path) {
     Memory_Arena *scratch = ThreadScratchpad();
     return FmtStr(scratch, "~/%s", path.Data);
+}
+
+File_Handle OsOpenFile(const String path) {
+	File_Handle handle;
+    handle.PlatformFileHandle = (void *)((Ptrsize)open((char *)path.Data, O_RDONLY));
+    return handle;
+}
+
+bool OsFileHandleIsValid(File_Handle handle) {
+    int fd = (int)handle.PlatformFileHandle;
+	return  fd != 0;
+}
+
+Ptrsize OsGetFileSize(File_Handle handle) {
+    struct stat stat;
+    int fd = (int)handle.PlatformFileHandle;
+    if(!fstat(fd, &stat))
+        return stat.st_size;
+    else
+        return 0;
+}
+
+bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
+	Uint32 read_size = 0;
+	if (size > UINT32_MAX) read_size = UINT32_MAX;
+    else read_size = size;
+
+    int fd = (int)handle.PlatformFileHandle;
+    read(fd, buffer, size);
+	return true;
+}
+
+void OsCloseFile(File_Handle handle) {
+	close((int)handle.PlatformFileHandle);
 }
