@@ -298,7 +298,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
 	LogInfo("Command Line: %s\n", cmdline.Data);
 
-	LaunchCompilation(compiler, cmdline);
+	ExecuteCommandLine(compiler, cmdline);
 }
 
 static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {

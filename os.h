@@ -55,7 +55,7 @@ enum {
 	Path_Does_Not_Exist
 };
 
-bool LaunchCompilation(Compiler_Kind compiler, String cmdline);
+bool ExecuteCommandLine(Compiler_Kind compiler, String cmdline);
 Uint32 CheckIfPathExists(String path);
 bool CreateDirectoryRecursively(String path);
 

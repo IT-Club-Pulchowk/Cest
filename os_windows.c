@@ -206,14 +206,13 @@ Compiler_Kind DetectCompiler() {
 	return Compiler_Kind_NULL;
 }
 
-bool LaunchCompilation(Compiler_Kind compiler, String cmdline) {
+bool ExecuteCommandLine(Compiler_Kind compiler, String cmdline) {
 	wchar_t *wcmdline = UnicodeToWideChar(cmdline.Data, (int)cmdline.Length);
 
 	STARTUPINFOW start_up = { sizeof(start_up) };
 	PROCESS_INFORMATION process;
 	memset(&process, 0, sizeof(process));
 
-	// TODO: Use security attributes??
 	CreateProcessW(NULL, wcmdline, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &start_up, &process);
 
 	WaitForSingleObject(process.hProcess, INFINITE);
