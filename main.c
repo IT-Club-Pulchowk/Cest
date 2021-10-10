@@ -126,6 +126,25 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
 	Memory_Arena *scratch = ThreadScratchpad();
     
     Muda_Parser prsr = MudaParseInit(data, length);
+    Uint32 version;
+
+    if (MudaParseNext(&prsr)){
+        if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
+            if (prsr.Token.Data.Tag.Value.Data){
+                Uint32 major, minor, patch;
+                sscanf (prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch);
+                printf("\n\n%d||%d||%d\n\n", major, minor, patch);
+                version = MudaMakeVersion(major, minor, patch);
+            } else {
+                LogError("Error: Version info missing\n");
+                return;
+            }
+        } else {
+            LogError("Error: Version tag missing at top of file\n");
+            return;
+        }
+    }
+
     while (MudaParseNext(&prsr)) {
         // Temporary
         if (prsr.Token.Kind == Muda_Token_Tag){
@@ -350,7 +369,6 @@ void PrintCompilerConfig(Compiler_Config conf){
     }
     printf("\n");
 }
-
 
 #define MUDA_VERSION_MAJOR 0
 #define MUDA_VERSION_MINOR 1
