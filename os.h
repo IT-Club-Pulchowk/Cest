@@ -73,3 +73,9 @@ bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size);
 void OsCloseFile(File_Handle handle);
 
 void OsSetupConsole();
+
+void OsConsoleWrite(const char *fmt, ...);
+void OsConsoleWriteV(const char *fmt, va_list list);
+
+void OsConsoleError(const char *fmt, ...);
+void OsConsoleErrorV(const char *fmt, va_list list);

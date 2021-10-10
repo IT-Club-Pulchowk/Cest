@@ -202,3 +202,25 @@ void OsCloseFile(File_Handle handle) {
 void OsSetupConsole() {
     // we have nothing to do here :)
 }
+
+void OsConsoleWrite(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    va_end(args);
+}
+
+void OsConsoleWriteV(const char *fmt, , va_list list) {
+    vprintf(fmt, list);
+}
+
+void OsConsoleError(const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+}
+
+void OsConsoleErrorV(const char *fmt, , va_list list) {
+    vfprintf(stderr, fmt, list);
+}
