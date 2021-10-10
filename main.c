@@ -320,6 +320,7 @@ int main(int argc, char *argv[]) {
         String option = StringMake(argv[1] + 1, strlen(argv[1] + 1));
 
         const String Options[] = {
+            StringLiteral("help"), // prints help message, everything and repo for the project as well :)
             StringLiteral("default"), // print default configuration
             StringLiteral("setup") // take input from user to setup build.muda file
         };
