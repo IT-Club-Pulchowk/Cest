@@ -319,38 +319,41 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-	Memory_Arena *scratch = ThreadScratchpad();
+    Compiler_Config config;
+    CompilerConfigInit(&config);
 
-    String config_file = { 0,0 };
+    String config_path = { 0,0 };
 
     const String LocalMudaFile = StringLiteral("build.muda");
     if (OsCheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
-        config_file = LocalMudaFile;
-    } else {
-        String global_muda_file = OsGetUserConfigurationPath(StringLiteral("muda/config.muda"));
-        if (OsCheckIfPathExists(global_muda_file) == Path_Exist_File) {
-            config_file = global_muda_file;
+        config_path = LocalMudaFile;
+    }
+    else {
+        String muda_user_path = OsGetUserConfigurationPath(StringLiteral("muda/config.muda"));
+        if (OsCheckIfPathExists(muda_user_path) == Path_Exist_File) {
+            config_path = muda_user_path;
         }
     }
 
-	Compiler_Config compiler_config;
-    CompilerConfigInit(&compiler_config);
+    if (config_path.Length) {
+        Memory_Arena *scratch = ThreadScratchpad();
 
-    if (config_file.Length) {
-        FILE *fp = fopen(config_file.Data, "rb");
+        FILE *fp = fopen(config_path.Data, "rb");
         fseek(fp, 0L, SEEK_END);
         int size = ftell(fp);
         fseek(fp, 0L, SEEK_SET);
 
-        Uint8 *config = PushSize(scratch, size + 1);
-        fread(config, size, 1, fp);
-        config[size] = 0;
+        Uint8 *content = PushSize(scratch, size + 1);
+        fread(content, size, 1, fp);
+        content[size] = 0;
         fclose(fp);
 
-        LoadCompilerConfig(&compiler_config, config, size);
+        LoadCompilerConfig(&config, content, size);
     }
 
     {
+        Memory_Arena *scratch = ThreadScratchpad();
+
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
         Out_Stream out;
@@ -363,14 +366,14 @@ int main(int argc, char *argv[]) {
         ThreadContext.Allocator = MemoryArenaAllocator(scratch);
         String cmd_line = OutBuildString(&out);
         ThreadContext.Allocator = NullMemoryAllocator();
-        LoadCompilerConfig(&compiler_config, cmd_line.Data, cmd_line.Length);
+        LoadCompilerConfig(&config, cmd_line.Data, cmd_line.Length);
 
         EndTemporaryMemory(&temp);
     }
 
-    PushDefaultCompilerConfig(&compiler_config, compiler);
+    PushDefaultCompilerConfig(&config, compiler);
 
-    Compile(&compiler_config, compiler);
+    Compile(&config, compiler);
 
 	return 0;
 }
