@@ -458,30 +458,38 @@ void OptSetup() {
 
     // TODO: We are not using what we have input from console yet... :(
     // TODO: Remove white spaces at start and end of the string as well
+
     char read_buffer[256];
+    File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Write);
+
+    OsFileWriteF(fhandle, "@version %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+    OsFileWrite(fhandle, StringLiteral("# Made With -setup\n\n"));
+    OsFileWrite(fhandle, StringLiteral("Type=Solution;\n"));
+    OsFileWrite(fhandle, StringLiteral("Optimization=false;\n"));
 
     OsConsoleWrite("Build Directory (default: %s) #\n   > ", def.BuildDirectory.Data);
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWriteF(fhandle, "BuildDirectory=%s%s", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data, ";\n");
 
     OsConsoleWrite("Build Executable (default: %s) #\n   > ", def.Build.Data);
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWriteF(fhandle, "Build=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Defines #\n   > ");
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWriteF(fhandle, "Define=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Include Directory #\n   > ");
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWriteF(fhandle, "IncludeDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Source (default: %s) #\n   > ", def.Source.Head.Data[0].Data);
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWriteF(fhandle, "Source=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Library Directory #\n   > ");
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWriteF(fhandle, "LibraryDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Input Library #\n   > ");
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWriteF(fhandle, "Library=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("\n");
+    OsFileClose(fhandle);
 }
 
 void OptVersion() {
