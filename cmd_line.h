@@ -81,7 +81,7 @@ static void OptSetup(const char *program, const char *arg) {
     PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
 
     // We take these as default
-    // Type = Solution
+    // Type = Project
     // Optimization = false
 
     // TODO: We are not using what we have input from console yet... :(
@@ -92,7 +92,7 @@ static void OptSetup(const char *program, const char *arg) {
 
     OsFileWriteF(fhandle, "@version %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
     OsFileWrite(fhandle, StringLiteral("# Made With -setup\n\n"));
-    OsFileWrite(fhandle, StringLiteral("Type=Solution;\n"));
+    OsFileWrite(fhandle, StringLiteral("Type=Project;\n"));
     OsFileWrite(fhandle, StringLiteral("Optimization=false;\n"));
 
     OsConsoleWrite("Build Directory (default: %s) #\n   > ", def.BuildDirectory.Data);
