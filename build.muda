@@ -1,29 +1,13 @@
 @version 0.1.0
-@author ronejfourn
-# Configuration for compiler
 
-# Type, BuildDirectory, Build, Optimization may be defined only onced for each OS
-# If defined twice, last one will be used
-# Other options will be stacked 
+# Made With -setup
 
-Type = Project; # Solution or Project
-BuildDirectory = ./bin/test/folder; # String
-Build = builtByMuda; # String
-Define : ASSERTION_HANDLED DEPRECATION_HANDLED _CRT_SECURE_NO_WARNINGS; # Array of Identifiers
-Optimization = true; # Boolean
-Source : main.c; # Array of Strings
-IncludeDirectory = .; # Array of Strings
-LibraryDirectory = ; # Array of Strings
-Library = ; # Array of Strings
-@     here        hello
-
-[WINDOWS]
-# Same as above but only parse for windows
-
-[LINUX]
-# Same as above but only parse for LINUX
-
-[ALL]
-@everyone
-# Same as above but parse for every OS again
-
+Type=Solution;
+Optimization=false;
+BuildDirectory=./bin;
+Build=bootstrap;
+Defines=ASSERTION_HANDELED DEPRECATION_HANDELED;
+IncludeDirectory=;
+Source=main.c;
+LibraryDirectory=;
+Library=;
