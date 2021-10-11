@@ -32,7 +32,7 @@ static void ReadList(String_List *dst, String data){
     }
 }
 
-void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
+void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length, bool check_ver) {
     if (!data) return;
 	Memory_Arena *scratch = ThreadScratchpad();
     
@@ -41,33 +41,35 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
     Uint32 version = 0;
     Uint32 major = 0, minor = 0, patch = 0;
 
-    if (MudaParseNext(&prsr)){
-        if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
-            if (prsr.Token.Data.Tag.Value.Data){
-                if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3) {
-                    FatalError("Error: Bad file version\n");
+    if (check_ver){
+        if (MudaParseNext(&prsr)){
+            if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
+                if (prsr.Token.Data.Tag.Value.Data){
+                    if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3) {
+                        FatalError("Error: Bad file version\n");
+                    }
+                } else {
+                    FatalError("Error: Version info missing\n");
                 }
-                version = MudaMakeVersion(major, minor, patch);
             } else {
-                FatalError("Error: Version info missing\n");
+                FatalError("Error: Version tag missing at top of file\n");
             }
-        } else {
-            FatalError("Error: Version tag missing at top of file\n");
         }
-    }
+        version = MudaMakeVersion(major, minor, patch);
 
-    if (version < MUDA_BACKWARDS_COMPATIBLE_VERSION || version > MUDA_CURRENT_VERSION) {
-        String error = FmtStr(scratch, "Version %d.%d.%d not supported. \n"
-            "Minimum version supported: %d.%d.%d\n"
-            "Current version: %d.%d.%d\n",
-            major, minor, patch,
-            MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR,
-            MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR,
-            MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH,
-            MUDA_VERSION_MAJOR,
-            MUDA_VERSION_MINOR,
-            MUDA_VERSION_PATCH);
-        FatalError(error.Data);
+        if (version < MUDA_BACKWARDS_COMPATIBLE_VERSION || version > MUDA_CURRENT_VERSION) {
+            String error = FmtStr(scratch, "Version %d.%d.%d not supported. \n"
+                "Minimum version supported: %d.%d.%d\n"
+                "Current version: %d.%d.%d\n",
+                major, minor, patch,
+                MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR,
+                MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR,
+                MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH,
+                MUDA_VERSION_MAJOR,
+                MUDA_VERSION_MINOR,
+                MUDA_VERSION_PATCH);
+            FatalError(error.Data);
+        }
     }
 
     while (MudaParseNext(&prsr)) {
@@ -324,15 +326,13 @@ int main(int argc, char *argv[]) {
             Uint8 *buffer = PushSize(scratch, size + 1);
             if (OsFileRead(fp, buffer, size)) {
                 buffer[size] = 0;
-                LoadCompilerConfig(&config, buffer, size);
-            }
-            else {
+                LoadCompilerConfig(&config, buffer, size, true);
+            } else {
                 LogError("ERROR: Could not read the configuration file %s!\n", config_path.Data);
             }
 
             OsFileClose(fp);
-        }
-        else {
+        } else {
             LogError("ERROR: Could not open the configuration file %s!\n", config_path.Data);
         }
 
@@ -354,7 +354,7 @@ int main(int argc, char *argv[]) {
         ThreadContext.Allocator = MemoryArenaAllocator(scratch);
         String cmd_line = OutBuildString(&out);
         ThreadContext.Allocator = NullMemoryAllocator();
-        LoadCompilerConfig(&config, cmd_line.Data, cmd_line.Length);
+        LoadCompilerConfig(&config, cmd_line.Data, cmd_line.Length, false);
 
         EndTemporaryMemory(&temp);
     }
