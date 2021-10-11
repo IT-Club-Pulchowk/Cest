@@ -625,12 +625,3 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
-
-#include "zBase.c"
-
-#if PLATFORM_OS_WINDOWS == 1
-#include "os_windows.c"
-#endif
-#if PLATFORM_OS_LINUX == 1
-#include "os_linux.c"
-#endif

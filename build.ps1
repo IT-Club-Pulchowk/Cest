@@ -4,8 +4,8 @@
  )
 
 $OutputDirectory = "bin"
-$SourceFiles = "../main.c"
-$OutputBinary = "main.exe"
+$SourceFiles = "../build.c"
+$OutputBinary = "muda.exe"
 
 if ((Test-Path -Path $OutputDirectory) -eq $false) {
     New-Item -ItemType "directory" -Path $OutputDirectory | Out-Null
