@@ -403,28 +403,35 @@ void PrintCompilerConfig(Compiler_Config conf){
     OsConsoleWrite("\n");
 }
 
+typedef enum Muda_Option_Argument {
+    Muda_Option_Argument_Empty,
+    Muda_Option_Argument_Needed,
+    Muda_Option_Argument_Optional,
+} Muda_Option_Argument;
+
 typedef struct Muda_Option {
     String Name;
     String Desc;
-    void (*Proc)();
+    void (*Proc)(const char *);
+    Muda_Option_Argument Argument;
 } Muda_Option;
 
-void OptHelp();
-void OptDefault();
-void OptSetup();
-void OptVersion();
+void OptHelp(const char *arg);
+void OptDefault(const char *arg);
+void OptSetup(const char *arg);
+void OptVersion(const char *arg);
 
 static const Muda_Option Options[] = {
-    { StringLiteralExpand("version"), StringLiteralExpand("Check the version of Muda installed"), OptVersion },
-    { StringLiteralExpand("default"), StringLiteralExpand("Display default configuration"), OptDefault },
-    { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup },
-    { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp },
+    { StringLiteralExpand("version"), StringLiteralExpand("Check the version of Muda installed"), OptVersion, Muda_Option_Argument_Empty },
+    { StringLiteralExpand("default"), StringLiteralExpand("Display default configuration"), OptDefault, Muda_Option_Argument_Empty },
+    { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup, Muda_Option_Argument_Empty },
+    { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp, Muda_Option_Argument_Empty },
 };
 
-void OptHelp() {
+void OptHelp(const char *arg) {
     // Dont judge me pls I was bored
-    OptVersion();
-    LogInfo("Usage:\n\tpath/to/muda [-flags] [build_script]\n\n");
+    OptVersion(arg);
+    LogInfo("Usage:\n\tpath/to/muda [-flags | build_script]\n\n");
     LogInfo("Flags:\n");
 
     for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
@@ -434,7 +441,7 @@ void OptHelp() {
     LogInfo("\nRepository:\n\thttps://github.com/IT-Club-Pulchowk/muda\n\n");
 }
 
-void OptDefault() {
+void OptDefault(const char *arg) {
     LogInfo(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
     Compiler_Config def;
     CompilerConfigInit(&def);
@@ -443,8 +450,8 @@ void OptDefault() {
     LogInfo("\n");
 }
 
-void OptSetup() {
-    OptVersion();
+void OptSetup(const char *arg) {
+    OptVersion(arg);
 
     OsConsoleWrite("Muda Configuration:\n");
 
@@ -460,7 +467,7 @@ void OptSetup() {
     // TODO: Remove white spaces at start and end of the string as well
 
     char read_buffer[256];
-    File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Write);
+    File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
 
     OsFileWriteF(fhandle, "@version %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
     OsFileWrite(fhandle, StringLiteral("# Made With -setup\n\n"));
@@ -492,7 +499,7 @@ void OptSetup() {
     OsFileClose(fhandle);
 }
 
-void OptVersion() {
+void OptVersion(const char *arg) {
     LogInfo("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
     LogInfo("Muda v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
 }
@@ -504,19 +511,55 @@ int main(int argc, char *argv[]) {
 
     // If there are 2 arguments, then the 2nd argument could be options
     // Options are the strings that start with "-", we don't allow "- options", only allow "-option"
-    if (argc == 2 && argv[1][0] == '-') {
-        String option = StringMake(argv[1] + 1, strlen(argv[1] + 1));
+	if (argc > 1 && argv[1][0] == '-') {
+		String option_name = StringMake(argv[1] + 1, strlen(argv[1] + 1));
 
-        for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
-            if (StrMatchCaseInsensitive(option, Options[opt_i].Name)) {
-                Options[opt_i].Proc();
-                return 0;
-            }
-        }
+		for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
+			if (StrMatchCaseInsensitive(option_name, Options[opt_i].Name)) {
+				const Muda_Option *const option = &Options[opt_i];
 
-        LogError("ERROR: Unrecognized option: %s\n", option.Data);
-        return 1;
-    }
+				switch (option->Argument) {
+				case Muda_Option_Argument_Empty: {
+					if (argc == 2) {
+						option->Proc(NULL);
+					}
+					else {
+						Memory_Arena *scratch = ThreadScratchpad();
+						String error = FmtStr(scratch, "ERROR: %s does not take any argument!\n", option_name.Data);
+						FatalError(error.Data);
+					}
+				} break;
+
+				case Muda_Option_Argument_Needed: {
+					if (argc == 3) {
+						option->Proc(argv[2]);
+					}
+					else {
+						Memory_Arena *scratch = ThreadScratchpad();
+						String error = FmtStr(scratch, "ERROR: %s requires single argument!\n", option_name.Data);
+						FatalError(error.Data);
+					}
+				} break;
+
+				case Muda_Option_Argument_Optional: {
+					if (argc <= 3) {
+						option->Proc(argc == 3 ? argv[2] : NULL);
+					}
+					else {
+						Memory_Arena *scratch = ThreadScratchpad();
+						String error = FmtStr(scratch, "ERROR: %s accepts at most one argument!\n", option_name.Data);
+						FatalError(error.Data);
+					}
+				} break;
+				}
+
+				return 0;
+			}
+		}
+
+		LogError("ERROR: Unrecognized option: %s\n", option_name.Data);
+		return 1;
+	}
 
 	Compiler_Kind compiler = OsDetectCompiler();
     if (compiler == Compiler_Kind_NULL) {
