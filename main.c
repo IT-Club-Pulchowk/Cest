@@ -460,33 +460,26 @@ void OptSetup() {
     // TODO: Remove white spaces at start and end of the string as well
     char read_buffer[256];
 
-    OsConsoleWrite("Build Directory (default: %s) #\n", def.BuildDirectory.Data);
+    OsConsoleWrite("Build Directory (default: %s) #\n   > ", def.BuildDirectory.Data);
     OsConsoleRead(read_buffer, sizeof(read_buffer));
-    OsConsoleWrite("\n");
 
-    OsConsoleWrite("Build Executable (default: %s) #\n", def.Build.Data);
+    OsConsoleWrite("Build Executable (default: %s) #\n   > ", def.Build.Data);
     OsConsoleRead(read_buffer, sizeof(read_buffer));
-    OsConsoleWrite("\n");
 
-    OsConsoleWrite("Defines #\n");
+    OsConsoleWrite("Defines #\n   > ");
     OsConsoleRead(read_buffer, sizeof(read_buffer));
-    OsConsoleWrite("\n");
 
-    OsConsoleWrite("Include Directory #\n");
+    OsConsoleWrite("Include Directory #\n   > ");
     OsConsoleRead(read_buffer, sizeof(read_buffer));
-    OsConsoleWrite("\n");
 
-    OsConsoleWrite("Source (default: %s) #\n", def.Source.Head.Data[0].Data);
+    OsConsoleWrite("Source (default: %s) #\n   > ", def.Source.Head.Data[0].Data);
     OsConsoleRead(read_buffer, sizeof(read_buffer));
-    OsConsoleWrite("\n");
 
-    OsConsoleWrite("Library Directory #\n");
+    OsConsoleWrite("Library Directory #\n   > ");
     OsConsoleRead(read_buffer, sizeof(read_buffer));
-    OsConsoleWrite("\n");
 
-    OsConsoleWrite("Input Library #\n");
+    OsConsoleWrite("Input Library #\n   > ");
     OsConsoleRead(read_buffer, sizeof(read_buffer));
-    OsConsoleWrite("\n");
 
     OsConsoleWrite("\n");
 }
