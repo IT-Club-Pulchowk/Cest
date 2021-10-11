@@ -241,13 +241,7 @@ String OsConsoleRead(char *buffer, Uint32 size) {
         buffer [len - 1] = 0;
     __fpurge(stdin);
 
-    String out;
-    Memory_Arena *scratch = ThreadScratchpad();
-    out.Data = PushSize(scratch, len);
-    memcpy(out.Data, buffer, len);
-    out.Length = len;
-
-    return out;
+    return StringMake(buffer, len);
 }
 
 bool OsWriteOrReplaceFile(String file, void *buffer, Uint32 length) {
