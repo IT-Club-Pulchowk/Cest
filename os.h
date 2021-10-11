@@ -1,6 +1,8 @@
 #pragma once
 #include "zBase.h"
 
+void OsProcessExit(int code);
+
 typedef enum File_Attribute {
 	File_Attribute_Archive = 0x1,
 	File_Attribute_Compressed = 0x2,

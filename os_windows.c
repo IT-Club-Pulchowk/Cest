@@ -26,6 +26,10 @@ static wchar_t *UnicodeToWideCharLength(const char *msg, int length, int *out_le
 	return result;
 }
 
+void OsProcessExit(int code) {
+	ExitProcess((UINT)code);
+}
+
 static void ConvertWin32FileInfo(File_Info *dst, WIN32_FIND_DATAW *src, String root) {
 	ULARGE_INTEGER converter;
 

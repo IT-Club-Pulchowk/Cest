@@ -9,6 +9,10 @@
 #include <stdlib.h>
 #include <stdio_ext.h>
 
+void OsProcessExit(int code) {
+    exit(0);
+}
+
 static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * name, const int name_len){
     struct statx stats;
     statx(dirfd, (char *)Path.Data, 0x100, STATX_ALL, &stats);

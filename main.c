@@ -3,8 +3,7 @@
 #include "stream.h"
 #include "muda_parser.h"
 #include "lenstring.h"
-
-#include <stdlib.h>
+#include "cmd_line.h"
 
 void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
     OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
@@ -331,7 +330,7 @@ static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list li
 
 static void FatalErrorProcedure(const char *message) {
     OsConsoleWrite("%s", message);
-    exit(1);
+    OsProcessExit(0);
 }
 
 void PrintCompilerConfig(Compiler_Config conf){
