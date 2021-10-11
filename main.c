@@ -57,9 +57,9 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
 	version = MudaMakeVersion(major, minor, patch);
 
 	if (version < MUDA_BACKWARDS_COMPATIBLE_VERSION || version > MUDA_CURRENT_VERSION) {
-		String error = FmtStr(scratch, "Version %d.%d.%d not supported. \n"
-			"Minimum version supported: %d.%d.%d\n"
-			"Current version: %d.%d.%d\n",
+		String error = FmtStr(scratch, "Version %u.%u.%u not supported. \n"
+			"Minimum version supported: %u.%u.%u\n"
+			"Current version: %u.%u.%u\n\n",
 			major, minor, patch,
 			MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR,
 			MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR,
