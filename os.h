@@ -83,3 +83,5 @@ void OsConsoleWrite(const char *fmt, ...);
 void OsConsoleWriteV(const char *fmt, va_list list);
 
 Uint32 OsConsoleRead(char *buffer, Uint32 size);
+
+bool OsWriteOrReplaceFile(String file, void *buffer, Uint32 length);

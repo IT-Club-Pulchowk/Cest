@@ -398,3 +398,17 @@ Uint32 OsConsoleRead(char *buffer, Uint32 size) {
 
 	return len;
 }
+
+bool OsWriteOrReplaceFile(String file, void *buffer, Uint32 length) {
+	HANDLE fh = CreateFileW(UnicodeToWideChar(file.Data, file.Length), GENERIC_WRITE, 
+		FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+	if (fh != INVALID_HANDLE_VALUE) {
+		DWORD written;
+		bool result = WriteFile(fh, buffer, length, &written, NULL);
+		CloseHandle(fh);
+		return result;
+	}
+
+	return false;
+}

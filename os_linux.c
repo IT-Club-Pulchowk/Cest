@@ -250,3 +250,13 @@ Uint32 OsConsoleRead(char *buffer, Uint32 size) {
 
 	return len;
 }
+
+bool OsWriteOrReplaceFile(String file, void *buffer, Uint32 length) {
+    int fd = open((char *)file.Data, O_WRONLY | O_CREAT);
+    if (fd != -1) {
+        bool result = (write(fd, buffer, length) != -1);
+        close(fd);
+        return result;
+    }
+    return false;
+}
