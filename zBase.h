@@ -135,9 +135,7 @@
 #define TriggerBreakpoint() ((int *)0) = 0
 #endif
 
-#if PLATFORM_OS_WINDOWS == 1
-#define INLINE_PROCEDURE inline
-#elif PLATFORM_OS_LINUX == 1
+#if defined(COMPILER_GCC)
 #define INLINE_PROCEDURE static inline
 #else
 #define INLINE_PROCEDURE inline
