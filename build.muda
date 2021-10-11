@@ -2,11 +2,11 @@
 
 # Made With -setup
 
-Type=Solution;
+Type=Project;
 Optimization=false;
 BuildDirectory=./bin;
 Build=bootstrap;
-Defines=ASSERTION_HANDELED DEPRECATION_HANDELED;
+Define=ASSERTION_HANDLED DEPRECATION_HANDLED;
 IncludeDirectory=;
 Source=main.c;
 LibraryDirectory=;

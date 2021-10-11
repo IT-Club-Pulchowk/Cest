@@ -474,7 +474,7 @@ void OptSetup() {
     OsFileWriteF(fhandle, "Build=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Defines #\n   > ");
-    OsFileWriteF(fhandle, "Defines=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    OsFileWriteF(fhandle, "Define=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Include Directory #\n   > ");
     OsFileWriteF(fhandle, "IncludeDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
