@@ -8,7 +8,7 @@ BuildDirectory=./bin;
 Build=bootstrap;
 Define=ASSERTION_HANDLED DEPRECATION_HANDLED;
 IncludeDirectory=;
-Source=build.c;
+Source=./src/build.c;
 LibraryDirectory=;
 Library=;
  

@@ -4,7 +4,7 @@
  )
 
 $OutputDirectory = "bin"
-$SourceFiles = "../build.c"
+$SourceFiles = "../src/build.c"
 $OutputBinary = "muda.exe"
 
 if ((Test-Path -Path $OutputDirectory) -eq $false) {
