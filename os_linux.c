@@ -10,7 +10,7 @@
 #include <dirent.h>
 #include <stdlib.h>
 #include <string.h>
-#include <termios.h>
+#include <stdio_ext.h>
 
 static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * name, const int name_len){
     struct statx stats;
@@ -175,7 +175,7 @@ File_Handle OsOpenFile(const String path) {
 
 bool OsFileHandleIsValid(File_Handle handle) {
     int fd = (int)handle.PlatformFileHandle;
-	return  fd != 0;
+	return  fd == -1;
 }
 
 Ptrsize OsGetFileSize(File_Handle handle) {
@@ -234,19 +234,18 @@ void OsConsoleWriteV(const char *fmt, va_list list) {
     vprintf(fmt, list);
 }
 
-Uint32 OsConsoleRead(char *buffer, Uint32 size) {
-    struct termios raw;
-    tcgetattr(STDIN_FILENO, &raw);
-    raw.c_lflag &= ~(ICANON);
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-	Uint32 len = 0;
-    char c = 0;
-    memset(buffer, 0, size + 1);
+String OsConsoleRead(char *buffer, Uint32 size) {
+    fgets(buffer, size, stdin);
+	Uint32 len = strlen(buffer);
+    if (buffer [len - 1] == '\n')
+        buffer [len - 1] = 0;
+    __fpurge(stdin);
 
-    while (read(STDIN_FILENO, &c, 1) && c != '\n' && len < size){
-        *(buffer ++) = c;
-        len ++;
-    }
+    String out;
+    Memory_Arena *scratch = ThreadScratchpad();
+    out.Data = PushSize(scratch, len);
+    memcpy(out.Data, buffer, len);
+    out.Length = len;
 
-	return len;
+    return out;
 }
