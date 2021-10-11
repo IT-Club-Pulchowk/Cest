@@ -8,6 +8,6 @@ BuildDirectory=./bin;
 Build=bootstrap;
 Define=ASSERTION_HANDLED DEPRECATION_HANDLED;
 IncludeDirectory=;
-Source=main.c;
+Source=build.c;
 LibraryDirectory=;
 Library=;
