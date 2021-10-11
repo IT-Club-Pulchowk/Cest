@@ -412,46 +412,65 @@ typedef enum Muda_Option_Argument {
 typedef struct Muda_Option {
     String Name;
     String Desc;
-    void (*Proc)(const char *);
+    void (*Proc)(const char *, const char *);
     Muda_Option_Argument Argument;
 } Muda_Option;
 
-void OptHelp(const char *arg);
-void OptDefault(const char *arg);
-void OptSetup(const char *arg);
-void OptVersion(const char *arg);
+void OptHelp(const char *program, const char *arg);
+void OptDefault(const char *program, const char *arg);
+void OptSetup(const char *program, const char *arg);
+void OptVersion(const char *program, const char *arg);
 
 static const Muda_Option Options[] = {
     { StringLiteralExpand("version"), StringLiteralExpand("Check the version of Muda installed"), OptVersion, Muda_Option_Argument_Empty },
     { StringLiteralExpand("default"), StringLiteralExpand("Display default configuration"), OptDefault, Muda_Option_Argument_Empty },
     { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup, Muda_Option_Argument_Empty },
-    { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp, Muda_Option_Argument_Empty },
+    { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp, Muda_Option_Argument_Optional },
 };
 
-void OptHelp(const char *arg) {
-    // Dont judge me pls I was bored
-    OptVersion(arg);
-    LogInfo("Usage:\n\tpath/to/muda [-flags | build_script]\n\n");
-    LogInfo("Flags:\n");
+void OptHelp(const char *program, const char *arg) {
+    if (arg) {
+        String name = StringMake(arg, (Int64)strlen(arg));
 
-    for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
-        LogInfo("\t-%-10s: %s\n", Options[opt_i].Name.Data, Options[opt_i].Desc.Data);
+        int command_index = -1;
+        for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
+            if (StrMatchCaseInsensitive(name, Options[opt_i].Name)) {
+                command_index = opt_i;
+                break;
+            }
+        }
+
+        if (command_index != -1)
+            OsConsoleWrite("   %s : %s\n\n", Options[command_index].Name.Data, Options[command_index].Desc.Data);
+        else
+            OsConsoleWrite("   \"%s\" command is not present!\n"
+                "   Use: %s -help for list of all commands present.\n\n", arg, program);
     }
+    else {
+        // Dont judge me pls I was bored
+        OptVersion(program, arg);
+        OsConsoleWrite("Usage:\n\tpath/to/muda [-flags | build_script]\n\n");
+        OsConsoleWrite("Flags:\n");
 
-    LogInfo("\nRepository:\n\thttps://github.com/IT-Club-Pulchowk/muda\n\n");
+        for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
+            OsConsoleWrite("\t-%-10s: %s\n", Options[opt_i].Name.Data, Options[opt_i].Desc.Data);
+        }
+
+        OsConsoleWrite("\nRepository:\n\thttps://github.com/IT-Club-Pulchowk/muda\n\n");
+    }
 }
 
-void OptDefault(const char *arg) {
-    LogInfo(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
+void OptDefault(const char *program, const char *arg) {
+    OsConsoleWrite(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
     Compiler_Config def;
     CompilerConfigInit(&def);
     PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
     PrintCompilerConfig(def);
-    LogInfo("\n");
+    OsConsoleWrite("\n");
 }
 
-void OptSetup(const char *arg) {
-    OptVersion(arg);
+void OptSetup(const char *program, const char *arg) {
+    OptVersion(program, arg);
 
     OsConsoleWrite("Muda Configuration:\n");
 
@@ -499,9 +518,9 @@ void OptSetup(const char *arg) {
     OsFileClose(fhandle);
 }
 
-void OptVersion(const char *arg) {
-    LogInfo("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
-    LogInfo("Muda v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+void OptVersion(const char *program, const char *arg) {
+    OsConsoleWrite("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
+    OsConsoleWrite("Muda v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
 }
 
 int main(int argc, char *argv[]) {
@@ -521,7 +540,7 @@ int main(int argc, char *argv[]) {
 				switch (option->Argument) {
 				case Muda_Option_Argument_Empty: {
 					if (argc == 2) {
-						option->Proc(NULL);
+						option->Proc(argv[0], NULL);
 					}
 					else {
 						Memory_Arena *scratch = ThreadScratchpad();
@@ -532,7 +551,7 @@ int main(int argc, char *argv[]) {
 
 				case Muda_Option_Argument_Needed: {
 					if (argc == 3) {
-						option->Proc(argv[2]);
+						option->Proc(argv[0], argv[2]);
 					}
 					else {
 						Memory_Arena *scratch = ThreadScratchpad();
@@ -543,7 +562,7 @@ int main(int argc, char *argv[]) {
 
 				case Muda_Option_Argument_Optional: {
 					if (argc <= 3) {
-						option->Proc(argc == 3 ? argv[2] : NULL);
+						option->Proc(argv[0], argc == 3 ? argv[2] : NULL);
 					}
 					else {
 						Memory_Arena *scratch = ThreadScratchpad();
