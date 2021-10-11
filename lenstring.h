@@ -188,10 +188,9 @@ INLINE_PROCEDURE bool StringListIsEmpty(String_List *list) {
 }
 
 INLINE_PROCEDURE void StringListAdd(String_List *dst, String string) {
-	Memory_Arena *scratch = ThreadScratchpad();
 	if (dst->Used == MAX_STRING_NODE_DATA_COUNT) {
 		dst->Used = 0;
-		dst->Tail->Next = PushSize(scratch, sizeof(String_List_Node));
+		dst->Tail->Next = MemoryAllocate(sizeof(String_List_Node), &ThreadContext.Allocator);
 		dst->Tail = dst->Tail->Next;
 		dst->Tail->Next = NULL;
 	}
@@ -199,6 +198,7 @@ INLINE_PROCEDURE void StringListAdd(String_List *dst, String string) {
 	dst->Used++;
 }
 
+#define StringListInit StringListClear
 INLINE_PROCEDURE void StringListClear(String_List *lst) {
 	lst->Used = 0;
 	lst->Head.Next = NULL;

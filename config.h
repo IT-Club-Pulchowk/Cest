@@ -24,11 +24,11 @@ typedef struct Compiler_Config {
 
 INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
     memset(config, 0, sizeof(*config));
-    config->Defines.Tail = &config->Defines.Head;
-    config->IncludeDirectory.Tail = &config->IncludeDirectory.Head;
-    config->Source.Tail = &config->Source.Head;
-    config->LibraryDirectory.Tail = &config->Source.Head;
-    config->Library.Tail = &config->Source.Head;
+    StringListInit(&config->Defines);
+    StringListInit(&config->IncludeDirectory);
+    StringListInit(&config->Source);
+    StringListInit(&config->LibraryDirectory);
+    StringListInit(&config->Library);
 }
 
 INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {

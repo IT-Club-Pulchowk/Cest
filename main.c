@@ -13,8 +13,6 @@ static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, vo
 }
 
 static void ReadList(String_List *dst, String data){
-    Memory_Arena *scratch = ThreadScratchpad();
-
     Int64 prev_pos = 0;
     Int64 curr_pos = 0;
 
@@ -28,7 +26,7 @@ static void ReadList(String_List *dst, String data){
         while (curr_pos < data.Length && !isspace(data.Data[curr_pos])) 
             curr_pos += 1;
 
-        StringListAdd(dst, StrDuplicateArena(StringMake(data.Data + prev_pos, curr_pos - prev_pos), scratch));
+        StringListAdd(dst, StrDuplicate(StringMake(data.Data + prev_pos, curr_pos - prev_pos)));
     }
 }
 
@@ -93,13 +91,11 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length, bool c
             config->Optimization = StrMatch(prsr.Token.Data.Property.Value, StringLiteral("true"));
 
         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("BuildDirectory"))) {
-            config->BuildDirectory.Length = prsr.Token.Data.Property.Value.Length;
-            config->BuildDirectory.Data = prsr.Token.Data.Property.Value.Data;
+            config->BuildDirectory = StrDuplicate(prsr.Token.Data.Property.Value);
         }
 
         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Build"))) {
-            config->Build.Length = prsr.Token.Data.Property.Value.Length;
-            config->Build.Data = prsr.Token.Data.Property.Value.Data;
+            config->Build = StrDuplicate(prsr.Token.Data.Property.Value);
         }
 
         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Define")))
@@ -281,7 +277,9 @@ static void FatalErrorProcedure(const char *message) {
 //
 
 int main(int argc, char *argv[]) {
-    InitThreadContext(NullMemoryAllocator(), MegaBytes(512), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
+    Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
+    InitThreadContext(MemoryArenaAllocator(&arena), MegaBytes(512), 
+        (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
     OsSetupConsole();
 
