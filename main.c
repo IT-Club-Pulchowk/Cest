@@ -5,57 +5,12 @@
 #include "lenstring.h"
 #include "cmd_line.h"
 
-void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
-	TriggerBreakpoint();
-}
-
-void DeprecateHandle(const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
-}
-
 static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, void *user_context) {
 	if (info->Atribute & File_Attribute_Hidden) return Directory_Iteration_Continue;
 	if (StrMatch(info->Name, StringLiteral("bin"))) return Directory_Iteration_Continue;
 	LogInfo("%s - %zu bytes\n", info->Path.Data, info->Size);
 	return Directory_Iteration_Recurse;
 }
-
-typedef enum Compile_Type {
-	Compile_Type_Project,
-	Compile_Type_Solution,
-} Compile_Type;
-
-typedef struct Compiler_Config {
-	Compile_Type Type;
-	bool Optimization;
-	String Build;
-	String BuildDirectory;
-	String_List Defines;
-	String_List IncludeDirectory;
-	String_List Source;
-	String_List LibraryDirectory;
-	String_List Library;
-} Compiler_Config;
-
-#define MUDA_VERSION_MAJOR 0
-#define MUDA_VERSION_MINOR 1
-#define MUDA_VERSION_PATCH 0
-
-#define MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR 0
-#define MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR 1
-#define MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH 0
-
-INLINE_PROCEDURE Uint32 MudaMakeVersion(Uint32 major, Uint32 minor, Uint32 patch) {
-    Assert(major <= UINT8_MAX && minor <= UINT8_MAX && patch <= UINT16_MAX);
-    Uint32 version = patch | (minor << 16) | (major << 24);
-    return version;
-}
-
-#define MUDA_CURRENT_VERSION MudaMakeVersion(MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH)
-#define MUDA_BACKWARDS_COMPATIBLE_VERSION MudaMakeVersion(MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR, \
-                                                            MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR, \
-                                                            MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH)
 
 static void ReadList(String_List *dst, String data){
     Memory_Arena *scratch = ThreadScratchpad();
@@ -74,33 +29,6 @@ static void ReadList(String_List *dst, String data){
             curr_pos += 1;
 
         StringListAdd(dst, StrDuplicateArena(StringMake(data.Data + prev_pos, curr_pos - prev_pos), scratch));
-    }
-}
-
-void CompilerConfigInit(Compiler_Config *config) {
-    memset(config, 0, sizeof(*config));
-    config->Defines.Tail = &config->Defines.Head;
-    config->IncludeDirectory.Tail = &config->IncludeDirectory.Head;
-    config->Source.Tail = &config->Source.Head;
-    config->LibraryDirectory.Tail = &config->Source.Head;
-    config->Library.Tail = &config->Source.Head;
-}
-
-void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {
-    if (config->BuildDirectory.Length == 0) {
-        config->BuildDirectory = StringLiteral("./bin");
-    }
-
-    if (config->Build.Length == 0) {
-        config->Build = StringLiteral("output");
-    }
-
-    if (StringListIsEmpty(&config->Source)) {
-        StringListAdd(&config->Source, StringLiteral("*.c"));
-    }
-
-    if (compiler == Compiler_Kind_CL && StringListIsEmpty(&config->Defines)) {
-        StringListAdd(&config->Defines, StringLiteral("_CRT_SECURE_NO_WARNINGS"));
     }
 }
 
@@ -323,6 +251,19 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	EndTemporaryMemory(&temp);
 }
 
+//
+// Base setup
+//
+
+void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
+    OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
+    TriggerBreakpoint();
+}
+
+void DeprecateHandle(const char *file, int line, const char *proc) {
+    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
+}
+
 static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
     void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
     OsConsoleOutV(fp, fmt, list);
@@ -333,221 +274,21 @@ static void FatalErrorProcedure(const char *message) {
     OsProcessExit(0);
 }
 
-void PrintCompilerConfig(Compiler_Config conf){
-    OsConsoleWrite("\nType                : %s", conf.Type == Compile_Type_Project ? "Project" : "Solution");
-    OsConsoleWrite("\nOptimization        : %s", conf.Optimization ? "True" : "False");
-    OsConsoleWrite("\nBuild               : %s", conf.Build.Data);
-    OsConsoleWrite("\nBuild Directory     : %s", conf.BuildDirectory.Data);
-
-    OsConsoleWrite("\nSource              : ");
-    for (String_List_Node* ntr = &conf.Source.Head; ntr && conf.Source.Used; ntr = ntr->Next){
-        int len = ntr->Next ? 8 : conf.Source.Used;
-        for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
-    }
-    OsConsoleWrite("\nDefines             : ");
-    for (String_List_Node* ntr = &conf.Defines.Head; ntr && conf.Defines.Used; ntr = ntr->Next){
-        int len = ntr->Next ? 8 : conf.Defines.Used;
-        for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
-    }
-    OsConsoleWrite("\nInclude Directories : ");
-    for (String_List_Node* ntr = &conf.IncludeDirectory.Head; ntr && conf.IncludeDirectory.Used; ntr = ntr->Next){
-        int len = ntr->Next ? 8 : conf.IncludeDirectory.Used;
-        for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
-    }
-    OsConsoleWrite("\nLibrary Directories : ");
-    for (String_List_Node* ntr = &conf.LibraryDirectory.Head; ntr && conf.LibraryDirectory.Used; ntr = ntr->Next){
-        int len = ntr->Next ? 8 : conf.LibraryDirectory.Used;
-        for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
-    }
-    OsConsoleWrite("\nLibraries           : ");
-    for (String_List_Node* ntr = &conf.Library.Head; ntr && conf.Library.Used; ntr = ntr->Next){
-        int len = ntr->Next ? 8 : conf.Library.Used;
-        for (int i = 0; i < len; i ++) OsConsoleWrite("%s ", ntr->Data[i].Data);
-    }
-    OsConsoleWrite("\n");
-}
-
-typedef enum Muda_Option_Argument {
-    Muda_Option_Argument_Empty,
-    Muda_Option_Argument_Needed,
-    Muda_Option_Argument_Optional,
-} Muda_Option_Argument;
-
-typedef struct Muda_Option {
-    String Name;
-    String Desc;
-    void (*Proc)(const char *, const char *);
-    Muda_Option_Argument Argument;
-} Muda_Option;
-
-void OptHelp(const char *program, const char *arg);
-void OptDefault(const char *program, const char *arg);
-void OptSetup(const char *program, const char *arg);
-void OptVersion(const char *program, const char *arg);
-
-static const Muda_Option Options[] = {
-    { StringLiteralExpand("version"), StringLiteralExpand("Check the version of Muda installed"), OptVersion, Muda_Option_Argument_Empty },
-    { StringLiteralExpand("default"), StringLiteralExpand("Display default configuration"), OptDefault, Muda_Option_Argument_Empty },
-    { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup, Muda_Option_Argument_Empty },
-    { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp, Muda_Option_Argument_Optional },
-};
-
-void OptHelp(const char *program, const char *arg) {
-    if (arg) {
-        String name = StringMake(arg, (Int64)strlen(arg));
-
-        int command_index = -1;
-        for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
-            if (StrMatchCaseInsensitive(name, Options[opt_i].Name)) {
-                command_index = opt_i;
-                break;
-            }
-        }
-
-        if (command_index != -1)
-            OsConsoleWrite("   %s : %s\n\n", Options[command_index].Name.Data, Options[command_index].Desc.Data);
-        else
-            OsConsoleWrite("   \"%s\" command is not present!\n"
-                "   Use: %s -help for list of all commands present.\n\n", arg, program);
-    }
-    else {
-        // Dont judge me pls I was bored
-        OptVersion(program, arg);
-        OsConsoleWrite("Usage:\n\tpath/to/muda [-flags | build_script]\n\n");
-        OsConsoleWrite("Flags:\n");
-
-        for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
-            OsConsoleWrite("\t-%-10s: %s\n", Options[opt_i].Name.Data, Options[opt_i].Desc.Data);
-        }
-
-        OsConsoleWrite("\nRepository:\n\thttps://github.com/IT-Club-Pulchowk/muda\n\n");
-    }
-}
-
-void OptDefault(const char *program, const char *arg) {
-    OsConsoleWrite(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
-    Compiler_Config def;
-    CompilerConfigInit(&def);
-    PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
-    PrintCompilerConfig(def);
-    OsConsoleWrite("\n");
-}
-
-void OptSetup(const char *program, const char *arg) {
-    OptVersion(program, arg);
-
-    OsConsoleWrite("Muda Configuration:\n");
-
-    Compiler_Config def;
-    CompilerConfigInit(&def);
-    PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
-
-    // We take these as default
-    // Type = Solution
-    // Optimization = false
-
-    // TODO: We are not using what we have input from console yet... :(
-    // TODO: Remove white spaces at start and end of the string as well
-
-    char read_buffer[256];
-    File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
-
-    OsFileWriteF(fhandle, "@version %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
-    OsFileWrite(fhandle, StringLiteral("# Made With -setup\n\n"));
-    OsFileWrite(fhandle, StringLiteral("Type=Solution;\n"));
-    OsFileWrite(fhandle, StringLiteral("Optimization=false;\n"));
-
-    OsConsoleWrite("Build Directory (default: %s) #\n   > ", def.BuildDirectory.Data);
-    OsFileWriteF(fhandle, "BuildDirectory=%s%s", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data, ";\n");
-
-    OsConsoleWrite("Build Executable (default: %s) #\n   > ", def.Build.Data);
-    OsFileWriteF(fhandle, "Build=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
-
-    OsConsoleWrite("Defines #\n   > ");
-    OsFileWriteF(fhandle, "Define=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
-
-    OsConsoleWrite("Include Directory #\n   > ");
-    OsFileWriteF(fhandle, "IncludeDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
-
-    OsConsoleWrite("Source (default: %s) #\n   > ", def.Source.Head.Data[0].Data);
-    OsFileWriteF(fhandle, "Source=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
-
-    OsConsoleWrite("Library Directory #\n   > ");
-    OsFileWriteF(fhandle, "LibraryDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
-
-    OsConsoleWrite("Input Library #\n   > ");
-    OsFileWriteF(fhandle, "Library=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
-
-    OsConsoleWrite("\n");
-    OsFileClose(fhandle);
-}
-
-void OptVersion(const char *program, const char *arg) {
-    OsConsoleWrite("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
-    OsConsoleWrite("Muda v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
-}
+//
+//
+//
 
 int main(int argc, char *argv[]) {
     InitThreadContext(NullMemoryAllocator(), MegaBytes(512), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
     OsSetupConsole();
 
-    // If there are 2 arguments, then the 2nd argument could be options
-    // Options are the strings that start with "-", we don't allow "- options", only allow "-option"
-	if (argc > 1 && argv[1][0] == '-') {
-		String option_name = StringMake(argv[1] + 1, strlen(argv[1] + 1));
-
-		for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
-			if (StrMatchCaseInsensitive(option_name, Options[opt_i].Name)) {
-				const Muda_Option *const option = &Options[opt_i];
-
-				switch (option->Argument) {
-				case Muda_Option_Argument_Empty: {
-					if (argc == 2) {
-						option->Proc(argv[0], NULL);
-					}
-					else {
-						Memory_Arena *scratch = ThreadScratchpad();
-						String error = FmtStr(scratch, "ERROR: %s does not take any argument!\n", option_name.Data);
-						FatalError(error.Data);
-					}
-				} break;
-
-				case Muda_Option_Argument_Needed: {
-					if (argc == 3) {
-						option->Proc(argv[0], argv[2]);
-					}
-					else {
-						Memory_Arena *scratch = ThreadScratchpad();
-						String error = FmtStr(scratch, "ERROR: %s requires single argument!\n", option_name.Data);
-						FatalError(error.Data);
-					}
-				} break;
-
-				case Muda_Option_Argument_Optional: {
-					if (argc <= 3) {
-						option->Proc(argv[0], argc == 3 ? argv[2] : NULL);
-					}
-					else {
-						Memory_Arena *scratch = ThreadScratchpad();
-						String error = FmtStr(scratch, "ERROR: %s accepts at most one argument!\n", option_name.Data);
-						FatalError(error.Data);
-					}
-				} break;
-				}
-
-				return 0;
-			}
-		}
-
-		LogError("ERROR: Unrecognized option: %s\n", option_name.Data);
-		return 1;
-	}
+    if (HandleCommandLineArguments(argc, argv))
+        return 0;
 
 	Compiler_Kind compiler = OsDetectCompiler();
-    if (compiler == Compiler_Kind_NULL) {
+    if (compiler == Compiler_Kind_NULL)
         return 1;
-    }
 
     Compiler_Config config;
     CompilerConfigInit(&config);
