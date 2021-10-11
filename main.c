@@ -27,19 +27,6 @@ typedef enum Compile_Type {
 	Compile_Type_Solution,
 } Compile_Type;
 
-#define MAX_NODE_DATA_COUNT 8
-
-typedef struct String_List_Node {
-    String Data[MAX_NODE_DATA_COUNT];
-    struct String_List_Node *Next;
-}String_List_Node;
-
-typedef struct String_List {
-    String_List_Node Head;
-    String_List_Node *Tail;
-    Uint32 Used;
-}String_List;
-
 typedef struct Compiler_Config {
 	Compile_Type Type;
 	bool Optimization;
@@ -71,28 +58,6 @@ INLINE_PROCEDURE Uint32 MudaMakeVersion(Uint32 major, Uint32 minor, Uint32 patch
                                                             MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR, \
                                                             MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH)
 
-static bool IsListEmpty(String_List *list) {
-    return list->Head.Next == NULL && list->Used == 0;
-}
-
-static void AddToList(String_List *dst, String string){
-    Memory_Arena *scratch = ThreadScratchpad();
-    if (dst->Used == MAX_NODE_DATA_COUNT){
-        dst->Used = 0;
-        dst->Tail->Next = PushSize(scratch, sizeof(String_List_Node));
-        dst->Tail = dst->Tail->Next;
-        dst->Tail->Next = NULL;
-    }
-    dst->Tail->Data[dst->Used] = string;
-    dst->Used++;
-}
-
-static void ClearList(String_List *lst){
-    lst->Used = 0;
-    lst->Head.Next = NULL;
-    lst->Tail = &lst->Head;
-}
-
 static void ReadList(String_List *dst, String data){
     Memory_Arena *scratch = ThreadScratchpad();
 
@@ -109,7 +74,7 @@ static void ReadList(String_List *dst, String data){
         while (curr_pos < data.Length && !isspace(data.Data[curr_pos])) 
             curr_pos += 1;
 
-        AddToList(dst, StrDuplicateArena(StringMake(data.Data + prev_pos, curr_pos - prev_pos), scratch));
+        StringListAdd(dst, StrDuplicateArena(StringMake(data.Data + prev_pos, curr_pos - prev_pos), scratch));
     }
 }
 
@@ -131,12 +96,12 @@ void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) 
         config->Build = StringLiteral("output");
     }
 
-    if (IsListEmpty(&config->Source)) {
-        AddToList(&config->Source, StringLiteral("*.c"));
+    if (StringListIsEmpty(&config->Source)) {
+        StringListAdd(&config->Source, StringLiteral("*.c"));
     }
 
-    if (compiler == Compiler_Kind_CL && IsListEmpty(&config->Defines)) {
-        AddToList(&config->Defines, StringLiteral("_CRT_SECURE_NO_WARNINGS"));
+    if (compiler == Compiler_Kind_CL && StringListIsEmpty(&config->Defines)) {
+        StringListAdd(&config->Defines, StringLiteral("_CRT_SECURE_NO_WARNINGS"));
     }
 }
 

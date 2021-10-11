@@ -5,6 +5,20 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#define MAX_STRING_NODE_DATA_COUNT 8
+
+typedef struct String_List_Node {
+	String Data[MAX_STRING_NODE_DATA_COUNT];
+	struct String_List_Node *Next;
+} String_List_Node;
+
+typedef struct String_List {
+	String_List_Node Head;
+	String_List_Node *Tail;
+	Uint32 Used;
+} String_List;
+
+
 INLINE_PROCEDURE String FmtStrV(Memory_Arena *arena, const char *fmt, va_list list) {
 	va_list args;
 	va_copy(args, list);
@@ -167,4 +181,26 @@ INLINE_PROCEDURE Int64 StrReverseFindCharacter(String str, Uint8 key, Int64 pos)
 	for (Int64 index = Clamp(0, str.Length - 1, pos); index >= 0; --index)
 		if (str.Data[index] == key) return index;
 	return -1;
+}
+
+INLINE_PROCEDURE bool StringListIsEmpty(String_List *list) {
+	return list->Head.Next == NULL && list->Used == 0;
+}
+
+INLINE_PROCEDURE void StringListAdd(String_List *dst, String string) {
+	Memory_Arena *scratch = ThreadScratchpad();
+	if (dst->Used == MAX_STRING_NODE_DATA_COUNT) {
+		dst->Used = 0;
+		dst->Tail->Next = PushSize(scratch, sizeof(String_List_Node));
+		dst->Tail = dst->Tail->Next;
+		dst->Tail->Next = NULL;
+	}
+	dst->Tail->Data[dst->Used] = string;
+	dst->Used++;
+}
+
+INLINE_PROCEDURE void StringListClear(String_List *lst) {
+	lst->Used = 0;
+	lst->Head.Next = NULL;
+	lst->Tail = &lst->Head;
 }
