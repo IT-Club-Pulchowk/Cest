@@ -460,29 +460,51 @@ void OptSetup() {
     // TODO: Remove white spaces at start and end of the string as well
 
     char read_buffer[256];
+    File_Handle fhandle = OsFileOpen(StringLiteral("./bruh.muda"), File_Write);
+    //TODO: turn OsFileWrite into variadic function
+
+    OsFileWrite(fhandle, StringLiteral("@version 0.1.0\n\n"));
+    OsFileWrite(fhandle, StringLiteral("# Made With -setup\n\n"));
+    OsFileWrite(fhandle, StringLiteral("Type=Solution;\n"));
+    OsFileWrite(fhandle, StringLiteral("Optimization=false;\n"));
 
     OsConsoleWrite("Build Directory (default: %s) #\n   > ", def.BuildDirectory.Data);
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWrite(fhandle, StringLiteral("BuildDirectory="));
+    OsFileWrite(fhandle, OsConsoleRead(read_buffer, sizeof(read_buffer)));
+    OsFileWrite(fhandle, StringLiteral(";\n"));
 
     OsConsoleWrite("Build Executable (default: %s) #\n   > ", def.Build.Data);
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWrite(fhandle, StringLiteral("Build="));
+    OsFileWrite(fhandle, OsConsoleRead(read_buffer, sizeof(read_buffer)));
+    OsFileWrite(fhandle, StringLiteral(";\n"));
 
     OsConsoleWrite("Defines #\n   > ");
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWrite(fhandle, StringLiteral("Defines="));
+    OsFileWrite(fhandle, OsConsoleRead(read_buffer, sizeof(read_buffer)));
+    OsFileWrite(fhandle, StringLiteral(";\n"));
 
     OsConsoleWrite("Include Directory #\n   > ");
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWrite(fhandle, StringLiteral("IncludeDirectory="));
+    OsFileWrite(fhandle, OsConsoleRead(read_buffer, sizeof(read_buffer)));
+    OsFileWrite(fhandle, StringLiteral(";\n"));
 
     OsConsoleWrite("Source (default: %s) #\n   > ", def.Source.Head.Data[0].Data);
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWrite(fhandle, StringLiteral("Source="));
+    OsFileWrite(fhandle, OsConsoleRead(read_buffer, sizeof(read_buffer)));
+    OsFileWrite(fhandle, StringLiteral(";\n"));
 
     OsConsoleWrite("Library Directory #\n   > ");
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWrite(fhandle, StringLiteral("LibraryDirectory="));
+    OsFileWrite(fhandle, OsConsoleRead(read_buffer, sizeof(read_buffer)));
+    OsFileWrite(fhandle, StringLiteral(";\n"));
 
     OsConsoleWrite("Input Library #\n   > ");
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    OsFileWrite(fhandle, StringLiteral("Library="));
+    OsFileWrite(fhandle, OsConsoleRead(read_buffer, sizeof(read_buffer)));
+    OsFileWrite(fhandle, StringLiteral(";\n"));
 
     OsConsoleWrite("\n");
+    OsFileClose(fhandle);
 }
 
 void OptVersion() {
@@ -536,7 +558,7 @@ int main(int argc, char *argv[]) {
         Memory_Arena *scratch = ThreadScratchpad();
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
-        File_Handle fp = OsFileOpen(config_path);
+        File_Handle fp = OsFileOpen(config_path, File_Read);
         if (OsFileHandleIsValid(fp)) {
             Ptrsize size = OsFileGetSize(fp);
             const Ptrsize MAX_ALLOWED_MUDA_FILE_SIZE = MegaBytes(32);

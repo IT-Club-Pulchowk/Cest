@@ -1,0 +1,13 @@
+@version 0.1.0
+
+# Made With -setup
+
+Type=Solution;
+Optimization=false;
+BuildDirectory=./bin/beta;
+Build=builtByMuda;
+Defines=ASSERTION_HANDELED DEPRECATION_HANDELED;
+IncludeDirectory=./includes;
+Source=./src/main.c;
+LibraryDirectory=./libs;
+Library=Shell32 OpenGL32 SDL2 SDL2main;
