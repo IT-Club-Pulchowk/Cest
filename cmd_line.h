@@ -90,7 +90,7 @@ static void OptSetup(const char *program, const char *arg) {
     char read_buffer[256];
     File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
 
-    OsFileWriteF(fhandle, "@version %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+    OsFileWriteF(fhandle, "@version %u.%u.%u\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
     OsFileWrite(fhandle, StringLiteral("# Made With -setup\n\n"));
     OsFileWrite(fhandle, StringLiteral("Type=Project;\n"));
     OsFileWrite(fhandle, StringLiteral("Optimization=false;\n"));
