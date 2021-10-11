@@ -273,7 +273,7 @@ String OsGetUserConfigurationPath(String path) {
 	return FmtStr(scratch, "C:/%s", path.Data);
 }
 
-File_Handle OsOpenFile(const String path) {
+File_Handle OsFileOpen(const String path) {
 	wchar_t *wpath = UnicodeToWideChar(path.Data, path.Length);
 	HANDLE whandle = CreateFileW(wpath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
 
@@ -286,7 +286,7 @@ bool OsFileHandleIsValid(File_Handle handle) {
 	return handle.PlatformFileHandle != INVALID_HANDLE_VALUE;
 }
 
-Ptrsize OsGetFileSize(File_Handle handle) {
+Ptrsize OsFileGetSize(File_Handle handle) {
 	LARGE_INTEGER size;
 	if (GetFileSizeEx(handle.PlatformFileHandle, &size)) {
 		return size.QuadPart;
@@ -294,7 +294,7 @@ Ptrsize OsGetFileSize(File_Handle handle) {
 	return 0;
 }
 
-bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
+bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size) {
 	// this is done because ReadFile can with blocks of DWORD and not LARGE_INTEGER
 	DWORD read_size = 0;
 	if (size > UINT32_MAX)
@@ -327,7 +327,7 @@ bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
 	return true;
 }
 
-void OsCloseFile(File_Handle handle) {
+void OsFileClose(File_Handle handle) {
 	CloseHandle(handle.PlatformFileHandle);
 }
 

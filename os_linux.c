@@ -167,7 +167,7 @@ String OsGetUserConfigurationPath(String path) {
     return FmtStr(scratch, "~/%s", path.Data);
 }
 
-File_Handle OsOpenFile(const String path) {
+File_Handle OsFileOpen(const String path) {
 	File_Handle handle;
     handle.PlatformFileHandle = (void *)((Ptrsize)open((char *)path.Data, O_RDONLY));
     return handle;
@@ -175,10 +175,10 @@ File_Handle OsOpenFile(const String path) {
 
 bool OsFileHandleIsValid(File_Handle handle) {
     int fd = (int)handle.PlatformFileHandle;
-	return  fd == -1;
+	return  fd != -1;
 }
 
-Ptrsize OsGetFileSize(File_Handle handle) {
+Ptrsize OsFileGetSize(File_Handle handle) {
     struct stat stat;
     int fd = (int)handle.PlatformFileHandle;
     if(!fstat(fd, &stat))
@@ -187,7 +187,7 @@ Ptrsize OsGetFileSize(File_Handle handle) {
         return 0;
 }
 
-bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
+bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size) {
     int fd = (int)handle.PlatformFileHandle;
     read(fd, buffer, size);
     if (errno != 0) {
@@ -196,7 +196,7 @@ bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
         return true;
 }
 
-void OsCloseFile(File_Handle handle) {
+void OsFileClose(File_Handle handle) {
 	close((int)handle.PlatformFileHandle);
 }
 

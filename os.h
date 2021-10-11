@@ -66,11 +66,11 @@ typedef struct File_Handle {
 } File_Handle;
 
 
-File_Handle OsOpenFile(const String path);
+File_Handle OsFileOpen(const String path);
 bool OsFileHandleIsValid(File_Handle handle);
-Ptrsize OsGetFileSize(File_Handle handle);
-bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size);
-void OsCloseFile(File_Handle handle);
+Ptrsize OsFileGetSize(File_Handle handle);
+bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size);
+void OsFileClose(File_Handle handle);
 
 void OsSetupConsole();
 

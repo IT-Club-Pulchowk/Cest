@@ -521,7 +521,7 @@ int main(int argc, char *argv[]) {
 
     String config_path = { 0,0 };
 
-    const String LocalMudaFile = StringLiteral("build.muda");
+    const String LocalMudaFile = StringLiteral("./build.muda");
     if (OsCheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
         config_path = LocalMudaFile;
     }
@@ -536,9 +536,9 @@ int main(int argc, char *argv[]) {
         Memory_Arena *scratch = ThreadScratchpad();
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
-        File_Handle fp = OsOpenFile(config_path);
+        File_Handle fp = OsFileOpen(config_path);
         if (OsFileHandleIsValid(fp)) {
-            Ptrsize size = OsGetFileSize(fp);
+            Ptrsize size = OsFileGetSize(fp);
             const Ptrsize MAX_ALLOWED_MUDA_FILE_SIZE = MegaBytes(32);
 
             if (size > MAX_ALLOWED_MUDA_FILE_SIZE) {
@@ -548,7 +548,7 @@ int main(int argc, char *argv[]) {
             }
 
             Uint8 *buffer = PushSize(scratch, size + 1);
-            if (OsReadFile(fp, buffer, size)) {
+            if (OsFileRead(fp, buffer, size)) {
                 buffer[size] = 0;
                 LoadCompilerConfig(&config, buffer, size);
             }
@@ -556,7 +556,7 @@ int main(int argc, char *argv[]) {
                 LogError("ERROR: Could not read the configuration file %s!\n", config_path.Data);
             }
 
-            OsCloseFile(fp);
+            OsFileClose(fp);
         }
         else {
             LogError("ERROR: Could not open the configuration file %s!\n", config_path.Data);
@@ -580,7 +580,7 @@ int main(int argc, char *argv[]) {
         ThreadContext.Allocator = MemoryArenaAllocator(scratch);
         String cmd_line = OutBuildString(&out);
         ThreadContext.Allocator = NullMemoryAllocator();
-        LoadCompilerConfig(&config, cmd_line.Data, cmd_line.Length);
+        /* LoadCompilerConfig(&config, cmd_line.Data, cmd_line.Length); */
 
         EndTemporaryMemory(&temp);
     }
