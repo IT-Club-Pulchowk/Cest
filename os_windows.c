@@ -273,20 +273,35 @@ String OsGetUserConfigurationPath(String path) {
 	return FmtStr(scratch, "C:/%s", path.Data);
 }
 
-File_Handle OsOpenFile(const String path) {
+File_Handle OsFileOpen(const String path, File_Mode mode) {
 	wchar_t *wpath = UnicodeToWideChar(path.Data, path.Length);
-	HANDLE whandle = CreateFileW(wpath, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
+
+	DWORD desired_access = 0;
+	DWORD creation_deposition = 0;
+
+	if (mode == File_Mode_Read) {
+		desired_access = GENERIC_READ;
+		creation_deposition = OPEN_EXISTING;
+	}
+	else if (mode == File_Mode_Write) {
+		desired_access = GENERIC_WRITE;
+		creation_deposition = CREATE_ALWAYS;
+	}
+	else if (mode == File_Mode_Append) {
+		desired_access = GENERIC_WRITE;
+		creation_deposition = OPEN_EXISTING;
+	}
+
+	HANDLE whandle = CreateFileW(wpath, desired_access, FILE_SHARE_READ, 0, creation_deposition, FILE_ATTRIBUTE_NORMAL, 0);
+
+	if (whandle == INVALID_HANDLE_VALUE) whandle = NULL;
 
 	File_Handle handle;
 	handle.PlatformFileHandle = whandle;
 	return handle;
 }
 
-bool OsFileHandleIsValid(File_Handle handle) {
-	return handle.PlatformFileHandle != INVALID_HANDLE_VALUE;
-}
-
-Ptrsize OsGetFileSize(File_Handle handle) {
+Ptrsize OsFileGetSize(File_Handle handle) {
 	LARGE_INTEGER size;
 	if (GetFileSizeEx(handle.PlatformFileHandle, &size)) {
 		return size.QuadPart;
@@ -294,7 +309,7 @@ Ptrsize OsGetFileSize(File_Handle handle) {
 	return 0;
 }
 
-bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
+bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size) {
 	// this is done because ReadFile can with blocks of DWORD and not LARGE_INTEGER
 	DWORD read_size = 0;
 	if (size > UINT32_MAX)
@@ -327,7 +342,25 @@ bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
 	return true;
 }
 
-void OsCloseFile(File_Handle handle) {
+bool OsFileWrite(File_Handle handle, String data) {
+	DWORD written;
+	bool result = WriteFile((HANDLE)handle.PlatformFileHandle, data.Data, data.Length, &written, NULL);
+	return result;
+}
+
+bool OsFileWriteF(File_Handle handle, const char *fmt, ...) {
+	Memory_Arena *scratch = ThreadScratchpad();
+	Temporary_Memory temp = BeginTemporaryMemory(scratch);
+	va_list args;
+	va_start(args, fmt);
+	String string = FmtStrV(scratch, fmt, args);
+	va_end(args);
+	bool result = OsFileWrite(handle, string);
+	EndTemporaryMemory(&temp);
+	return result;
+}
+
+void OsFileClose(File_Handle handle) {
 	CloseHandle(handle.PlatformFileHandle);
 }
 
@@ -380,7 +413,7 @@ void OsConsoleWriteV(const char *fmt, va_list list) {
 	EndTemporaryMemory(&temp);
 }
 
-Uint32 OsConsoleRead(char *buffer, Uint32 size) {
+String OsConsoleRead(char *buffer, Uint32 size) {
 	Memory_Arena *scratch = ThreadScratchpad();
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
@@ -396,19 +429,5 @@ Uint32 OsConsoleRead(char *buffer, Uint32 size) {
 
 	EndTemporaryMemory(&temp);
 
-	return len;
-}
-
-bool OsWriteOrReplaceFile(String file, void *buffer, Uint32 length) {
-	HANDLE fh = CreateFileW(UnicodeToWideChar(file.Data, file.Length), GENERIC_WRITE, 
-		FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-	if (fh != INVALID_HANDLE_VALUE) {
-		DWORD written;
-		bool result = WriteFile(fh, buffer, length, &written, NULL);
-		CloseHandle(fh);
-		return result;
-	}
-
-	return false;
+	return StringMake(buffer, len);
 }

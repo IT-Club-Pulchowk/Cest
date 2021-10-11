@@ -5,16 +5,13 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <bits/statx.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <dirent.h>
 #include <stdlib.h>
-#include <string.h>
-#include <termios.h>
+#include <stdio_ext.h>
 
 static bool GetInfo(File_Info *info, int dirfd, const String Path, const char * name, const int name_len){
     struct statx stats;
-    statx(dirfd, (char *)Path.Data, AT_SYMLINK_NOFOLLOW, STATX_ALL, &stats);
+    statx(dirfd, (char *)Path.Data, 0x100, STATX_ALL, &stats);
 
     info->CreationTime   = stats.stx_btime.tv_nsec;
     info->LastAccessTime = stats.stx_atime.tv_nsec;
@@ -167,37 +164,48 @@ String OsGetUserConfigurationPath(String path) {
     return FmtStr(scratch, "~/%s", path.Data);
 }
 
-File_Handle OsOpenFile(const String path) {
+File_Handle OsFileOpen(const String path, File_Mode mode) {
 	File_Handle handle;
-    handle.PlatformFileHandle = (void *)((Ptrsize)open((char *)path.Data, O_RDONLY));
+    if (mode == File_Mode_Read)
+        handle.PlatformFileHandle = fopen((char *)path.Data, "rb");
+    else if (mode == File_Mode_Append)
+        handle.PlatformFileHandle = fopen((char *)path.Data, "ab");
+    else if (mode == File_Mode_Write)
+        handle.PlatformFileHandle = fopen((char *)path.Data, "wb");
+    else {
+        Unreachable();
+    }
     return handle;
 }
 
-bool OsFileHandleIsValid(File_Handle handle) {
-    int fd = (int)handle.PlatformFileHandle;
-	return  fd != 0;
-}
-
-Ptrsize OsGetFileSize(File_Handle handle) {
+Ptrsize OsFileGetSize(File_Handle handle) {
     struct stat stat;
-    int fd = (int)handle.PlatformFileHandle;
-    if(!fstat(fd, &stat))
+    if(!fstat(fileno(handle.PlatformFileHandle), &stat))
         return stat.st_size;
     else
         return 0;
 }
 
-bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size) {
-    int fd = (int)handle.PlatformFileHandle;
-    read(fd, buffer, size);
-    if (errno != 0) {
-        return false;
-    } else
-        return true;
+bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size) {
+    fread(buffer, sizeof(Uint8), size, handle.PlatformFileHandle);
+    return errno == 0;
 }
 
-void OsCloseFile(File_Handle handle) {
-	close((int)handle.PlatformFileHandle);
+bool OsFileWrite(File_Handle handle, String data){
+    fwrite(data.Data, sizeof(Uint8), data.Length, handle.PlatformFileHandle);
+    return errno == 0;
+}
+
+bool OsFileWriteF(File_Handle handle, const char *fmt, ...){
+	va_list args;
+	va_start(args, fmt);
+    bool result = (vfprintf(handle.PlatformFileHandle, fmt, args) >= 0);
+	va_end(args);
+    return result;
+}
+
+void OsFileClose(File_Handle handle) {
+	fclose(handle.PlatformFileHandle);
 }
 
 void OsSetupConsole() {
@@ -234,29 +242,13 @@ void OsConsoleWriteV(const char *fmt, va_list list) {
     vprintf(fmt, list);
 }
 
-Uint32 OsConsoleRead(char *buffer, Uint32 size) {
-    struct termios raw;
-    tcgetattr(STDIN_FILENO, &raw);
-    raw.c_lflag &= ~(ICANON);
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-	Uint32 len = 0;
-    char c = 0;
-    memset(buffer, 0, size + 1);
+String OsConsoleRead(char *buffer, Uint32 size) {
+    fgets(buffer, size, stdin);
+	Uint32 len = strlen(buffer);
+    if (buffer [len - 1] == '\n')
+        len --;
+    buffer [len] = 0;
+    __fpurge(stdin);
 
-    while (read(STDIN_FILENO, &c, 1) && c != '\n' && len < size){
-        *(buffer ++) = c;
-        len ++;
-    }
-
-	return len;
-}
-
-bool OsWriteOrReplaceFile(String file, void *buffer, Uint32 length) {
-    int fd = open((char *)file.Data, O_WRONLY | O_CREAT);
-    if (fd != -1) {
-        bool result = (write(fd, buffer, length) != -1);
-        close(fd);
-        return result;
-    }
-    return false;
+    return StringMake(buffer, len);
 }

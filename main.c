@@ -403,35 +403,28 @@ void PrintCompilerConfig(Compiler_Config conf){
     OsConsoleWrite("\n");
 }
 
-typedef enum Muda_Option_Argument {
-    Muda_Option_Argument_Empty,
-    Muda_Option_Argument_Needed,
-    Muda_Option_Argument_Optional,
-} Muda_Option_Argument;
-
 typedef struct Muda_Option {
     String Name;
     String Desc;
-    void (*Proc)(const char *);
-    Muda_Option_Argument Argument;
+    void (*Proc)();
 } Muda_Option;
 
-void OptHelp(const char *arg);
-void OptDefault(const char *arg);
-void OptSetup(const char *arg);
-void OptVersion(const char *arg);
+void OptHelp();
+void OptDefault();
+void OptSetup();
+void OptVersion();
 
 static const Muda_Option Options[] = {
-    { StringLiteralExpand("version"), StringLiteralExpand("Check the version of Muda installed"), OptVersion, Muda_Option_Argument_Empty },
-    { StringLiteralExpand("default"), StringLiteralExpand("Display default configuration"), OptDefault, Muda_Option_Argument_Empty },
-    { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup, Muda_Option_Argument_Empty },
-    { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp, Muda_Option_Argument_Empty },
+    { StringLiteralExpand("version"), StringLiteralExpand("Check the version of Muda installed"), OptVersion },
+    { StringLiteralExpand("default"), StringLiteralExpand("Display default configuration"), OptDefault },
+    { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup },
+    { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp },
 };
 
-void OptHelp(const char *arg) {
+void OptHelp() {
     // Dont judge me pls I was bored
-    OptVersion(arg);
-    LogInfo("Usage:\n\tpath/to/muda [-flags | build_script]\n\n");
+    OptVersion();
+    LogInfo("Usage:\n\tpath/to/muda [-flags] [build_script]\n\n");
     LogInfo("Flags:\n");
 
     for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
@@ -441,7 +434,7 @@ void OptHelp(const char *arg) {
     LogInfo("\nRepository:\n\thttps://github.com/IT-Club-Pulchowk/muda\n\n");
 }
 
-void OptDefault(const char *arg) {
+void OptDefault() {
     LogInfo(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
     Compiler_Config def;
     CompilerConfigInit(&def);
@@ -450,8 +443,8 @@ void OptDefault(const char *arg) {
     LogInfo("\n");
 }
 
-void OptSetup(const char *arg) {
-    OptVersion(arg);
+void OptSetup() {
+    OptVersion();
 
     OsConsoleWrite("Muda Configuration:\n");
 
@@ -491,7 +484,7 @@ void OptSetup(const char *arg) {
     OsConsoleWrite("\n");
 }
 
-void OptVersion(const char *arg) {
+void OptVersion() {
     LogInfo("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
     LogInfo("Muda v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
 }
@@ -503,53 +496,17 @@ int main(int argc, char *argv[]) {
 
     // If there are 2 arguments, then the 2nd argument could be options
     // Options are the strings that start with "-", we don't allow "- options", only allow "-option"
-    if (argc > 1 && argv[1][0] == '-') {
-        String option_name = StringMake(argv[1] + 1, strlen(argv[1] + 1));
+    if (argc == 2 && argv[1][0] == '-') {
+        String option = StringMake(argv[1] + 1, strlen(argv[1] + 1));
 
         for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
-            if (StrMatchCaseInsensitive(option_name, Options[opt_i].Name)) {
-                const Muda_Option *const option = &Options[opt_i];
-                
-                switch (option->Argument) {
-                    case Muda_Option_Argument_Empty: {
-                        if (argc == 2) {
-                            option->Proc(NULL);
-                        }
-                        else {
-                            Memory_Arena *scratch = ThreadScratchpad();
-                            String error = FmtStr(scratch, "ERROR: %s does not take any argument!\n", option_name.Data);
-                            FatalError(error.Data);
-                        }
-                    } break;
-
-                    case Muda_Option_Argument_Needed: {
-                        if (argc == 3) {
-                            option->Proc(argv[2]);
-                        }
-                        else {
-                            Memory_Arena *scratch = ThreadScratchpad();
-                            String error = FmtStr(scratch, "ERROR: %s requires single argument!\n", option_name.Data);
-                            FatalError(error.Data);
-                        }
-                    } break;
-
-                    case Muda_Option_Argument_Optional: {
-                        if (argc <= 3) {
-                            option->Proc(argc == 3 ? argv[2] : NULL);
-                        }
-                        else {
-                            Memory_Arena *scratch = ThreadScratchpad();
-                            String error = FmtStr(scratch, "ERROR: %s accepts at most one argument!\n", option_name.Data);
-                            FatalError(error.Data);
-                        }
-                    } break;
-                }
-
+            if (StrMatchCaseInsensitive(option, Options[opt_i].Name)) {
+                Options[opt_i].Proc();
                 return 0;
             }
         }
 
-        LogError("ERROR: Unrecognized option: %s\n", option_name.Data);
+        LogError("ERROR: Unrecognized option: %s\n", option.Data);
         return 1;
     }
 
@@ -578,9 +535,9 @@ int main(int argc, char *argv[]) {
         Memory_Arena *scratch = ThreadScratchpad();
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
-        File_Handle fp = OsOpenFile(config_path);
-        if (OsFileHandleIsValid(fp)) {
-            Ptrsize size = OsGetFileSize(fp);
+        File_Handle fp = OsFileOpen(config_path, File_Mode_Read);
+        if (fp.PlatformFileHandle) {
+            Ptrsize size = OsFileGetSize(fp);
             const Ptrsize MAX_ALLOWED_MUDA_FILE_SIZE = MegaBytes(32);
 
             if (size > MAX_ALLOWED_MUDA_FILE_SIZE) {
@@ -590,7 +547,7 @@ int main(int argc, char *argv[]) {
             }
 
             Uint8 *buffer = PushSize(scratch, size + 1);
-            if (OsReadFile(fp, buffer, size)) {
+            if (OsFileRead(fp, buffer, size)) {
                 buffer[size] = 0;
                 LoadCompilerConfig(&config, buffer, size);
             }
@@ -598,7 +555,7 @@ int main(int argc, char *argv[]) {
                 LogError("ERROR: Could not read the configuration file %s!\n", config_path.Data);
             }
 
-            OsCloseFile(fp);
+            OsFileClose(fp);
         }
         else {
             LogError("ERROR: Could not open the configuration file %s!\n", config_path.Data);

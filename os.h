@@ -65,12 +65,18 @@ typedef struct File_Handle {
 	void *PlatformFileHandle;
 } File_Handle;
 
+typedef enum File_Mode {
+	File_Mode_Read,
+	File_Mode_Write,
+	File_Mode_Append
+} File_Mode;
 
-File_Handle OsOpenFile(const String path);
-bool OsFileHandleIsValid(File_Handle handle);
-Ptrsize OsGetFileSize(File_Handle handle);
-bool OsReadFile(File_Handle handle, Uint8 *buffer, Ptrsize size);
-void OsCloseFile(File_Handle handle);
+File_Handle OsFileOpen(const String path, File_Mode mode);
+Ptrsize OsFileGetSize(File_Handle handle);
+bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size);
+bool OsFileWrite(File_Handle handle, String data);
+bool OsFileWriteF(File_Handle handle, const char *fmt, ...);
+void OsFileClose(File_Handle handle);
 
 void OsSetupConsole();
 
@@ -82,6 +88,4 @@ void OsConsoleOutV(void *fp, const char *fmt, va_list list);
 void OsConsoleWrite(const char *fmt, ...);
 void OsConsoleWriteV(const char *fmt, va_list list);
 
-Uint32 OsConsoleRead(char *buffer, Uint32 size);
-
-bool OsWriteOrReplaceFile(String file, void *buffer, Uint32 length);
+String OsConsoleRead(char *buffer, Uint32 size);
