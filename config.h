@@ -33,7 +33,12 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
 
 INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {
     if (config->BuildDirectory.Length == 0) {
-        config->BuildDirectory = StringLiteral("./bin");
+        // There must be a simpler way to make a mutable string
+        Memory_Arena *scratch = ThreadScratchpad();
+        config->BuildDirectory.Length = strlen("./bin");
+        config->BuildDirectory.Data = (Uint8 *)PushSize(scratch, config->BuildDirectory.Length);
+        memcpy(config->BuildDirectory.Data, "./bin", config->BuildDirectory.Length);
+        config->BuildDirectory.Data[config->BuildDirectory.Length] = 0;
     }
 
     if (config->Build.Length == 0) {
