@@ -55,6 +55,12 @@ enum {
 	Path_Does_Not_Exist
 };
 
+enum {
+    File_Read,
+    File_Write,
+    File_Append
+};
+
 bool OsExecuteCommandLine(String cmdline);
 Uint32 OsCheckIfPathExists(String path);
 bool OsCreateDirectoryRecursively(String path);
@@ -66,10 +72,11 @@ typedef struct File_Handle {
 } File_Handle;
 
 
-File_Handle OsFileOpen(const String path);
+File_Handle OsFileOpen(const String path, Uint32 mode);
 bool OsFileHandleIsValid(File_Handle handle);
 Ptrsize OsFileGetSize(File_Handle handle);
 bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size);
+bool OsFileWrite(File_Handle handle, String data);
 void OsFileClose(File_Handle handle);
 
 void OsSetupConsole();
@@ -83,5 +90,3 @@ void OsConsoleWrite(const char *fmt, ...);
 void OsConsoleWriteV(const char *fmt, va_list list);
 
 String OsConsoleRead(char *buffer, Uint32 size);
-
-bool OsWriteOrReplaceFile(String file, void *buffer, Uint32 length);

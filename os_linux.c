@@ -167,9 +167,18 @@ String OsGetUserConfigurationPath(String path) {
     return FmtStr(scratch, "~/%s", path.Data);
 }
 
-File_Handle OsFileOpen(const String path) {
+File_Handle OsFileOpen(const String path, Uint32 mode) {
 	File_Handle handle;
-    handle.PlatformFileHandle = (void *)((Ptrsize)open((char *)path.Data, O_RDONLY));
+    if (mode == File_Read)
+        handle.PlatformFileHandle = (void *)((Ptrsize)open((char *)path.Data, O_RDONLY));
+    else if (mode == File_Append)
+        handle.PlatformFileHandle = (void *)((Ptrsize)open((char *)path.Data, O_APPEND));
+    else if (mode == File_Write)
+        handle.PlatformFileHandle = (void *)((Ptrsize)open((char *)path.Data, O_CREAT | O_WRONLY | O_TRUNC));
+    else {
+        handle.PlatformFileHandle = (void *)((Ptrsize) -1);
+        LogError("Error Opening File: Invalid Mode");
+    }
     return handle;
 }
 
@@ -194,6 +203,11 @@ bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size) {
         return false;
     } else
         return true;
+}
+
+bool OsFileWrite(File_Handle handle, String data){
+    int fd = (int)handle.PlatformFileHandle;
+    return write(fd, data.Data, data.Length) != -1;
 }
 
 void OsFileClose(File_Handle handle) {
@@ -238,18 +252,9 @@ String OsConsoleRead(char *buffer, Uint32 size) {
     fgets(buffer, size, stdin);
 	Uint32 len = strlen(buffer);
     if (buffer [len - 1] == '\n')
-        buffer [len - 1] = 0;
+        len --;
+    buffer [len] = 0;
     __fpurge(stdin);
 
     return StringMake(buffer, len);
-}
-
-bool OsWriteOrReplaceFile(String file, void *buffer, Uint32 length) {
-    int fd = open((char *)file.Data, O_WRONLY | O_CREAT);
-    if (fd != -1) {
-        bool result = (write(fd, buffer, length) != -1);
-        close(fd);
-        return result;
-    }
-    return false;
 }
