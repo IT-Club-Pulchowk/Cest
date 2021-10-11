@@ -6,3 +6,4 @@ bin
 /*.ilk
 /*.pdb
 /*.obj
+/.fuse*
