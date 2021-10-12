@@ -7,6 +7,7 @@ typedef enum Compile_Type {
 } Compile_Type;
 
 typedef struct Build_Config {
+    bool ForceOptimization;
     bool DisplayCommandLine;
 } Build_Config;
 
@@ -36,6 +37,7 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
     StringListInit(&config->LibraryDirectory);
     StringListInit(&config->Library);
 
+    config->BuildConfig.ForceOptimization = false;
     config->BuildConfig.DisplayCommandLine = false;
 }
 

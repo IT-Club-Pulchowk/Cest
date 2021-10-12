@@ -141,6 +141,12 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         FatalError(error.Data);
     }
 
+    // Turn on Optimization if it is forced via command line
+    if (config->BuildConfig.ForceOptimization && !config->Optimization) {
+        LogInfo("[NOTE] Optimization turned on forcefully\n");
+        config->Optimization = true;
+    }
+
     if (compiler == Compiler_Kind_CL){
         // For CL, we output intermediate files to "BuildDirectory/int"
         String intermediate;

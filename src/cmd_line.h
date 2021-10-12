@@ -18,16 +18,18 @@ typedef struct Muda_Option {
     Muda_Option_Argument Argument;
 } Muda_Option;
 
-static bool OptVersion(const char *program, const char *arg, Build_Config *);
-static bool OptDefault(const char *program, const char *arg, Build_Config *);
-static bool OptSetup(const char *program, const char *arg, Build_Config *);
+static bool OptVersion(const char *program, const char *arg, Build_Config *config);
+static bool OptDefault(const char *program, const char *arg, Build_Config *config);
+static bool OptSetup(const char *program, const char *arg, Build_Config *config);
+static bool OptOptimize(const char *program, const char *arg, Build_Config *config);
 static bool OptCmdline(const char *program, const char *arg, Build_Config *config);
-static bool OptHelp(const char *program, const char *arg, Build_Config *);
+static bool OptHelp(const char *program, const char *arg, Build_Config *config);
 
 static const Muda_Option Options[] = {
     { StringLiteralExpand("version"), StringLiteralExpand("Check the version of Muda installed"), OptVersion, Muda_Option_Argument_Empty },
     { StringLiteralExpand("default"), StringLiteralExpand("Display default configuration"), OptDefault, Muda_Option_Argument_Empty },
     { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup, Muda_Option_Argument_Empty },
+    { StringLiteralExpand("optimize"), StringLiteralExpand("Forces Optimization to be turned on"), OptOptimize, Muda_Option_Argument_Empty },
     { StringLiteralExpand("cmdline"), StringLiteralExpand("Displays the command line executed to build"), OptCmdline, Muda_Option_Argument_Empty },
     { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp, Muda_Option_Argument_Optional },
 };
@@ -97,6 +99,11 @@ static bool OptSetup(const char *program, const char *arg, Build_Config *config)
     OsFileClose(fhandle);
 
     return true;
+}
+
+static bool OptOptimize(const char *program, const char *arg, Build_Config *config) {
+    config->ForceOptimization = true;
+    return false;
 }
 
 static bool OptCmdline(const char *program, const char *arg, Build_Config *config) {
