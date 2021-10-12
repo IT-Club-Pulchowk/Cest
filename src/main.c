@@ -65,11 +65,11 @@ static void ReadList(String_List *dst, String data){
     }
 }
 
-void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
+void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
     if (!data) return;
 	Memory_Arena *scratch = ThreadScratchpad();
     
-    Muda_Parser prsr = MudaParseInit(data, length);
+    Muda_Parser prsr = MudaParseInit(data);
 
     Uint32 version = 0;
     Uint32 major = 0, minor = 0, patch = 0;
@@ -234,7 +234,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     if (compiler & Compiler_Bit_CL) {
         LogInfo("[Compiler] CL Detected.\n");
 
-        OutFormatted(&out, "cl -nologo -Zi -EHsc ");
+        OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
 
         if (config->Optimization)
             OutFormatted(&out, "-O2 ");
@@ -384,7 +384,7 @@ int main(int argc, char *argv[]) {
             Uint8 *buffer = PushSize(scratch, size + 1);
             if (OsFileRead(fp, buffer, size)) {
                 buffer[size] = 0;
-                LoadCompilerConfig(&config, buffer, size);
+                LoadCompilerConfig(&config, buffer);
             } else {
                 LogError("[Error] Could not read the configuration file %s!\n", config_path.Data);
             }

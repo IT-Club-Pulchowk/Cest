@@ -44,7 +44,7 @@ typedef struct Muda_Parser {
     Muda_Token Token;
 } Muda_Parser;
 
-INLINE_PROCEDURE Muda_Parser MudaParseInit(uint8_t *data, int64_t length) {
+INLINE_PROCEDURE Muda_Parser MudaParseInit(uint8_t *data) {
     Muda_Parser parser;
     parser.Ptr = data;
     parser.Pos = parser.Ptr;
