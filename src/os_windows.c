@@ -3,7 +3,7 @@
 
 #define WIN32_MEAN_AND_LEAN
 #include <windows.h>
-#include <shellapi.h>
+#include <shlwapi.h>
 #include <UserEnv.h>
 
 #pragma comment(lib, "Shlwapi.lib")
