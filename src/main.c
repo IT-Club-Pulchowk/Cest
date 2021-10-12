@@ -152,11 +152,34 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
         LogError("%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
 }
 
+const char *GetCompilerName(Compiler_Kind kind) {
+    if (kind == Compiler_Bit_CL)
+        return "CL";
+    else if (kind == Compiler_Bit_CLANG)
+        return "CLANG";
+    else if (kind == Compiler_Bit_GCC)
+        return "GCC";
+    Unreachable();
+    return "";
+}
+
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
     if (config->BuildConfig.DisableLogs)
         ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
+
+    if (config->BuildConfig.ForceCompiler) {
+        if (compiler & config->BuildConfig.ForceCompiler) {
+            compiler = config->BuildConfig.ForceCompiler;
+            LogInfo("[Note] Requested compiler: %s\n", GetCompilerName(compiler));
+        }
+        else {
+            const char *requested_compiler = GetCompilerName(config->BuildConfig.ForceCompiler);
+            LogInfo("[Note] Requested compiler: %s but %s could not be detected.\n",
+                requested_compiler, requested_compiler);
+        }
+    }
 
 	Assert(config->Type == Compile_Type_Project);
 
