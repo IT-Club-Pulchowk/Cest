@@ -248,7 +248,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
         for (String_List_Node* ntr = &config->IncludeDirectory.Head; ntr && config->IncludeDirectory.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->IncludeDirectory.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "-I%s ", ntr->Data[i].Data);
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "-I\"%s\" ", ntr->Data[i].Data);
         }
 
         for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
