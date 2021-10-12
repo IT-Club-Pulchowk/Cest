@@ -181,27 +181,19 @@ bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *con
 }
 
 Compiler_Kind OsDetectCompiler() {
-	Memory_Arena *scratch = ThreadScratchpad();
-
 	DWORD length = 0;
 	if ((length = SearchPathW(NULL, L"cl", L".exe", 0, NULL, NULL))) {
-		Temporary_Memory temp = BeginTemporaryMemory(scratch);
-		wchar_t *dir = 0;
-		wchar_t *path = PushSize(scratch, sizeof(wchar_t) * (length + 1));
-		SearchPathW(NULL, L"cl", L".exe", length, path, &dir);
-		LogInfo("CL Detected: \"%S\"\n", path);
-		EndTemporaryMemory(&temp);
+		LogInfo("[Compiler] CL Detected\n");
 		return Compiler_Kind_CL;
 	}
 
-	length = 0;
 	if ((length = SearchPathW(NULL, L"clang", L".exe", 0, NULL, NULL))) {
-		Temporary_Memory temp = BeginTemporaryMemory(scratch);
-		wchar_t *dir = 0;
-		wchar_t *path = PushSize(scratch, sizeof(wchar_t) * (length + 1));
-		SearchPathW(NULL, L"clang", L".exe", length, path, &dir);
-		LogInfo("CLANG Detected: \"%S\"\n", path);
-		EndTemporaryMemory(&temp);
+		LogInfo("[Compiler] CLANG Detected\n");
+		return Compiler_Kind_CLANG;
+	}
+
+	if ((length = SearchPathW(NULL, L"gcc", L".exe", 0, NULL, NULL))) {
+		LogInfo("[Compiler] GCC Detected\n");
 		return Compiler_Kind_CLANG;
 	}
 

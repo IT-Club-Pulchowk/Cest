@@ -23,6 +23,7 @@ static bool OptDefault(const char *program, const char *arg, Build_Config *confi
 static bool OptSetup(const char *program, const char *arg, Build_Config *config);
 static bool OptOptimize(const char *program, const char *arg, Build_Config *config);
 static bool OptCmdline(const char *program, const char *arg, Build_Config *config);
+static bool OptNoLog(const char *program, const char *arg, Build_Config *config);
 static bool OptHelp(const char *program, const char *arg, Build_Config *config);
 
 static const Muda_Option Options[] = {
@@ -31,6 +32,7 @@ static const Muda_Option Options[] = {
     { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup, Muda_Option_Argument_Empty },
     { StringLiteralExpand("optimize"), StringLiteralExpand("Forces Optimization to be turned on"), OptOptimize, Muda_Option_Argument_Empty },
     { StringLiteralExpand("cmdline"), StringLiteralExpand("Displays the command line executed to build"), OptCmdline, Muda_Option_Argument_Empty },
+    { StringLiteralExpand("nolog"), StringLiteralExpand("Disables logging in the terminal"), OptNoLog, Muda_Option_Argument_Empty },
     { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp, Muda_Option_Argument_Optional },
 };
 
@@ -108,6 +110,11 @@ static bool OptOptimize(const char *program, const char *arg, Build_Config *conf
 
 static bool OptCmdline(const char *program, const char *arg, Build_Config *config) {
     config->DisplayCommandLine = true;
+    return false;
+}
+
+static bool OptNoLog(const char *program, const char *arg, Build_Config *config) {
+    config->DisableLogs = true;
     return false;
 }
 

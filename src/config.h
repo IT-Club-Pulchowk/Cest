@@ -9,6 +9,7 @@ typedef enum Compile_Type {
 typedef struct Build_Config {
     bool ForceOptimization;
     bool DisplayCommandLine;
+    bool DisableLogs;
 } Build_Config;
 
 typedef struct Compiler_Config {
@@ -39,6 +40,7 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
 
     config->BuildConfig.ForceOptimization = false;
     config->BuildConfig.DisplayCommandLine = false;
+    config->BuildConfig.DisableLogs = false;
 }
 
 INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {

@@ -38,7 +38,16 @@ if (Get-Command "cl.exe" -ErrorAction SilentlyContinue) {
     clang -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -D_CRT_SECURE_NO_WARNINGS $SourceFiles.Split(" ") $CompilerFlags.Split(" ") -o "$OutputBinary"
     Write-Output "Build Finished."
 } elseif (Get-Command "gcc" -ErrorAction SilentlyContinue) {
-    Write-Output "Bruh, download CLANG or Visual Studio. Aborted."
+    Write-Host "Found GCC."
+
+    $CompilerFlags = "-g"
+
+    if ($optimize) {
+        Write-Output "Optimize build enabled."
+        $CompilerFlags = "-O2"
+    }
+
+    gcc -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion $SourceFiles.Split(" ") $CompilerFlags.Split(" ") -o "$OutputBinary"
 } else {
     Write-Error "Compiler not found."
 }

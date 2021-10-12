@@ -5,12 +5,47 @@
 #include "lenstring.h"
 #include "cmd_line.h"
 
+
+//
+// Base setup
+//
+
+void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
+    OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
+    TriggerBreakpoint();
+}
+
+void DeprecateHandle(const char *file, int line, const char *proc) {
+    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
+}
+
+static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
+    void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
+    OsConsoleOutV(fp, fmt, list);
+}
+
+static void LogProcedureDisabled(void *agent, Log_Kind kind, const char *fmt, va_list list) {
+    if (kind == Log_Kind_Info) return;
+    OsConsoleOutV(OsGetErrorOutputHandle(), fmt, list);
+}
+
+static void FatalErrorProcedure(const char *message) {
+    OsConsoleWrite("%s", message);
+    OsProcessExit(0);
+}
+
+//
+//
+//
+
+#if 0
 static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, void *user_context) {
 	if (info->Atribute & File_Attribute_Hidden) return Directory_Iteration_Continue;
 	if (StrMatch(info->Name, StringLiteral("bin"))) return Directory_Iteration_Continue;
 	LogInfo("%s - %zu bytes\n", info->Path.Data, info->Size);
 	return Directory_Iteration_Recurse;
 }
+#endif
 
 static void ReadList(String_List *dst, String data){
     Int64 prev_pos = 0;
@@ -114,11 +149,14 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
             ReadList(&config->Library, prsr.Token.Data.Property.Value);
     }
     if (prsr.Token.Kind == Muda_Token_Error)
-        LogError ("%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
+        LogError("%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
 }
 
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Memory_Arena *scratch = ThreadScratchpad();
+
+    if (config->BuildConfig.DisableLogs)
+        ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
 
 	Assert(config->Type == Compile_Type_Project);
 
@@ -257,34 +295,9 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	OsExecuteCommandLine(cmd_line);
 
 	EndTemporaryMemory(&temp);
+
+    ThreadContext.LogAgent.Procedure = LogProcedure;
 }
-
-//
-// Base setup
-//
-
-void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
-    TriggerBreakpoint();
-}
-
-void DeprecateHandle(const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
-}
-
-static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
-    void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
-    OsConsoleOutV(fp, fmt, list);
-}
-
-static void FatalErrorProcedure(const char *message) {
-    OsConsoleWrite("%s", message);
-    OsProcessExit(0);
-}
-
-//
-//
-//
 
 int main(int argc, char *argv[]) {
     Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));

@@ -116,11 +116,11 @@ bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *con
 
 Compiler_Kind OsDetectCompiler() {
     if (!system("which gcc > /dev/null 2>&1")) {
-        LogInfo("GCC Detected\n");
+        LogInfo("[Compiler] GCC Detected\n");
         return Compiler_Kind_GCC;
     }
     if (!system("which clang > /dev/null 2>&1")) {
-        LogInfo("CLANG Detected\n");
+        LogInfo("[Compiler] CLANG Detected\n");
         return Compiler_Kind_CLANG;
     }
 
