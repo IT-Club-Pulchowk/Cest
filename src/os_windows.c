@@ -84,7 +84,7 @@ static void ConvertWin32FileInfo(File_Info *dst, WIN32_FIND_DATAW *src, String r
 static bool IterateDirectroyInternal(String path, Directory_Iterator iterator, void *context) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
-	wchar_t *wpath = UnicodeToWideChar(path.Data, path.Length);
+	wchar_t *wpath = UnicodeToWideChar(path.Data, (int)path.Length);
 
 	WIN32_FIND_DATAW find_data;
 	HANDLE find_handle = FindFirstFileW(wpath, &find_data);
@@ -214,7 +214,7 @@ bool OsExecuteCommandLine(String cmdline) {
 }
 
 Uint32 OsCheckIfPathExists(String path) {
-	wchar_t *dir = UnicodeToWideChar(path.Data, path.Length);
+	wchar_t *dir = UnicodeToWideChar(path.Data, (int)path.Length);
 
 	if (PathFileExistsW(dir)) {
 		DWORD attr = GetFileAttributesW(dir);
@@ -230,7 +230,7 @@ Uint32 OsCheckIfPathExists(String path) {
 
 bool OsCreateDirectoryRecursively(String path) {
 	int len = 0;
-	wchar_t *dir = UnicodeToWideCharLength(path.Data, path.Length, &len);
+	wchar_t *dir = UnicodeToWideCharLength(path.Data, (int)path.Length, &len);
 
     for (int i = 0; i < len + 1; i++) {
         if (dir[i] == (Uint16)'/' || dir[i] == 0 ) {
@@ -262,7 +262,7 @@ String OsGetUserConfigurationPath(String path) {
 }
 
 File_Handle OsFileOpen(const String path, File_Mode mode) {
-	wchar_t *wpath = UnicodeToWideChar(path.Data, path.Length);
+	wchar_t *wpath = UnicodeToWideChar(path.Data, (int)path.Length);
 
 	DWORD desired_access = 0;
 	DWORD creation_deposition = 0;
@@ -303,7 +303,7 @@ bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size) {
 	if (size > UINT32_MAX)
 		read_size = UINT32_MAX;
 	else
-		read_size = size;
+		read_size = (DWORD)size;
 
 	DWORD read_bytes = 0;
 	Uint8 *end_ptr = buffer + size;
@@ -332,7 +332,7 @@ bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size) {
 
 bool OsFileWrite(File_Handle handle, String data) {
 	DWORD written;
-	bool result = WriteFile((HANDLE)handle.PlatformFileHandle, data.Data, data.Length, &written, NULL);
+	bool result = WriteFile((HANDLE)handle.PlatformFileHandle, data.Data, (DWORD)data.Length, &written, NULL);
 	return result;
 }
 
@@ -377,7 +377,7 @@ void OsConsoleOutV(void *fp, const char *fmt, va_list list) {
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 	String out = FmtStrV(scratch, fmt, list);
 	int len = 0;
-	wchar_t *wout = UnicodeToWideCharLength(out.Data, out.Length, &len);
+	wchar_t *wout = UnicodeToWideCharLength(out.Data, (int)out.Length, &len);
 	DWORD written = 0;
 	WriteConsoleW((HANDLE)fp, wout, (DWORD)len, &written, NULL);
 	EndTemporaryMemory(&temp);
@@ -395,7 +395,7 @@ void OsConsoleWriteV(const char *fmt, va_list list) {
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 	String out = FmtStrV(scratch, fmt, list);
 	int len = 0;
-	wchar_t *wout = UnicodeToWideCharLength(out.Data, out.Length, &len);
+	wchar_t *wout = UnicodeToWideCharLength(out.Data, (int)out.Length, &len);
 	DWORD written = 0;
 	WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), wout, (DWORD)len, &written, NULL);
 	EndTemporaryMemory(&temp);
@@ -412,7 +412,7 @@ String OsConsoleRead(char *buffer, Uint32 size) {
 	ReadConsoleW(GetStdHandle(STD_INPUT_HANDLE), wbuffer, characters_to_read, &characters_read, NULL);
 
 	int len = WideCharToMultiByte(CP_UTF8, 0, wbuffer, characters_read, buffer, size, 0, 0);
-	if (len >= size) len = size - 1;
+	if (len >= (int)size) len = (int)size - 1;
 	buffer[len] = 0;
 
 	EndTemporaryMemory(&temp);

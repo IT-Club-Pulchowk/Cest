@@ -33,7 +33,7 @@ if %ERRORLEVEL% neq 0 goto SkipMSVC
 where rc >nul 2>nul
 if %ERRORLEVEL% neq 0 goto SkipMSVC
 echo Building with Msvc
-call cl -nologo -DASSERTION_HANDLED -DDEPRECATION_HANDLED -D_CRT_SECURE_NO_WARNINGS %SourceFiles% %CompilerFlags% -EHsc -Fe%OutputBinary%
+call cl -nologo -W4 -DASSERTION_HANDLED -DDEPRECATION_HANDLED -D_CRT_SECURE_NO_WARNINGS %SourceFiles% %CompilerFlags% -EHsc -Fe%OutputBinary%
 echo -------------------------------------
 goto Finished
 :SkipMSVC

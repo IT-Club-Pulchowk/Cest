@@ -23,7 +23,7 @@ if (Get-Command "cl.exe" -ErrorAction SilentlyContinue) {
         $CompilerFlags = "-O2 -Zi"
     }
 
-    cl -nologo -DASSERTION_HANDLED -DDEPRECATION_HANDLED -D_CRT_SECURE_NO_WARNINGS $SourceFiles.Split(" ") $CompilerFlags.Split(" ") -EHsc -Fe"$OutputBinary"
+    cl -nologo -W3 -DASSERTION_HANDLED -DDEPRECATION_HANDLED -D_CRT_SECURE_NO_WARNINGS $SourceFiles.Split(" ") $CompilerFlags.Split(" ") -EHsc -Fe"$OutputBinary"
     Write-Output "Build Finished."
 } elseif (Get-Command "clang" -ErrorAction SilentlyContinue) {
     Write-Host "Found CLANG."
