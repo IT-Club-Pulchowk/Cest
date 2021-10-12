@@ -46,7 +46,7 @@ static bool OptDefault(const char *program, const char *arg, Build_Config *confi
     OsConsoleWrite(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
     Compiler_Config def;
     CompilerConfigInit(&def);
-    PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
+    PushDefaultCompilerConfig(&def, 0);
     PrintCompilerConfig(def);
     OsConsoleWrite("\n");
     return true;
@@ -59,7 +59,7 @@ static bool OptSetup(const char *program, const char *arg, Build_Config *config)
 
     Compiler_Config def;
     CompilerConfigInit(&def);
-    PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
+    PushDefaultCompilerConfig(&def, 0);
 
     // We take these as default
     // Type = Project

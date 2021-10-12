@@ -41,13 +41,12 @@ INLINE_PROCEDURE Directory_Iteration DirectoryIteratorPrint(const File_Info *inf
 
 bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *context);
 
-typedef enum Compiler_Kind {
-	Compiler_Kind_NULL,
-
-	Compiler_Kind_CL,
-	Compiler_Kind_CLANG,
-	Compiler_Kind_GCC,
-} Compiler_Kind;
+typedef enum Compiler_Bit {
+	Compiler_Bit_CL = 0x1,
+	Compiler_Bit_CLANG = 0x2,
+	Compiler_Bit_GCC = 0x4,
+} Compiler_Bit;
+typedef Uint32 Compiler_Kind;
 
 Compiler_Kind OsDetectCompiler();
 

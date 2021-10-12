@@ -39,7 +39,7 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
     StringListInit(&config->LibraryDirectory);
     StringListInit(&config->Library);
 
-    config->BuildConfig.ForceCompiler = Compiler_Kind_NULL;
+    config->BuildConfig.ForceCompiler = 0;
     config->BuildConfig.ForceOptimization = false;
     config->BuildConfig.DisplayCommandLine = false;
     config->BuildConfig.DisableLogs = false;
@@ -60,7 +60,7 @@ INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compile
         StringListAdd(&config->Source, StrDuplicateArena(StringLiteral("*.c"), scratch));
     }
 
-    if (compiler == Compiler_Kind_CL && StringListIsEmpty(&config->Defines)) {
+    if ((compiler & Compiler_Bit_CL) && StringListIsEmpty(&config->Defines)) {
         StringListAdd(&config->Defines, StrDuplicateArena(StringLiteral("_CRT_SECURE_NO_WARNINGS"), scratch));
     }
 }

@@ -179,7 +179,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         FatalError(error.Data);
     }
 
-    if (compiler == Compiler_Kind_CL) {
+    if (compiler & Compiler_Bit_CL) {
         // For CL, we output intermediate files to "BuildDirectory/int"
         String intermediate;
         if (config->BuildDirectory.Data[config->BuildDirectory.Length - 1] == '/') {
@@ -208,7 +208,9 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         config->Optimization = true;
     }
 
-    if (compiler == Compiler_Kind_CL){
+    if (compiler & Compiler_Bit_CL) {
+        LogInfo("[Compiler] CL Detected.\n");
+
         OutFormatted(&out, "cl -nologo -Zi -EHsc ");
 
         if (config->Optimization)
@@ -248,9 +250,15 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
             int len = ntr->Next ? 8 : config->Library.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
         }
-    } else if (compiler == Compiler_Kind_GCC || compiler == Compiler_Kind_CLANG){
-        if (compiler == Compiler_Kind_GCC) OutFormatted(&out, "gcc -pipe ");
-        else OutFormatted(&out, "clang -gcodeview -w ");
+    } else if (compiler & (Compiler_Bit_GCC | Compiler_Bit_CLANG)) {
+        if (compiler & Compiler_Bit_GCC) {
+            LogInfo("[Compiler] GCC Detected.\n");
+            OutFormatted(&out, "gcc -pipe ");
+        }
+        else {
+            LogInfo("[Compiler] CLANG Detected.\n");
+            OutFormatted(&out, "clang -gcodeview -w ");
+        }
 
         if (config->Optimization) OutFormatted(&out, "-O2 ");
         else OutFormatted(&out, "-g ");
@@ -313,8 +321,14 @@ int main(int argc, char *argv[]) {
         return 0;
 
 	Compiler_Kind compiler = OsDetectCompiler();
-    if (compiler == Compiler_Kind_NULL)
+    if (compiler == 0) {
+        LogError("[Error] Failed to detect compiler! Install one of the compilers from below...\n");
+        if (PLATFORM_OS_WINDOWS)
+            OsConsoleWrite("[Visual Studio - MSVC] https://visualstudio.microsoft.com/ \n");
+        OsConsoleWrite("[CLANG] https://releases.llvm.org/download.html \n");
+        OsConsoleWrite("[GCC] https://gcc.gnu.org/install/download.html \n");
         return 1;
+    }
 
     String config_path = { 0,0 };
 
