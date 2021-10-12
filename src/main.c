@@ -170,12 +170,12 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     Uint32 result = OsCheckIfPathExists(config->BuildDirectory);
     if (result == Path_Does_Not_Exist) {
         if (!OsCreateDirectoryRecursively(config->BuildDirectory)) {
-            String error = FmtStr(scratch, "Failed to create directory %s!", config->BuildDirectory.Data);
+            String error = FmtStr(scratch, "[Fatal Error] Failed to create directory %s!", config->BuildDirectory.Data);
             FatalError(error.Data);
         }
     }
     else if (result == Path_Exist_File) {
-        String error = FmtStr(scratch, "%s: Path exist but is a file!\n", config->BuildDirectory.Data);
+        String error = FmtStr(scratch, "[Fatal Errror] %s: Path exist but is a file!\n", config->BuildDirectory.Data);
         FatalError(error.Data);
     }
 
@@ -192,19 +192,19 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         result = OsCheckIfPathExists(intermediate);
         if (result == Path_Does_Not_Exist) {
             if (!OsCreateDirectoryRecursively(intermediate)) {
-                String error = FmtStr(scratch, "Failed to create directory %s!", intermediate.Data);
+                String error = FmtStr(scratch, "[Fatal Error] Failed to create directory %s!", intermediate.Data);
                 FatalError(error.Data);
             }
         }
         else if (result == Path_Exist_File) {
-            String error = FmtStr(scratch, "%s: Path exist but is a file!\n", intermediate.Data);
+            String error = FmtStr(scratch, "[Fatal Error] %s: Path exist but is a file!\n", intermediate.Data);
             FatalError(error.Data);
         }
     }
 
     // Turn on Optimization if it is forced via command line
     if (config->BuildConfig.ForceOptimization && !config->Optimization) {
-        LogInfo("[NOTE] Optimization turned on forcefully\n");
+        LogInfo("[Note] Optimization turned on forcefully\n");
         config->Optimization = true;
     }
 
@@ -289,7 +289,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     String cmd_line = OutBuildString(&out, &scratch_allocator);
 
     if (config->BuildConfig.DisplayCommandLine) {
-        LogInfo("Command Line: %s\n", cmd_line.Data);
+        LogInfo("[Command Line] %s\n", cmd_line.Data);
     }
 
 	OsExecuteCommandLine(cmd_line);
@@ -340,7 +340,7 @@ int main(int argc, char *argv[]) {
 
             if (size > MAX_ALLOWED_MUDA_FILE_SIZE) {
                 float max_size = (float)MAX_ALLOWED_MUDA_FILE_SIZE / (1024 * 1024);
-                String error = FmtStr(scratch, "Fatal Error: File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
+                String error = FmtStr(scratch, "[Fatal Error] File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
                 FatalError(error.Data);
             }
 
@@ -349,12 +349,12 @@ int main(int argc, char *argv[]) {
                 buffer[size] = 0;
                 LoadCompilerConfig(&config, buffer, size);
             } else {
-                LogError("ERROR: Could not read the configuration file %s!\n", config_path.Data);
+                LogError("[Error] Could not read the configuration file %s!\n", config_path.Data);
             }
 
             OsFileClose(fp);
         } else {
-            LogError("ERROR: Could not open the configuration file %s!\n", config_path.Data);
+            LogError("[Error] Could not open the configuration file %s!\n", config_path.Data);
         }
 
         EndTemporaryMemory(&temp);
