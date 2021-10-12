@@ -35,7 +35,7 @@ if %ERRORLEVEL% neq 0 goto SkipMSVC
 echo Building with Msvc
 call cl -nologo -DASSERTION_HANDLED -DDEPRECATION_HANDLED -D_CRT_SECURE_NO_WARNINGS %SourceFiles% %CompilerFlags% -EHsc -Fe%OutputBinary%
 echo -------------------------------------
-goto CLANG
+goto Finished
 :SkipMSVC
 echo Msvc not found. Skipping build with Msvc
 echo -------------------------------------

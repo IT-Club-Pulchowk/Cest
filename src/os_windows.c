@@ -181,27 +181,19 @@ bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *con
 }
 
 Compiler_Kind OsDetectCompiler() {
+	Compiler_Kind compiler = 0;
+
 	DWORD length = 0;
-	if ((length = SearchPathW(NULL, L"cl", L".exe", 0, NULL, NULL))) {
-		LogInfo("[Compiler] CL Detected\n");
-		return Compiler_Kind_CL;
-	}
+	if ((length = SearchPathW(NULL, L"cl", L".exe", 0, NULL, NULL)))
+		compiler  |= Compiler_Bit_CL;
 
-	if ((length = SearchPathW(NULL, L"clang", L".exe", 0, NULL, NULL))) {
-		LogInfo("[Compiler] CLANG Detected\n");
-		return Compiler_Kind_CLANG;
-	}
+	if ((length = SearchPathW(NULL, L"clang", L".exe", 0, NULL, NULL)))
+		compiler |= Compiler_Bit_CLANG;
 
-	if ((length = SearchPathW(NULL, L"gcc", L".exe", 0, NULL, NULL))) {
-		LogInfo("[Compiler] GCC Detected\n");
-		return Compiler_Kind_CLANG;
-	}
+	if ((length = SearchPathW(NULL, L"gcc", L".exe", 0, NULL, NULL)))
+		compiler |= Compiler_Bit_GCC;
 
-	LogError("Error: Failed to detect compiler! Install one of the compilers from below...\n");
-	LogInfo("Visual Studio (MSVC): https://visualstudio.microsoft.com/ \n");
-	LogInfo("CLANG: https://releases.llvm.org/download.html \n");
-
-	return Compiler_Kind_NULL;
+	return compiler;
 }
 
 bool OsExecuteCommandLine(String cmdline) {

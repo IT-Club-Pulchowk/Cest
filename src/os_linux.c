@@ -115,19 +115,15 @@ bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *con
 }
 
 Compiler_Kind OsDetectCompiler() {
-    if (!system("which gcc > /dev/null 2>&1")) {
-        LogInfo("[Compiler] GCC Detected\n");
-        return Compiler_Kind_GCC;
-    }
-    if (!system("which clang > /dev/null 2>&1")) {
-        LogInfo("[Compiler] CLANG Detected\n");
-        return Compiler_Kind_CLANG;
-    }
+    Compiler_Kind compiler = 0;
 
-    LogError("Error: Failed to detect compiler! Install one of the compilers from below...\n");
-    LogInfo("CLANG: https://releases.llvm.org/download.html \n");
-    LogInfo("GCC: https://gcc.gnu.org/install/download.html \n");
-    return Compiler_Kind_NULL;
+    if (!system("which gcc > /dev/null 2>&1"))
+        compiler |= Compiler_Bit_GCC;
+
+    if (!system("which clang > /dev/null 2>&1"))
+        compiler |= Compiler_Bit_CLANG;
+    
+    return compiler;
 }
 
 bool OsExecuteCommandLine(String cmdline) {
