@@ -5,12 +5,47 @@
 #include "lenstring.h"
 #include "cmd_line.h"
 
+
+//
+// Base setup
+//
+
+void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
+    OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
+    TriggerBreakpoint();
+}
+
+void DeprecateHandle(const char *file, int line, const char *proc) {
+    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
+}
+
+static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
+    void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
+    OsConsoleOutV(fp, fmt, list);
+}
+
+static void LogProcedureDisabled(void *agent, Log_Kind kind, const char *fmt, va_list list) {
+    if (kind == Log_Kind_Info) return;
+    OsConsoleOutV(OsGetErrorOutputHandle(), fmt, list);
+}
+
+static void FatalErrorProcedure(const char *message) {
+    OsConsoleWrite("%s", message);
+    OsProcessExit(0);
+}
+
+//
+//
+//
+
+#if 0
 static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, void *user_context) {
 	if (info->Atribute & File_Attribute_Hidden) return Directory_Iteration_Continue;
 	if (StrMatch(info->Name, StringLiteral("bin"))) return Directory_Iteration_Continue;
 	LogInfo("%s - %zu bytes\n", info->Path.Data, info->Size);
 	return Directory_Iteration_Recurse;
 }
+#endif
 
 static void ReadList(String_List *dst, String data){
     Int64 prev_pos = 0;
@@ -30,7 +65,7 @@ static void ReadList(String_List *dst, String data){
     }
 }
 
-void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length, bool check_ver) {
+void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length) {
     if (!data) return;
 	Memory_Arena *scratch = ThreadScratchpad();
     
@@ -39,36 +74,36 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length, bool c
     Uint32 version = 0;
     Uint32 major = 0, minor = 0, patch = 0;
 
-    if (check_ver){
-        if (MudaParseNext(&prsr)){
-            if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
-                if (prsr.Token.Data.Tag.Value.Data){
-                    if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3) {
-                        FatalError("Error: Bad file version\n");
-                    }
-                } else {
-                    FatalError("Error: Version info missing\n");
-                }
-            } else {
-                FatalError("Error: Version tag missing at top of file\n");
-            }
-        }
-        version = MudaMakeVersion(major, minor, patch);
+	if (MudaParseNext(&prsr)) {
+		if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
+			if (prsr.Token.Data.Tag.Value.Data) {
+				if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3) {
+					FatalError("Error: Bad file version\n");
+				}
+			}
+			else {
+				FatalError("Error: Version info missing\n");
+			}
+		}
+		else {
+			FatalError("Error: Version tag missing at top of file\n");
+		}
+	}
+	version = MudaMakeVersion(major, minor, patch);
 
-        if (version < MUDA_BACKWARDS_COMPATIBLE_VERSION || version > MUDA_CURRENT_VERSION) {
-            String error = FmtStr(scratch, "Version %d.%d.%d not supported. \n"
-                "Minimum version supported: %d.%d.%d\n"
-                "Current version: %d.%d.%d\n",
-                major, minor, patch,
-                MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR,
-                MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR,
-                MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH,
-                MUDA_VERSION_MAJOR,
-                MUDA_VERSION_MINOR,
-                MUDA_VERSION_PATCH);
-            FatalError(error.Data);
-        }
-    }
+	if (version < MUDA_BACKWARDS_COMPATIBLE_VERSION || version > MUDA_CURRENT_VERSION) {
+		String error = FmtStr(scratch, "Version %u.%u.%u not supported. \n"
+			"Minimum version supported: %u.%u.%u\n"
+			"Current version: %u.%u.%u\n\n",
+			major, minor, patch,
+			MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR,
+			MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR,
+			MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH,
+			MUDA_VERSION_MAJOR,
+			MUDA_VERSION_MINOR,
+			MUDA_VERSION_PATCH);
+		FatalError(error.Data);
+	}
 
     while (MudaParseNext(&prsr)) {
         // Temporary
@@ -114,32 +149,37 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, int length, bool c
             ReadList(&config->Library, prsr.Token.Data.Property.Value);
     }
     if (prsr.Token.Kind == Muda_Token_Error)
-        LogError ("%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
+        LogError("%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
 }
 
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
+    if (config->BuildConfig.DisableLogs)
+        ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
+
 	Assert(config->Type == Compile_Type_Project);
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
+    Memory_Allocator scratch_allocator = MemoryArenaAllocator(scratch);
+
 	Out_Stream out;
-	OutCreate(&out, MemoryArenaAllocator(scratch));
+	OutCreate(&out, scratch_allocator);
         
     Uint32 result = OsCheckIfPathExists(config->BuildDirectory);
     if (result == Path_Does_Not_Exist) {
         if (!OsCreateDirectoryRecursively(config->BuildDirectory)) {
-            String error = FmtStr(scratch, "Failed to create directory %s!", config->BuildDirectory.Data);
+            String error = FmtStr(scratch, "[Fatal Error] Failed to create directory %s!", config->BuildDirectory.Data);
             FatalError(error.Data);
         }
     }
     else if (result == Path_Exist_File) {
-        String error = FmtStr(scratch, "%s: Path exist but is a file!\n", config->BuildDirectory.Data);
+        String error = FmtStr(scratch, "[Fatal Errror] %s: Path exist but is a file!\n", config->BuildDirectory.Data);
         FatalError(error.Data);
     }
 
-    if (compiler == Compiler_Kind_CL){
+    if (compiler == Compiler_Kind_CL) {
         // For CL, we output intermediate files to "BuildDirectory/int"
         String intermediate;
         if (config->BuildDirectory.Data[config->BuildDirectory.Length - 1] == '/') {
@@ -152,15 +192,23 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         result = OsCheckIfPathExists(intermediate);
         if (result == Path_Does_Not_Exist) {
             if (!OsCreateDirectoryRecursively(intermediate)) {
-                String error = FmtStr(scratch, "Failed to create directory %s!", intermediate.Data);
+                String error = FmtStr(scratch, "[Fatal Error] Failed to create directory %s!", intermediate.Data);
                 FatalError(error.Data);
             }
         }
         else if (result == Path_Exist_File) {
-            String error = FmtStr(scratch, "%s: Path exist but is a file!\n", intermediate.Data);
+            String error = FmtStr(scratch, "[Fatal Error] %s: Path exist but is a file!\n", intermediate.Data);
             FatalError(error.Data);
         }
+    }
 
+    // Turn on Optimization if it is forced via command line
+    if (config->BuildConfig.ForceOptimization && !config->Optimization) {
+        LogInfo("[Note] Optimization turned on forcefully\n");
+        config->Optimization = true;
+    }
+
+    if (compiler == Compiler_Kind_CL){
         OutFormatted(&out, "cl -nologo -Zi -EHsc ");
 
         if (config->Optimization)
@@ -238,43 +286,18 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
     }
 
-    ThreadContext.Allocator = MemoryArenaAllocator(scratch);
-    String cmd_line = OutBuildString(&out);
-    ThreadContext.Allocator = NullMemoryAllocator();
+    String cmd_line = OutBuildString(&out, &scratch_allocator);
 
-	LogInfo("Command Line: %s\n", cmd_line.Data);
+    if (config->BuildConfig.DisplayCommandLine) {
+        LogInfo("[Command Line] %s\n", cmd_line.Data);
+    }
 
 	OsExecuteCommandLine(cmd_line);
 
 	EndTemporaryMemory(&temp);
+
+    ThreadContext.LogAgent.Procedure = LogProcedure;
 }
-
-//
-// Base setup
-//
-
-void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
-    TriggerBreakpoint();
-}
-
-void DeprecateHandle(const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
-}
-
-static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
-    void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
-    OsConsoleOutV(fp, fmt, list);
-}
-
-static void FatalErrorProcedure(const char *message) {
-    OsConsoleWrite("%s", message);
-    OsProcessExit(0);
-}
-
-//
-//
-//
 
 int main(int argc, char *argv[]) {
     Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
@@ -282,16 +305,16 @@ int main(int argc, char *argv[]) {
         (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
     OsSetupConsole();
+    
+    Compiler_Config config;
+    CompilerConfigInit(&config);
 
-    if (HandleCommandLineArguments(argc, argv))
+    if (HandleCommandLineArguments(argc, argv, &config.BuildConfig))
         return 0;
 
 	Compiler_Kind compiler = OsDetectCompiler();
     if (compiler == Compiler_Kind_NULL)
         return 1;
-
-    Compiler_Config config;
-    CompilerConfigInit(&config);
 
     String config_path = { 0,0 };
 
@@ -317,42 +340,22 @@ int main(int argc, char *argv[]) {
 
             if (size > MAX_ALLOWED_MUDA_FILE_SIZE) {
                 float max_size = (float)MAX_ALLOWED_MUDA_FILE_SIZE / (1024 * 1024);
-                String error = FmtStr(scratch, "Fatal Error: File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
+                String error = FmtStr(scratch, "[Fatal Error] File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
                 FatalError(error.Data);
             }
 
             Uint8 *buffer = PushSize(scratch, size + 1);
             if (OsFileRead(fp, buffer, size)) {
                 buffer[size] = 0;
-                LoadCompilerConfig(&config, buffer, size, true);
+                LoadCompilerConfig(&config, buffer, size);
             } else {
-                LogError("ERROR: Could not read the configuration file %s!\n", config_path.Data);
+                LogError("[Error] Could not read the configuration file %s!\n", config_path.Data);
             }
 
             OsFileClose(fp);
         } else {
-            LogError("ERROR: Could not open the configuration file %s!\n", config_path.Data);
+            LogError("[Error] Could not open the configuration file %s!\n", config_path.Data);
         }
-
-        EndTemporaryMemory(&temp);
-    }
-
-    {
-        Memory_Arena *scratch = ThreadScratchpad();
-
-        Temporary_Memory temp = BeginTemporaryMemory(scratch);
-
-        Out_Stream out;
-        OutCreate(&out, MemoryArenaAllocator(scratch));
-
-        for (int argi = 1; argi < argc; ++argi) {
-            OutFormatted(&out, "%s ", argv[argi]);
-        }
-
-        ThreadContext.Allocator = MemoryArenaAllocator(scratch);
-        String cmd_line = OutBuildString(&out);
-        ThreadContext.Allocator = NullMemoryAllocator();
-        LoadCompilerConfig(&config, cmd_line.Data, cmd_line.Length, false);
 
         EndTemporaryMemory(&temp);
     }

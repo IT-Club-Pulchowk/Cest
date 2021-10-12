@@ -24,7 +24,7 @@ INLINE_PROCEDURE String FmtStrV(Memory_Arena *arena, const char *fmt, va_list li
 	va_copy(args, list);
 	int len = 1 + vsnprintf(NULL, 0, fmt, args);
 	char *buf = (char *)PushSize(arena, len);
-	vsnprintf(buf, len, fmt, args);
+	vsnprintf(buf, len, fmt, list);
 	va_end(args);
 	return StringMake((Uint8 *)buf, len - 1);
 }
