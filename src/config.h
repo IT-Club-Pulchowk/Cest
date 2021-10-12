@@ -6,6 +6,10 @@ typedef enum Compile_Type {
 	Compile_Type_Solution,
 } Compile_Type;
 
+typedef struct Build_Config {
+    bool DisplayCommandLine;
+} Build_Config;
+
 typedef struct Compiler_Config {
 	Compile_Type Type;
 	bool Optimization;
@@ -16,6 +20,8 @@ typedef struct Compiler_Config {
 	String_List Source;
 	String_List LibraryDirectory;
 	String_List Library;
+
+    Build_Config BuildConfig;
 } Compiler_Config;
 
 //
@@ -29,6 +35,8 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
     StringListInit(&config->Source);
     StringListInit(&config->LibraryDirectory);
     StringListInit(&config->Library);
+
+    config->BuildConfig.DisplayCommandLine = false;
 }
 
 INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {

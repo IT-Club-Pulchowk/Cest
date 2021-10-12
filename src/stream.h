@@ -73,9 +73,9 @@ INLINE_PROCEDURE Int64 OutGetSize(Out_Stream *out) {
 	return out->Size;
 }
 
-INLINE_PROCEDURE String OutBuildString(Out_Stream *out) {
+INLINE_PROCEDURE String OutBuildString(Out_Stream *out, Memory_Allocator *allocator) {
 	String string;
-	string.Data = (Uint8 *)MemoryAllocate(out->Size + 1, &ThreadContext.Allocator);
+	string.Data = (Uint8 *)MemoryAllocate(out->Size + 1, allocator);
 	string.Length = 0;
 
 	struct Out_Stream_Bucket *buk = &out->Head;

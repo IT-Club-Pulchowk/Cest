@@ -14,65 +14,42 @@ typedef enum Muda_Option_Argument {
 typedef struct Muda_Option {
     String Name;
     String Desc;
-    void (*Proc)(const char *, const char *);
+    bool (*Proc)(const char *, const char *, Build_Config *);
     Muda_Option_Argument Argument;
 } Muda_Option;
 
-static void OptHelp(const char *program, const char *arg);
-static void OptDefault(const char *program, const char *arg);
-static void OptSetup(const char *program, const char *arg);
-static void OptVersion(const char *program, const char *arg);
+static bool OptVersion(const char *program, const char *arg, Build_Config *);
+static bool OptDefault(const char *program, const char *arg, Build_Config *);
+static bool OptSetup(const char *program, const char *arg, Build_Config *);
+static bool OptCmdline(const char *program, const char *arg, Build_Config *config);
+static bool OptHelp(const char *program, const char *arg, Build_Config *);
 
 static const Muda_Option Options[] = {
     { StringLiteralExpand("version"), StringLiteralExpand("Check the version of Muda installed"), OptVersion, Muda_Option_Argument_Empty },
     { StringLiteralExpand("default"), StringLiteralExpand("Display default configuration"), OptDefault, Muda_Option_Argument_Empty },
     { StringLiteralExpand("setup"), StringLiteralExpand("Setup a Muda build system"), OptSetup, Muda_Option_Argument_Empty },
+    { StringLiteralExpand("cmdline"), StringLiteralExpand("Displays the command line executed to build"), OptCmdline, Muda_Option_Argument_Empty },
     { StringLiteralExpand("help"), StringLiteralExpand("Muda description and list all the command"), OptHelp, Muda_Option_Argument_Optional },
 };
 
-static void OptHelp(const char *program, const char *arg) {
-    if (arg) {
-        String name = StringMake(arg, (Int64)strlen(arg));
-
-        int command_index = -1;
-        for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
-            if (StrMatchCaseInsensitive(name, Options[opt_i].Name)) {
-                command_index = opt_i;
-                break;
-            }
-        }
-
-        if (command_index != -1)
-            OsConsoleWrite("   %s : %s\n\n", Options[command_index].Name.Data, Options[command_index].Desc.Data);
-        else
-            OsConsoleWrite("   \"%s\" command is not present!\n"
-                "   Use: %s -help for list of all commands present.\n\n", arg, program);
-    }
-    else {
-        // Dont judge me pls I was bored
-        OptVersion(program, arg);
-        OsConsoleWrite("Usage:\n\tpath/to/muda [-flags | build_script]\n\n");
-        OsConsoleWrite("Flags:\n");
-
-        for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
-            OsConsoleWrite("\t-%-10s: %s\n", Options[opt_i].Name.Data, Options[opt_i].Desc.Data);
-        }
-
-        OsConsoleWrite("\nRepository:\n\thttps://github.com/IT-Club-Pulchowk/muda\n\n");
-    }
+static bool OptVersion(const char *program, const char *arg, Build_Config *config) {
+    OsConsoleWrite("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
+    OsConsoleWrite("Muda v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+    return true;
 }
 
-static void OptDefault(const char *program, const char *arg) {
+static bool OptDefault(const char *program, const char *arg, Build_Config *config) {
     OsConsoleWrite(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
     Compiler_Config def;
     CompilerConfigInit(&def);
     PushDefaultCompilerConfig(&def, Compiler_Kind_NULL);
     PrintCompilerConfig(def);
     OsConsoleWrite("\n");
+    return true;
 }
 
-static void OptSetup(const char *program, const char *arg) {
-    OptVersion(program, arg);
+static bool OptSetup(const char *program, const char *arg, Build_Config *config) {
+    OptVersion(program, arg, config);
 
     OsConsoleWrite("Muda Configuration:\n");
 
@@ -118,18 +95,53 @@ static void OptSetup(const char *program, const char *arg) {
 
     OsConsoleWrite("\n");
     OsFileClose(fhandle);
+
+    return true;
 }
 
-static void OptVersion(const char *program, const char *arg) {
-    OsConsoleWrite("                        \n               _|   _,  \n/|/|/|  |  |  / |  / |  \n | | |_/ \\/|_/\\/|_/\\/|_/\n\n");
-    OsConsoleWrite("Muda v %d.%d.%d\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+static bool OptCmdline(const char *program, const char *arg, Build_Config *config) {
+    config->DisplayCommandLine = true;
+    return false;
+}
+
+static bool OptHelp(const char *program, const char *arg, Build_Config *config) {
+    if (arg) {
+        String name = StringMake(arg, (Int64)strlen(arg));
+
+        int command_index = -1;
+        for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
+            if (StrMatchCaseInsensitive(name, Options[opt_i].Name)) {
+                command_index = opt_i;
+                break;
+            }
+        }
+
+        if (command_index != -1)
+            OsConsoleWrite("   %s : %s\n\n", Options[command_index].Name.Data, Options[command_index].Desc.Data);
+        else
+            OsConsoleWrite("   \"%s\" command is not present!\n"
+                "   Use: %s -help for list of all commands present.\n\n", arg, program);
+    }
+    else {
+        // Dont judge me pls I was bored
+        OptVersion(program, arg, config);
+        OsConsoleWrite("Usage:\n\tpath/to/muda [-flags | build_script]\n\n");
+        OsConsoleWrite("Flags:\n");
+
+        for (int opt_i = 0; opt_i < ArrayCount(Options); ++opt_i) {
+            OsConsoleWrite("\t-%-10s: %s\n", Options[opt_i].Name.Data, Options[opt_i].Desc.Data);
+        }
+
+        OsConsoleWrite("\nRepository:\n\thttps://github.com/IT-Club-Pulchowk/muda\n\n");
+    }
+    return true;
 }
 
 //
 //
 //
 
-static bool HandleCommandLineArguments(int argc, char *argv[]) {
+static bool HandleCommandLineArguments(int argc, char *argv[], Build_Config *config) {
     // If there are 2 arguments, then the 2nd argument could be options
     // Options are the strings that start with "-", we don't allow "- options", only allow "-option"
     if (argc > 1 && argv[1][0] == '-') {
@@ -142,7 +154,7 @@ static bool HandleCommandLineArguments(int argc, char *argv[]) {
                 switch (option->Argument) {
                 case Muda_Option_Argument_Empty: {
                     if (argc == 2) {
-                        option->Proc(argv[0], NULL);
+                        return option->Proc(argv[0], NULL, config);
                     }
                     else {
                         Memory_Arena *scratch = ThreadScratchpad();
@@ -153,7 +165,7 @@ static bool HandleCommandLineArguments(int argc, char *argv[]) {
 
                 case Muda_Option_Argument_Needed: {
                     if (argc == 3) {
-                        option->Proc(argv[0], argv[2]);
+                        return option->Proc(argv[0], argv[2], config);
                     }
                     else {
                         Memory_Arena *scratch = ThreadScratchpad();
@@ -164,7 +176,7 @@ static bool HandleCommandLineArguments(int argc, char *argv[]) {
 
                 case Muda_Option_Argument_Optional: {
                     if (argc <= 3) {
-                        option->Proc(argv[0], argc == 3 ? argv[2] : NULL);
+                        return option->Proc(argv[0], argc == 3 ? argv[2] : NULL, config);
                     }
                     else {
                         Memory_Arena *scratch = ThreadScratchpad();
@@ -174,7 +186,7 @@ static bool HandleCommandLineArguments(int argc, char *argv[]) {
                 } break;
                 }
 
-                return true;
+                return false;
             }
         }
 

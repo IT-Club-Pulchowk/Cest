@@ -124,8 +124,10 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
+    Memory_Allocator scratch_allocator = MemoryArenaAllocator(scratch);
+
 	Out_Stream out;
-	OutCreate(&out, MemoryArenaAllocator(scratch));
+	OutCreate(&out, scratch_allocator);
         
     Uint32 result = OsCheckIfPathExists(config->BuildDirectory);
     if (result == Path_Does_Not_Exist) {
@@ -238,11 +240,11 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
     }
 
-    ThreadContext.Allocator = MemoryArenaAllocator(scratch);
-    String cmd_line = OutBuildString(&out);
-    ThreadContext.Allocator = NullMemoryAllocator();
+    String cmd_line = OutBuildString(&out, &scratch_allocator);
 
-	LogInfo("Command Line: %s\n", cmd_line.Data);
+    if (config->BuildConfig.DisplayCommandLine) {
+        LogInfo("Command Line: %s\n", cmd_line.Data);
+    }
 
 	OsExecuteCommandLine(cmd_line);
 
@@ -282,16 +284,16 @@ int main(int argc, char *argv[]) {
         (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
     OsSetupConsole();
+    
+    Compiler_Config config;
+    CompilerConfigInit(&config);
 
-    if (HandleCommandLineArguments(argc, argv))
+    if (HandleCommandLineArguments(argc, argv, &config.BuildConfig))
         return 0;
 
 	Compiler_Kind compiler = OsDetectCompiler();
     if (compiler == Compiler_Kind_NULL)
         return 1;
-
-    Compiler_Config config;
-    CompilerConfigInit(&config);
 
     String config_path = { 0,0 };
 
