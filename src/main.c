@@ -141,13 +141,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         FatalError(error.Data);
     }
 
-    // Turn on Optimization if it is forced via command line
-    if (config->BuildConfig.ForceOptimization && !config->Optimization) {
-        LogInfo("[NOTE] Optimization turned on forcefully\n");
-        config->Optimization = true;
-    }
-
-    if (compiler == Compiler_Kind_CL){
+    if (compiler == Compiler_Kind_CL) {
         // For CL, we output intermediate files to "BuildDirectory/int"
         String intermediate;
         if (config->BuildDirectory.Data[config->BuildDirectory.Length - 1] == '/') {
@@ -168,7 +162,15 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
             String error = FmtStr(scratch, "%s: Path exist but is a file!\n", intermediate.Data);
             FatalError(error.Data);
         }
+    }
 
+    // Turn on Optimization if it is forced via command line
+    if (config->BuildConfig.ForceOptimization && !config->Optimization) {
+        LogInfo("[NOTE] Optimization turned on forcefully\n");
+        config->Optimization = true;
+    }
+
+    if (compiler == Compiler_Kind_CL){
         OutFormatted(&out, "cl -nologo -Zi -EHsc ");
 
         if (config->Optimization)
