@@ -1,4 +1,5 @@
 #pragma once
+#include "version.h"
 #include "lenstring.h"
 #include "os.h"
 #include "version.h"
@@ -49,7 +50,13 @@ typedef struct {
     Int32 Max_Vals;
 } Compiler_Optionals;
 
-const Compiler_Optionals Available_Optionals[] = {
+const Compiler_Optionals Available_Properties[] = {
+    {StringLiteralExpand("Type"), "Type of compilation (Project or Solution):\n\tProject: Only build using a single muda file\n\tSolution: Iterate through subdirectories and build each muda file found\n", "", "", "", 0},
+    {StringLiteralExpand("BuildDirectory"), "Path to the directory where the output binary should be placed\n", "", "", "", 0},
+    {StringLiteralExpand("Build"), "Name of the output binary\n", "", "", "", 0},
+    {StringLiteralExpand("Optimization"), "Use optimization while compiling or not (true/false)\n", "", "", "", 0},
+    {StringLiteralExpand("Source"), "Path to the source files\n", "", "", "", 0},
+
     {StringLiteralExpand("Define"), "List of preprocessing symbols to be defined", "-D%s ", "-D%s ", "-D%s ", -1},
     {StringLiteralExpand("Library"), "List of additional libraries to be linked [For MSVC: do not include the .lib extension]", "\"%s.lib\" " , "-l%s ", "-l%s ", -1},
     {StringLiteralExpand("IncludeDirectory"), "List of directories to search for include files", "-I\"%s\" ", "-I%s ", "-I%s ", -1},
@@ -120,8 +127,8 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
 }
 
 INLINE_PROCEDURE int CheckIfOptAvailable (String option) {
-    for (int i = 0; i < ArrayCount(Available_Optionals); i ++)
-        if (StrMatch(option, Available_Optionals[i].Name))
+    for (int i = 0; i < ArrayCount(Available_Properties); i ++)
+        if (StrMatch(option, Available_Properties[i].Name))
             return i;
     return -1;
 }
@@ -160,7 +167,7 @@ INLINE_PROCEDURE void OptListAdd(Optionals_List *dst, String key, String data, i
 		dst->Tail->Next = NULL;
 	}
 	dst->Tail->Property_Keys[dst->Used] = key;
-    ReadList(&dst->Tail->Property_Values[dst->Used], data, Available_Optionals[optnum].Max_Vals);
+    ReadList(&dst->Tail->Property_Values[dst->Used], data, Available_Properties[optnum].Max_Vals);
 	dst->Used++;
 }
 
@@ -169,24 +176,40 @@ INLINE_PROCEDURE void OptListAdd(Optionals_List *dst, String key, String data, i
 INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {
     Memory_Arena *scratch = ThreadScratchpad();
 
+    File_Handle fc;
+    const String LocalMudaFile = StringLiteral("build.muda");
+    if (OsCheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
+        fc = OsFileOpen(LocalMudaFile, File_Mode_Append);
+    } else {
+        fc = OsFileOpen(LocalMudaFile, File_Mode_Write);
+        OsFileWriteF(fc, "@version %d.%d.%d\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+    }
+
+    if (!fc.PlatformFileHandle)
+        LogError("Could not open file %s for writing\n", LocalMudaFile.Data);       
+
     if (config->BuildDirectory.Length == 0) {
         config->BuildDirectory = StrDuplicateArena(StringLiteral("./bin"), scratch);
         LogInfo("Using Default Binary Directory: \"%s\"\n", config->BuildDirectory.Data);
+        if (fc.PlatformFileHandle)
+            OsFileWrite(fc, StringLiteral("BuildDirectory=./bin; #Default\n"));
     }
 
     if (config->Build.Length == 0) {
         config->Build = StrDuplicateArena(StringLiteral("output"), scratch);
         LogInfo("Using Default Binary: %s\n", config->Build.Data);
+        if (fc.PlatformFileHandle)
+            OsFileWrite(fc, StringLiteral("Build=output; #Default\n"));
     }
 
     if (StringListIsEmpty(&config->Source)) {
         StringListAdd(&config->Source, StrDuplicateArena(StringLiteral("*.c"), scratch));
         LogInfo("Using Default Sources: %s\n", config->Source.Head.Data[0].Data);
+        if (fc.PlatformFileHandle)
+            OsFileWrite(fc, StringLiteral("Source=*.c; #Default\n"));
     }
-/*  */
-/*     if ((compiler & Compiler_Bit_CL) && StringListIsEmpty(&config->Defines)) { */
-/*         StringListAdd(&config->Defines, StrDuplicateArena(StringLiteral("_CRT_SECURE_NO_WARNINGS"), scratch)); */
-/*     } */
+
+    OsFileClose(fc);
 }
 
 typedef void (*Stream_Writer_Proc)(void *context, const char *fmt, ...);

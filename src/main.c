@@ -15,7 +15,6 @@ static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, vo
 #endif
 
 void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
-    if (!data) return;
 	Memory_Arena *scratch = ThreadScratchpad();
     
     Muda_Parser prsr = MudaParseInit(data);
@@ -199,7 +198,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                 int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
                 for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
                     int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
-                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_MSVC, ntr->Data[i].Data);
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Properties[indx].Fmt_MSVC, ntr->Data[i].Data);
                 }
             }
         }
@@ -226,7 +225,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                 int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
                 for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
                     int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
-                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_GCC, ntr->Data[i].Data);
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Properties[indx].Fmt_GCC, ntr->Data[i].Data);
                 }
             }
         }
@@ -254,7 +253,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                 int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
                 for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
                     int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
-                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_CLANG, ntr->Data[i].Data);
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Properties[indx].Fmt_CLANG, ntr->Data[i].Data);
                 }
             }
         }
@@ -332,11 +331,13 @@ int main(int argc, char *argv[]) {
             }
 
             Uint8 *buffer = PushSize(scratch, size + 1);
-            if (OsFileRead(fp, buffer, size)) {
+            if (OsFileRead(fp, buffer, size) && size > 0) {
                 buffer[size] = 0;
                 LogInfo("Parsing muda file\n");
                 LoadCompilerConfig(&config, buffer);
                 LogInfo("Finished parsing muda file\n");
+            } else if (size == 0) {
+                LogError("File %s is empty!\n", config_path.Data);
             } else {
                 LogError("Could not read the configuration file %s!\n", config_path.Data);
             }
