@@ -22,16 +22,18 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
     Uint32 version = 0;
     Uint32 major = 0, minor = 0, patch = 0;
 
-	if (MudaParseNext(&prsr)) {
-		if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
-			if (prsr.Token.Data.Tag.Value.Data) {
-				if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3)
-					FatalError("Error: Bad file version\n");
-			}
-			else FatalError("Error: Version info missing\n");
-		}
-		else FatalError("Error: Version tag missing at top of file\n");
-	}
+    while (MudaParseNext(&prsr))
+        if (prsr.Token.Kind != Muda_Token_Comment) break;
+
+    if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
+        if (prsr.Token.Data.Tag.Value.Data) {
+            if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3)
+                FatalError("Error: Bad file version\n");
+        }
+        else FatalError("Error: Version info missing\n");
+    }
+    else FatalError("Error: Version tag missing at top of file\n");
+
 	version = MudaMakeVersion(major, minor, patch);
 
 	if (version < MUDA_BACKWARDS_COMPATIBLE_VERSION || version > MUDA_CURRENT_VERSION) {
