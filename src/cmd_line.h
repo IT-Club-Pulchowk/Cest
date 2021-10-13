@@ -53,55 +53,62 @@ static bool OptDefault(const char *program, const char *arg[], int count, Build_
     return true;
 }
 
-static bool OptSetup(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
-    OptVersion(program, arg, count, config, option);
-
-    OsConsoleWrite("Muda Configuration:\n");
-
-    Compiler_Config def;
-    CompilerConfigInit(&def);
-    PushDefaultCompilerConfig(&def, 0);
-
-    // We take these as default
-    // Type = Project
-    // Optimization = false
-
-    // TODO: We are not using what we have input from console yet... :(
-    // TODO: Remove white spaces at start and end of the string as well
-
-    File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
-
-    //OsFileWriteF(fhandle, "@version %u.%u.%u\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
-    //OsFileWrite(fhandle, StringLiteral("# Made With -setup\n\n"));
-    //OsFileWrite(fhandle, StringLiteral("Type=Project;\n"));
-    //OsFileWrite(fhandle, StringLiteral("Optimization=false;\n"));
+static bool OptSetup(const char *program, const char *arg[], int count, Build_Config *build_config, Muda_Option *option) {
+    OptVersion(program, arg, count, build_config, option);
 
     char read_buffer[512];
+    String input;
 
-    OsConsoleWrite("Build Directory (default: %s) #\n   > ", def.BuildDirectory.Data);
-    OsConsoleRead(read_buffer, sizeof(read_buffer));
-    //OsFileWriteF(fhandle, "BuildDirectory=%s%s", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data, ";\n");
+    String muda_file = StringLiteral("build.muda");
+    if (OsCheckIfPathExists(muda_file)) {
+        OsConsoleWrite("Muda build file is already present in this directory. Enter [Y] or [y] to replace the file # > ");
+        input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
+        if (input.Length != 1 || (input.Data[0] != 'y' && input.Data[0] != 'Y'))
+            return true;
+    }
 
-    OsConsoleWrite("Build Executable (default: %s) #\n   > ", def.Build.Data);
-    //OsFileWriteF(fhandle, "Build=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    OsConsoleWrite("Muda Configuration:\n");
+    OsConsoleWrite("Press [ENTER] to use the default values. Multiple values must be separated by [SPACE]\n\n");
 
-    OsConsoleWrite("Defines #\n   > ");
-    //OsFileWriteF(fhandle, "Define=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    Memory_Arena *scratch = ThreadScratchpad();
 
-    OsConsoleWrite("Include Directory #\n   > ");
-    //OsFileWriteF(fhandle, "IncludeDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    Push_Allocator pushed = PushThreadAllocator(MemoryArenaAllocator(scratch));
 
-    OsConsoleWrite("Source (default: %s) #\n   > ", def.Source.Head.Data[0].Data);
+    Compiler_Config config;
+    CompilerConfigInit(&config);
+
+    ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
+    PushDefaultCompilerConfig(&config, 0);
+    ThreadContext.LogAgent.Procedure = LogProcedure;
+
+    OsConsoleWrite("Build Executable (default: %s) #\n   > ", config.Build.Data);
+    input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
+    if (input.Length)
+        config.Build = StrDuplicateArena(input, scratch);
+
+    OsConsoleWrite("Build Directory (default: %s) #\n   > ", config.BuildDirectory.Data);
+    input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
+    if (input.Length)
+        config.BuildDirectory = StrDuplicateArena(input, scratch);
+
+    OsConsoleWrite("Source (default: %s) #\n   > ", config.Source.Head.Data[0].Data);
+    input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
+    if (input.Length) {
+        StringListClear(&config.Source);
+        
+        ReadList(&config.Source, input, -1);
+    }
+
+    OsConsoleWrite("\n\n");
+    WriteCompilerConfig(&config, true, OsConsoleOut, OsGetStdOutputHandle());
+
+    PopThreadAllocator(&pushed);
+
+    // TODO: More input??
+
+    //File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
+
     //OsFileWriteF(fhandle, "Source=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
-
-    OsConsoleWrite("Library Directory #\n   > ");
-    //OsFileWriteF(fhandle, "LibraryDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
-
-    OsConsoleWrite("Input Library #\n   > ");
-    //OsFileWriteF(fhandle, "Library=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
-
-    OsConsoleWrite("\n");
-    OsFileClose(fhandle);
 
     return true;
 }

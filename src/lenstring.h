@@ -41,6 +41,30 @@ INLINE_PROCEDURE String FmtStr(Memory_Arena *arena, const char *fmt, ...) {
 	return string;
 }
 
+INLINE_PROCEDURE String StrTrim(String str) {
+	Int64 trim = 0;
+	for (Int64 index = 0; index < str.Length; ++index) {
+		if (isspace(str.Data[index]))
+			trim += 1;
+		else
+			break;
+	}
+
+	str.Data += trim;
+	str.Length -= trim;
+
+	trim = 0;
+	for (Int64 index = str.Length - 1; index >= 0; --index) {
+		if (isspace(str.Data[index]))
+			trim += 1;
+		else
+			break;
+	}
+
+	str.Length -= trim;
+	return str;
+}
+
 INLINE_PROCEDURE String StrRemovePrefix(String str, Int64 count) {
 	Assert(str.Length >= count);
 	str.Data += count;
