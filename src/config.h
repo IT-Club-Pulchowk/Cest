@@ -207,7 +207,17 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
         }
     }
 
-    // TODO: Write optional properties
+    ForList(Optionals_List_Node, &conf->Optionals) {
+        ForListNode(&conf->Optionals, MAX_OPTIONALS_IN_NODE) {
+            writer(context, fmt_no_val, it->Property_Keys[index].Data);
+            String_List *value_list = &it->Property_Values[index];
+            ForList(String_List_Node, value_list) {
+                ForListNode(value_list, MAX_STRING_NODE_DATA_COUNT) {
+                    writer(context, "\"%s\" ", it->Data[index].Data);
+                }
+            }
+        }
+    }
 }
 
 INLINE_PROCEDURE void PrintCompilerConfig(Compiler_Config conf) {

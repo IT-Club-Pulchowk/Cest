@@ -45,7 +45,9 @@ static bool OptDefault(const char *program, const char *arg[], int count, Build_
     Compiler_Config def;
     CompilerConfigInit(&def);
     PushDefaultCompilerConfig(&def, 0);
-    PrintCompilerConfig(def);
+
+    WriteCompilerConfig(&def, false, OsConsoleOut, OsGetStdOutputHandle());
+
     OsConsoleWrite("\n");
     ThreadContext.LogAgent.Procedure = LogProcedure;
     return true;
