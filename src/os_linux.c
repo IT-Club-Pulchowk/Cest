@@ -196,6 +196,11 @@ bool OsFileWrite(File_Handle handle, String data){
     return errno == 0;
 }
 
+bool OsFileWriteFV(File_Handle handle, const char *fmt, va_list args) {
+    bool result = (vfprintf(handle.PlatformFileHandle, fmt, args) >= 0);
+    return result;
+}
+
 bool OsFileWriteF(File_Handle handle, const char *fmt, ...){
 	va_list args;
 	va_start(args, fmt);

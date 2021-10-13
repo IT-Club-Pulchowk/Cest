@@ -76,6 +76,7 @@ File_Handle OsFileOpen(const String path, File_Mode mode);
 Ptrsize OsFileGetSize(File_Handle handle);
 bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size);
 bool OsFileWrite(File_Handle handle, String data);
+bool OsFileWriteFV(File_Handle handle, const char *fmt, va_list args);
 bool OsFileWriteF(File_Handle handle, const char *fmt, ...);
 void OsFileClose(File_Handle handle);
 

@@ -207,10 +207,13 @@ bool OsExecuteCommandLine(String cmdline) {
 
 	WaitForSingleObject(process.hProcess, INFINITE);
 
+	DWORD exit_code;
+	GetExitCodeProcess(process.hProcess, &exit_code);
+
 	CloseHandle(process.hProcess);
 	CloseHandle(process.hThread);
 
-	return true;
+	return exit_code == 0;
 }
 
 Uint32 OsCheckIfPathExists(String path) {
@@ -333,6 +336,15 @@ bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size) {
 bool OsFileWrite(File_Handle handle, String data) {
 	DWORD written;
 	bool result = WriteFile((HANDLE)handle.PlatformFileHandle, data.Data, (DWORD)data.Length, &written, NULL);
+	return result;
+}
+
+bool OsFileWriteFV(File_Handle handle, const char *fmt, va_list args) {
+	Memory_Arena *scratch = ThreadScratchpad();
+	Temporary_Memory temp = BeginTemporaryMemory(scratch);
+	String string = FmtStrV(scratch, fmt, args);
+	bool result = OsFileWrite(handle, string);
+	EndTemporaryMemory(&temp);
 	return result;
 }
 

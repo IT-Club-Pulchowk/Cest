@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#define ForList(Node_Type, List) for(Node_Type *it = &((List)->Head); it && (List)->Used; it = it->Next)
+#define ForListNode(List, MaxCount) Int64 it_count = it->Next ? (MaxCount) : (List)->Used; \
+                       for (Int64 index = 0; index < it_count; ++index)
+
 #define MAX_STRING_NODE_DATA_COUNT 8
 
 typedef struct String_List_Node {
@@ -35,6 +39,30 @@ INLINE_PROCEDURE String FmtStr(Memory_Arena *arena, const char *fmt, ...) {
 	String string = FmtStrV(arena, fmt, args);
 	va_end(args);
 	return string;
+}
+
+INLINE_PROCEDURE String StrTrim(String str) {
+	Int64 trim = 0;
+	for (Int64 index = 0; index < str.Length; ++index) {
+		if (isspace(str.Data[index]))
+			trim += 1;
+		else
+			break;
+	}
+
+	str.Data += trim;
+	str.Length -= trim;
+
+	trim = 0;
+	for (Int64 index = str.Length - 1; index >= 0; --index) {
+		if (isspace(str.Data[index]))
+			trim += 1;
+		else
+			break;
+	}
+
+	str.Length -= trim;
+	return str;
 }
 
 INLINE_PROCEDURE String StrRemovePrefix(String str, Int64 count) {
