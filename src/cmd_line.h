@@ -101,7 +101,7 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
 
 static bool OptCompiler(const char *program, const char *arg[], int count, Build_Config *config) {
     if (config->ForceCompiler == 0) {
-        LogError("[Error] Can't request multiple compilers at once!\n");
+        LogError("Can't request multiple compilers at once!\n");
         return true;
     }
 
@@ -114,7 +114,7 @@ static bool OptCompiler(const char *program, const char *arg[], int count, Build
              StrMatchCaseInsensitive(suggestion, StringLiteral("msvc")))
             config->ForceCompiler |= Compiler_Bit_CL;
     else {
-        LogError("[Error] Unknown compiler %s\n", arg);
+        LogError("Unknown compiler %s\n", arg);
         return true;
     }
 
@@ -183,7 +183,7 @@ static bool HandleCommandLineArguments(int argc, char *argv[], Build_Config *con
 	for (int argi = 1; argi < argc; ++argi) {
 		if (argv[argi][0] != '-') {
             Memory_Arena *scratch = ThreadScratchpad();
-            String error = FmtStr(scratch, "[Error] Command line arguments must begin with \"-\". "
+            String error = FmtStr(scratch, "Command line arguments must begin with \"-\". "
                 "For list of command type:\n\t%s -help\n\n", argv[argi]);
             FatalError(error.Data);
 		}
@@ -224,7 +224,7 @@ static bool HandleCommandLineArguments(int argc, char *argv[], Build_Config *con
 
                 if (not_enough_parameter) {
                     Memory_Arena *scratch = ThreadScratchpad();
-                    String error = FmtStr(scratch, "[Error] Expected %d number of parameters for %s\n\n",
+                    String error = FmtStr(scratch, "Expected %d number of parameters for %s\n\n",
                         option->ParameterCount, option->Name.Data);
                     FatalError(error.Data);
                 }
@@ -235,7 +235,7 @@ static bool HandleCommandLineArguments(int argc, char *argv[], Build_Config *con
 
         if (!cmd_executed) {
             Memory_Arena *scratch = ThreadScratchpad();
-            String error = FmtStr(scratch, "[Error] Command %s not found. For list of all available commands, type:\n"
+            String error = FmtStr(scratch, "Command \"%s\" not found. For list of all available commands, type:\n"
                 "\t%s -help\n\n",
                 option_name.Data, argv[0]);
             FatalError(error.Data);

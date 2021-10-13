@@ -4,6 +4,7 @@
 #include "muda_parser.h"
 #include "lenstring.h"
 #include "cmd_line.h"
+#include "muda.h"
 
 
 //
@@ -21,6 +22,10 @@ void DeprecateHandle(const char *file, int line, const char *proc) {
 
 static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
     void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
+    if (kind == Log_Kind_Error)
+        OsConsoleOut(fp, "[Error]");
+    else if (kind == Log_Kind_Warn)
+        OsConsoleOut(fp, "[Warning]");
     OsConsoleOutV(fp, fmt, list);
 }
 
@@ -30,7 +35,7 @@ static void LogProcedureDisabled(void *agent, Log_Kind kind, const char *fmt, va
 }
 
 static void FatalErrorProcedure(const char *message) {
-    OsConsoleWrite("%s", message);
+    OsConsoleWrite("[Fatal Error] %s", message);
     OsProcessExit(0);
 }
 
@@ -109,9 +114,9 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
         // Temporary
         if (prsr.Token.Kind == Muda_Token_Tag){
             if (prsr.Token.Data.Tag.Value.Data)
-                LogInfo("[TAG] %s : %s\n", prsr.Token.Data.Tag.Title.Data, prsr.Token.Data.Tag.Value.Data);
-            else 
-                LogInfo("[TAG] %s\n", prsr.Token.Data.Tag.Title.Data);
+                MudaReport("Tag", "%s : %s\n", prsr.Token.Data.Tag.Title.Data, prsr.Token.Data.Tag.Value.Data);
+            else
+                MudaReport("Tag", "%s\n", prsr.Token.Data.Tag.Title.Data);
         }
         if (prsr.Token.Kind != Muda_Token_Property) continue;
 
@@ -172,11 +177,11 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     if (config->BuildConfig.ForceCompiler) {
         if (compiler & config->BuildConfig.ForceCompiler) {
             compiler = config->BuildConfig.ForceCompiler;
-            LogInfo("[Note] Requested compiler: %s\n", GetCompilerName(compiler));
+            MudaReport("Note", "Requested compiler: %s\n", GetCompilerName(compiler));
         }
         else {
             const char *requested_compiler = GetCompilerName(config->BuildConfig.ForceCompiler);
-            LogInfo("[Note] Requested compiler: %s but %s could not be detected.\n",
+            MudaReport("Note", "Requested compiler: %s but %s could not be detected.\n",
                 requested_compiler, requested_compiler);
         }
     }
@@ -193,12 +198,12 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     Uint32 result = OsCheckIfPathExists(config->BuildDirectory);
     if (result == Path_Does_Not_Exist) {
         if (!OsCreateDirectoryRecursively(config->BuildDirectory)) {
-            String error = FmtStr(scratch, "[Fatal Error] Failed to create directory %s!", config->BuildDirectory.Data);
+            String error = FmtStr(scratch, "Failed to create directory %s!", config->BuildDirectory.Data);
             FatalError(error.Data);
         }
     }
     else if (result == Path_Exist_File) {
-        String error = FmtStr(scratch, "[Fatal Errror] %s: Path exist but is a file!\n", config->BuildDirectory.Data);
+        String error = FmtStr(scratch, "%s: Path exist but is a file!\n", config->BuildDirectory.Data);
         FatalError(error.Data);
     }
 
@@ -215,24 +220,24 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         result = OsCheckIfPathExists(intermediate);
         if (result == Path_Does_Not_Exist) {
             if (!OsCreateDirectoryRecursively(intermediate)) {
-                String error = FmtStr(scratch, "[Fatal Error] Failed to create directory %s!", intermediate.Data);
+                String error = FmtStr(scratch, "Failed to create directory %s!", intermediate.Data);
                 FatalError(error.Data);
             }
         }
         else if (result == Path_Exist_File) {
-            String error = FmtStr(scratch, "[Fatal Error] %s: Path exist but is a file!\n", intermediate.Data);
+            String error = FmtStr(scratch, "%s: Path exist but is a file!\n", intermediate.Data);
             FatalError(error.Data);
         }
     }
 
     // Turn on Optimization if it is forced via command line
     if (config->BuildConfig.ForceOptimization && !config->Optimization) {
-        LogInfo("[Note] Optimization turned on forcefully\n");
+        MudaReport("Note", "Optimization turned on forcefully\n");
         config->Optimization = true;
     }
 
     if (compiler & Compiler_Bit_CL) {
-        LogInfo("[Compiler] CL Detected.\n");
+        MudaReport("Compiler", "CL Detected.\n");
 
         OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
 
@@ -275,11 +280,11 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
     } else if (compiler & (Compiler_Bit_GCC | Compiler_Bit_CLANG)) {
         if (compiler & Compiler_Bit_GCC) {
-            LogInfo("[Compiler] GCC Detected.\n");
+            MudaReport("Compiler", "GCC Detected.\n");
             OutFormatted(&out, "gcc -pipe ");
         }
         else {
-            LogInfo("[Compiler] CLANG Detected.\n");
+            MudaReport("Compiler", "CLANG Detected.\n");
             OutFormatted(&out, "clang -gcodeview -w ");
         }
 
@@ -320,7 +325,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     String cmd_line = OutBuildString(&out, &scratch_allocator);
 
     if (config->BuildConfig.DisplayCommandLine) {
-        LogInfo("[Command Line] %s\n", cmd_line.Data);
+        MudaReport("Command Line", "%s\n", cmd_line.Data);
     }
 
 	OsExecuteCommandLine(cmd_line);
@@ -345,7 +350,7 @@ int main(int argc, char *argv[]) {
 
 	Compiler_Kind compiler = OsDetectCompiler();
     if (compiler == 0) {
-        LogError("[Error] Failed to detect compiler! Install one of the compilers from below...\n");
+        LogError("Failed to detect compiler! Install one of the compilers from below...\n");
         if (PLATFORM_OS_WINDOWS)
             OsConsoleWrite("[Visual Studio - MSVC] https://visualstudio.microsoft.com/ \n");
         OsConsoleWrite("[CLANG] https://releases.llvm.org/download.html \n");
@@ -377,7 +382,7 @@ int main(int argc, char *argv[]) {
 
             if (size > MAX_ALLOWED_MUDA_FILE_SIZE) {
                 float max_size = (float)MAX_ALLOWED_MUDA_FILE_SIZE / (1024 * 1024);
-                String error = FmtStr(scratch, "[Fatal Error] File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
+                String error = FmtStr(scratch, "File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
                 FatalError(error.Data);
             }
 
@@ -386,12 +391,12 @@ int main(int argc, char *argv[]) {
                 buffer[size] = 0;
                 LoadCompilerConfig(&config, buffer);
             } else {
-                LogError("[Error] Could not read the configuration file %s!\n", config_path.Data);
+                LogError("Could not read the configuration file %s!\n", config_path.Data);
             }
 
             OsFileClose(fp);
         } else {
-            LogError("[Error] Could not open the configuration file %s!\n", config_path.Data);
+            LogError("Could not open the configuration file %s!\n", config_path.Data);
         }
 
         EndTemporaryMemory(&temp);
