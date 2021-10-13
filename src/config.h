@@ -191,7 +191,7 @@ INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compile
 typedef void (*Stream_Writer_Proc)(void *context, const char *fmt, ...);
 
 INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, Stream_Writer_Proc writer, void *context) {
-    const char *fmt = "\n%-15s : %s;";
+    const char *fmt = "\n%-15s : %s;\n";
     const char *fmt_no_val = "\n%-15s : ";
 
     if (comments) {
@@ -203,21 +203,21 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
 
     writer(context, "@version %u.%u.%u\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
 
+    if (comments)
+        writer(context, "\n# Change this to 'Solution' if you want to iterate every directory and build the project in subdirectories");
     writer(context, fmt, "Type", conf->Type == Compile_Type_Project ? "Project" : "Solution");
-    if (comments)
-        writer(context, " # Change this to 'Solution' if you want to iterate every directory and build the project in subdirectories");
 
+    if (comments)
+        writer(context, "\n# Optimization flag can be changed using command line with \"-optimize\" flag which forces optimization to be turned on");
     writer(context, fmt, "Optimization", conf->Optimization ? "True" : "False");
-    if (comments)
-        writer(context, " # Optimization flag can be changed using command line with \"-optimize\" flag which forces optimization to be turned on");
 
+    if (comments)
+        writer(context, "\n# Name of the executable / library to be generated, don't put extensions here");
     writer(context, fmt, "Build", conf->Build.Data);
-    if (comments)
-        writer(context, " # Name of the executable / library to be generated, don't put extensions here");
 
-    writer(context, fmt, "BuildDirectory", conf->BuildDirectory.Data);
     if (comments)
-        writer(context, " # Directory where the executable / library is generated");
+        writer(context, "\n# Directory where the executable / library is generated");
+    writer(context, fmt, "BuildDirectory", conf->BuildDirectory.Data);
 
     if (comments)
         writer(context, "\n\n# All the c files to be compiled");
@@ -228,6 +228,7 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
             writer(context, "\"%s\" ", it->Data[index].Data);
         }
     }
+    writer(context, ";\n\n");
 
     ForList(Optionals_List_Node, &conf->Optionals) {
         ForListNode(&conf->Optionals, MAX_OPTIONALS_IN_NODE) {
@@ -238,11 +239,7 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
                     writer(context, "\"%s\" ", it->Data[index].Data);
                 }
             }
+            writer(context, ";\n\n");
         }
     }
-
-    if (comments)
-        writer(context, "\n");
-
-    writer(context, "\n");
 }

@@ -53,6 +53,13 @@ static bool OptDefault(const char *program, const char *arg[], int count, Build_
     return true;
 }
 
+static void OptSetupConfigFileWriter(void *context, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    OsFileWriteFV(*(File_Handle *)context, fmt, args);
+    va_end(args);
+}
+
 static bool OptSetup(const char *program, const char *arg[], int count, Build_Config *build_config, Muda_Option *option) {
     OptVersion(program, arg, count, build_config, option);
 
@@ -99,16 +106,13 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
         ReadList(&config.Source, input, -1);
     }
 
-    OsConsoleWrite("\n\n");
-    WriteCompilerConfig(&config, true, OsConsoleOut, OsGetStdOutputHandle());
+    // TODO: More input??
 
     PopThreadAllocator(&pushed);
 
-    // TODO: More input??
-
-    //File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
-
-    //OsFileWriteF(fhandle, "Source=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
+    WriteCompilerConfig(&config, true, OptSetupConfigFileWriter, &fhandle);
+    OsFileClose(fhandle);
 
     return true;
 }

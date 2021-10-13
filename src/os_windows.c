@@ -336,6 +336,15 @@ bool OsFileWrite(File_Handle handle, String data) {
 	return result;
 }
 
+bool OsFileWriteFV(File_Handle handle, const char *fmt, va_list args) {
+	Memory_Arena *scratch = ThreadScratchpad();
+	Temporary_Memory temp = BeginTemporaryMemory(scratch);
+	String string = FmtStrV(scratch, fmt, args);
+	bool result = OsFileWrite(handle, string);
+	EndTemporaryMemory(&temp);
+	return result;
+}
+
 bool OsFileWriteF(File_Handle handle, const char *fmt, ...) {
 	Memory_Arena *scratch = ThreadScratchpad();
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
