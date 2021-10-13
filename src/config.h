@@ -68,8 +68,8 @@ INLINE_PROCEDURE void AssertHandle(const char *reason, const char *file, int lin
     TriggerBreakpoint();
 }
 
-INLINE_PROCEDURE void DeprecateHandle(const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
+INLINE_PROCEDURE void DeprecateHandle(const char *reason, const char *file, int line, const char *proc) {
+    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d. %s\n", proc, file, line, reason);
 }
 
 INLINE_PROCEDURE void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
@@ -221,6 +221,7 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
 }
 
 INLINE_PROCEDURE void PrintCompilerConfig(Compiler_Config conf) {
+    Deprecated("Use WriteCompilerConfig function instead");
     OsConsoleWrite("\nType                : %s", conf.Type == Compile_Type_Project ? "Project" : "Solution");
     OsConsoleWrite("\nOptimization        : %s", conf.Optimization ? "True" : "False");
     OsConsoleWrite("\nBuild               : %s", conf.Build.Data);
