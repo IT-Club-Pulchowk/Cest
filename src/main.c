@@ -193,25 +193,16 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
         OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
 
-/*         for (String_List_Node* ntr = &config->Defines.Head; ntr && config->Defines.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->Defines.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data); */
-/*         } */
-/*  */
-/*         for (String_List_Node* ntr = &config->IncludeDirectory.Head; ntr && config->IncludeDirectory.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->IncludeDirectory.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-I\"%s\" ", ntr->Data[i].Data); */
-/*         } */
-/*  */
-/*         for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->LibraryDirectory.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-LIBPATH:\"%s\" ", ntr->Data[i].Data); */
-/*         } */
-/*  */
-/*         for (String_List_Node* ntr = &config->Library.Head; ntr && config->Library.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->Library.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data); */
-/*         } */
+        for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
+            int len = ptr->Next ? 8 : config->Optionals.Used;
+            for (int i = 0; i < len; i ++){
+                int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
+                for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
+                    int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_MSVC, ntr->Data[i].Data);
+                }
+            }
+        }
     } else if (compiler & Compiler_Bit_GCC) {
         LogInfo("[Compiler] GCC Detected.\n");
         OutFormatted(&out, "gcc -pipe ");
@@ -257,6 +248,16 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else if (PLATFORM_OS_WINDOWS)
             OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
 
+        for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
+            int len = ptr->Next ? 8 : config->Optionals.Used;
+            for (int i = 0; i < len; i ++){
+                int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
+                for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
+                    int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_CLANG, ntr->Data[i].Data);
+                }
+            }
+        }
     }
 
     String cmd_line = OutBuildString(&out, &scratch_allocator);
