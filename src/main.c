@@ -47,11 +47,12 @@ static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, vo
 }
 #endif
 
-static void ReadList(String_List *dst, String data){
+static void ReadList(String_List *dst, String data, Int64 max){
     Int64 prev_pos = 0;
     Int64 curr_pos = 0;
+    Int64 count = 0;
 
-    while (curr_pos < data.Length) {
+    while (curr_pos < data.Length && (max == -1 || count < max)) {
         // Remove prefixed spaces (postfix spaces in the case of 2+ iterations)
         while (curr_pos < data.Length && isspace(data.Data[curr_pos])) 
             curr_pos += 1;
@@ -62,6 +63,7 @@ static void ReadList(String_List *dst, String data){
             curr_pos += 1;
 
         StringListAdd(dst, StrDuplicate(StringMake(data.Data + prev_pos, curr_pos - prev_pos)));
+        count ++;
     }
 }
 
@@ -77,17 +79,12 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
 	if (MudaParseNext(&prsr)) {
 		if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
 			if (prsr.Token.Data.Tag.Value.Data) {
-				if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3) {
+				if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3)
 					FatalError("Error: Bad file version\n");
-				}
 			}
-			else {
-				FatalError("Error: Version info missing\n");
-			}
+			else FatalError("Error: Version info missing\n");
 		}
-		else {
-			FatalError("Error: Version tag missing at top of file\n");
-		}
+		else FatalError("Error: Version tag missing at top of file\n");
 	}
 	version = MudaMakeVersion(major, minor, patch);
 
@@ -132,21 +129,21 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Build"))) {
             config->Build = StrDuplicate(prsr.Token.Data.Property.Value);
         }
-
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Define")))
-            ReadList(&config->Defines, prsr.Token.Data.Property.Value);
-
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("IncludeDirectory")))
-            ReadList(&config->IncludeDirectory, prsr.Token.Data.Property.Value);
-
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Source")))
-            ReadList(&config->Source, prsr.Token.Data.Property.Value);
-
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("LibraryDirectory")))
-            ReadList(&config->LibraryDirectory, prsr.Token.Data.Property.Value);
-
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Library")))
-            ReadList(&config->Library, prsr.Token.Data.Property.Value);
+/*  */
+/*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Define"))) */
+/*             ReadList(&config->Defines, prsr.Token.Data.Property.Value); */
+/*  */
+/*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("IncludeDirectory"))) */
+/*             ReadList(&config->IncludeDirectory, prsr.Token.Data.Property.Value); */
+/*  */
+/*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Source"))) */
+/*             ReadList(&config->Source, prsr.Token.Data.Property.Value); */
+/*  */
+/*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("LibraryDirectory"))) */
+/*             ReadList(&config->LibraryDirectory, prsr.Token.Data.Property.Value); */
+/*  */
+/*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Library"))) */
+/*             ReadList(&config->Library, prsr.Token.Data.Property.Value); */
     }
     if (prsr.Token.Kind == Muda_Token_Error)
         LogError("%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
@@ -241,16 +238,6 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else
             OutFormatted(&out, "-Od ");
 
-        for (String_List_Node* ntr = &config->Defines.Head; ntr && config->Defines.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->Defines.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data);
-        }
-
-        for (String_List_Node* ntr = &config->IncludeDirectory.Head; ntr && config->IncludeDirectory.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->IncludeDirectory.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "-I\"%s\" ", ntr->Data[i].Data);
-        }
-
         for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->Source.Used;
             for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
@@ -264,37 +251,31 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
         OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
 
-        for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->LibraryDirectory.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "-LIBPATH:\"%s\" ", ntr->Data[i].Data);
-        }
-
-        for (String_List_Node* ntr = &config->Library.Head; ntr && config->Library.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->Library.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
-        }
-    } else if (compiler & (Compiler_Bit_GCC | Compiler_Bit_CLANG)) {
-        if (compiler & Compiler_Bit_GCC) {
-            LogInfo("[Compiler] GCC Detected.\n");
-            OutFormatted(&out, "gcc -pipe ");
-        }
-        else {
-            LogInfo("[Compiler] CLANG Detected.\n");
-            OutFormatted(&out, "clang -gcodeview -w ");
-        }
+/*         for (String_List_Node* ntr = &config->Defines.Head; ntr && config->Defines.Used; ntr = ntr->Next){ */
+/*             int len = ntr->Next ? 8 : config->Defines.Used; */
+/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data); */
+/*         } */
+/*  */
+/*         for (String_List_Node* ntr = &config->IncludeDirectory.Head; ntr && config->IncludeDirectory.Used; ntr = ntr->Next){ */
+/*             int len = ntr->Next ? 8 : config->IncludeDirectory.Used; */
+/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-I\"%s\" ", ntr->Data[i].Data); */
+/*         } */
+/*  */
+/*         for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){ */
+/*             int len = ntr->Next ? 8 : config->LibraryDirectory.Used; */
+/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-LIBPATH:\"%s\" ", ntr->Data[i].Data); */
+/*         } */
+/*  */
+/*         for (String_List_Node* ntr = &config->Library.Head; ntr && config->Library.Used; ntr = ntr->Next){ */
+/*             int len = ntr->Next ? 8 : config->Library.Used; */
+/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data); */
+/*         } */
+    } else if (compiler & Compiler_Bit_GCC) {
+        LogInfo("[Compiler] GCC Detected.\n");
+        OutFormatted(&out, "gcc -pipe ");
 
         if (config->Optimization) OutFormatted(&out, "-O2 ");
         else OutFormatted(&out, "-g ");
-
-        for (String_List_Node* ntr = &config->Defines.Head; ntr && config->Defines.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->Defines.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data);
-        }
-
-        for (String_List_Node* ntr = &config->IncludeDirectory.Head; ntr && config->IncludeDirectory.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->IncludeDirectory.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "-I%s ", ntr->Data[i].Data);
-        }
 
         for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
             int len = ntr->Next ? 8 : config->Source.Used;
@@ -306,15 +287,42 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else if (PLATFORM_OS_WINDOWS)
             OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
 
-        for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->LibraryDirectory.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "-L%s ", ntr->Data[i].Data);
+/*         for (String_List_Node* ntr = &config->Defines.Head; ntr && config->Defines.Used; ntr = ntr->Next){ */
+/*             int len = ntr->Next ? 8 : config->Defines.Used; */
+/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data); */
+/*         } */
+/*  */
+/*         for (String_List_Node* ntr = &config->IncludeDirectory.Head; ntr && config->IncludeDirectory.Used; ntr = ntr->Next){ */
+/*             int len = ntr->Next ? 8 : config->IncludeDirectory.Used; */
+/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-I%s ", ntr->Data[i].Data); */
+/*         } */
+/*  */
+/*         for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){ */
+/*             int len = ntr->Next ? 8 : config->LibraryDirectory.Used; */
+/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-L%s ", ntr->Data[i].Data); */
+/*         } */
+/*  */
+/*         for (String_List_Node* ntr = &config->Library.Head; ntr && config->Library.Used; ntr = ntr->Next){ */
+/*             int len = ntr->Next ? 8 : config->Library.Used; */
+/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-l%s ", ntr->Data[i].Data); */
+/*         } */
+    } else if (compiler & Compiler_Bit_CLANG) {
+        LogInfo("[Compiler] CLANG Detected.\n");
+        OutFormatted(&out, "clang -gcodeview -w ");
+
+        if (config->Optimization) OutFormatted(&out, "-O2 ");
+        else OutFormatted(&out, "-g ");
+
+        for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
+            int len = ntr->Next ? 8 : config->Source.Used;
+            for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
         }
 
-        for (String_List_Node* ntr = &config->Library.Head; ntr && config->Library.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->Library.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "-l%s ", ntr->Data[i].Data);
-        }
+        if (PLATFORM_OS_LINUX)
+            OutFormatted(&out, "-o %s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
+        else if (PLATFORM_OS_WINDOWS)
+            OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
+
     }
 
     String cmd_line = OutBuildString(&out, &scratch_allocator);

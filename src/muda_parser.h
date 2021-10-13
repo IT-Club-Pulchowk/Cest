@@ -98,6 +98,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             p->Token.Data.Section.Data = start;
             p->Token.Data.Section.Length = cur - start;
             while (*cur != ']') cur ++;
+            *cur = 0;
         } else {
             p->Token.Kind = Muda_Token_Error;
             p->Pos = cur;
