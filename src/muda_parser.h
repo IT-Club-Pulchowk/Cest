@@ -221,6 +221,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             while (*cur && *cur != '\r' && *cur != '\n') cur ++;
             cur --;
             GetLineNoAndColumn(cur, p);
+            p->Token.Data.Error.Line ++;
             MudaParserReportError(p, "Missing ';'");
             return false;
         }

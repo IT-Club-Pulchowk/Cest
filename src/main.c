@@ -89,8 +89,10 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
             OptListAdd(&config->Optionals, prsr.Token.Data.Property.Key, prsr.Token.Data.Property.Value, index);
         }
     }
-    if (prsr.Token.Kind == Muda_Token_Error)
-        LogError("%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
+    if (prsr.Token.Kind == Muda_Token_Error) {
+        String errmsg = FmtStr(scratch, "%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
+        FatalError(errmsg.Data);
+    }
 }
 
 const char *GetCompilerName(Compiler_Kind kind) {
