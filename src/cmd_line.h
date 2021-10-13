@@ -100,8 +100,8 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
 }
 
 static bool OptCompiler(const char *program, const char *arg[], int count, Build_Config *config) {
-    if (config->ForceCompiler == 0) {
-        LogError("Can't request multiple compilers at once!\n");
+    if (config->ForceCompiler != 0) {
+        LogError("Can't request multiple compilers at once!\n\n");
         return true;
     }
 
@@ -220,6 +220,9 @@ static bool HandleCommandLineArguments(int argc, char *argv[], Build_Config *con
                     }
 
                     argi += parameter_count;
+                }
+                else {
+                    not_enough_parameter = true;
                 }
 
                 if (not_enough_parameter) {

@@ -23,9 +23,9 @@ void DeprecateHandle(const char *file, int line, const char *proc) {
 static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
     void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
     if (kind == Log_Kind_Error)
-        OsConsoleOut(fp, "[Error]");
+        OsConsoleOut(fp, "[Error] ");
     else if (kind == Log_Kind_Warn)
-        OsConsoleOut(fp, "[Warning]");
+        OsConsoleOut(fp, "[Warning] ");
     OsConsoleOutV(fp, fmt, list);
 }
 
