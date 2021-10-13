@@ -177,6 +177,7 @@ do {          \
 } while (0)
 #endif
 
+#define UnusedVariable(...)
 #define Deprecated()	DeprecateHandle(__FILE__, __LINE__, __PROCEDURE__)
 
 #if defined(BUILD_DEBUG) || defined(BUILD_DEVELOPER)

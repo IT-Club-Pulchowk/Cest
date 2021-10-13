@@ -139,6 +139,30 @@ INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compile
 /*     } */
 }
 
+typedef void (*Stream_Writer_Proc)(void *context, const char *fmt, ...);
+
+INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, Stream_Writer_Proc writer, void *context) {
+    UnusedVariable(comments);
+
+    const char *fmt = "\n%-15s : %s";
+    const char *fmt_no_val = "\n%-15s : ";
+
+    writer(context, fmt, "Type", conf->Type == Compile_Type_Project ? "Project" : "Solution");
+    writer(context, fmt, "Optimization", conf->Optimization ? "True" : "False");
+    writer(context, fmt, "Build", conf->Build.Data);
+    writer(context, fmt, "BuildDirectory", conf->BuildDirectory.Data);
+
+    writer(context, fmt_no_val, "Source");
+
+    ForList(String_List_Node, &conf->Source) {
+        ForListNode(&conf->Source, MAX_STRING_NODE_DATA_COUNT) {
+            writer(context, "\"%s\" ", it->Data[index].Data);
+        }
+    }
+
+    // TODO: Write optional properties
+}
+
 INLINE_PROCEDURE void PrintCompilerConfig(Compiler_Config conf) {
     OsConsoleWrite("\nType                : %s", conf.Type == Compile_Type_Project ? "Project" : "Solution");
     OsConsoleWrite("\nOptimization        : %s", conf.Optimization ? "True" : "False");

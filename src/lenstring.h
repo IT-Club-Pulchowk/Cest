@@ -5,6 +5,10 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#define ForList(Node_Type, List) for(Node_Type *it = &((List)->Head); it && (List)->Used; it = it->Next)
+#define ForListNode(List, MaxCount) Int64 it_count = it->Next ? (MaxCount) : (List)->Used; \
+                       for (Int64 index = 0; index < it_count; ++index)
+
 #define MAX_STRING_NODE_DATA_COUNT 8
 
 typedef struct String_List_Node {
