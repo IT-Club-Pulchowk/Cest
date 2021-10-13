@@ -14,16 +14,26 @@ typedef struct Build_Config {
     bool DisableLogs;
 } Build_Config;
 
+#define MAX_OPTIONALS_IN_NODE 8
+
+typedef struct Opt_Lst_Node{
+    String_List Properties[MAX_OPTIONALS_IN_NODE];
+    struct Opt_Lst_Node *Next;
+} Optionals_List_Node;
+
+typedef struct {
+	Optionals_List_Node Head;
+	Optionals_List_Node *Tail;
+	Uint32 Used;
+} Optionals_List;
+
 typedef struct Compiler_Config {
 	Compile_Type Type;
 	bool Optimization;
 	String Build;
 	String BuildDirectory;
     String_List Source;
-	struct {
-        String_List* Properties;
-        Uint32 Cap, Count;
-    } Optionals;
+    Optionals_List Optionals;
     Build_Config BuildConfig;
 } Compiler_Config;
 
@@ -90,15 +100,18 @@ INLINE_PROCEDURE void FatalErrorProcedure(const char *message) {
 INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
     memset(config, 0, sizeof(*config));
     StringListInit(&config->Source);
-    Memory_Arena *scratch = ThreadScratchpad();
-    config->Optionals.Properties = (String_List *)PushSize(scratch, sizeof(String_List) * INITIAL_OPT_CAP);
-    config->Optionals.Cap = INITIAL_OPT_CAP;
-    config->Optionals.Count = 0;
 
     config->BuildConfig.ForceCompiler      = 0;
     config->BuildConfig.ForceOptimization  = false;
     config->BuildConfig.DisplayCommandLine = false;
     config->BuildConfig.DisableLogs        = false;
+
+	config->Optionals.Used = 0;
+	config->Optionals.Head.Next = NULL;
+	config->Optionals.Tail = &config->Optionals.Head;
+
+    for (int i = 0; i < MAX_OPTIONALS_IN_NODE; i++)
+        StringListInit(&config->Optionals.Head.Properties[i]);
 }
 
 //TODO: reimplement the commented out code

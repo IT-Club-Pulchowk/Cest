@@ -19,7 +19,7 @@ static void ReadList(String_List *dst, String data, Int64 max){
     Int64 curr_pos = 0;
     Int64 count = 0;
 
-    while (curr_pos < data.Length && (max == -1 || count < max)) {
+    while (curr_pos < data.Length && (max < 0 || count < max)) {
         // Remove prefixed spaces (postfix spaces in the case of 2+ iterations)
         while (curr_pos < data.Length && isspace(data.Data[curr_pos])) 
             curr_pos += 1;
@@ -96,15 +96,16 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Build"))) {
             config->Build = StrDuplicate(prsr.Token.Data.Property.Value);
         }
+
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Source")))
+            ReadList(&config->Source, prsr.Token.Data.Property.Value, -1);
+
 /*  */
 /*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Define"))) */
 /*             ReadList(&config->Defines, prsr.Token.Data.Property.Value); */
 /*  */
 /*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("IncludeDirectory"))) */
 /*             ReadList(&config->IncludeDirectory, prsr.Token.Data.Property.Value); */
-/*  */
-/*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Source"))) */
-/*             ReadList(&config->Source, prsr.Token.Data.Property.Value); */
 /*  */
 /*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("LibraryDirectory"))) */
 /*             ReadList(&config->LibraryDirectory, prsr.Token.Data.Property.Value); */
