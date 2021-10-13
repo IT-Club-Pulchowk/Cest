@@ -4,8 +4,6 @@
 #include "muda_parser.h"
 #include "lenstring.h"
 #include "cmd_line.h"
-#include "muda.h"
-
 
 //
 // Base setup
@@ -22,10 +20,12 @@ void DeprecateHandle(const char *file, int line, const char *proc) {
 
 static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
     void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
-    if (kind == Log_Kind_Error)
-        OsConsoleOut(fp, "[Error] ");
+    if (kind == Log_Kind_Info)
+        OsConsoleOut(fp, "%-10s", "[Log] ");
+    else if (kind == Log_Kind_Error)
+        OsConsoleOut(fp, "%-10s", "[Error] ");
     else if (kind == Log_Kind_Warn)
-        OsConsoleOut(fp, "[Warning] ");
+        OsConsoleOut(fp, "%-10s", "[Warning] ");
     OsConsoleOutV(fp, fmt, list);
 }
 
@@ -35,7 +35,8 @@ static void LogProcedureDisabled(void *agent, Log_Kind kind, const char *fmt, va
 }
 
 static void FatalErrorProcedure(const char *message) {
-    OsConsoleWrite("[Fatal Error] %s", message);
+    OsConsoleWrite("%-10s", "[Fatal Error] ");
+    OsConsoleWrite("%s", message);
     OsProcessExit(0);
 }
 
@@ -114,9 +115,9 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
         // Temporary
         if (prsr.Token.Kind == Muda_Token_Tag){
             if (prsr.Token.Data.Tag.Value.Data)
-                MudaReport("Tag", "%s : %s\n", prsr.Token.Data.Tag.Title.Data, prsr.Token.Data.Tag.Value.Data);
+                LogInfo("Tag:= %s : %s\n", prsr.Token.Data.Tag.Title.Data, prsr.Token.Data.Tag.Value.Data);
             else
-                MudaReport("Tag", "%s\n", prsr.Token.Data.Tag.Title.Data);
+                LogInfo("Tag:= %s\n", prsr.Token.Data.Tag.Title.Data);
         }
         if (prsr.Token.Kind != Muda_Token_Property) continue;
 
@@ -177,11 +178,11 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     if (config->BuildConfig.ForceCompiler) {
         if (compiler & config->BuildConfig.ForceCompiler) {
             compiler = config->BuildConfig.ForceCompiler;
-            MudaReport("Note", "Requested compiler: %s\n", GetCompilerName(compiler));
+            LogInfo("Requested compiler: %s\n", GetCompilerName(compiler));
         }
         else {
             const char *requested_compiler = GetCompilerName(config->BuildConfig.ForceCompiler);
-            MudaReport("Note", "Requested compiler: %s but %s could not be detected.\n",
+            LogInfo("Requested compiler: %s but %s could not be detected.\n",
                 requested_compiler, requested_compiler);
         }
     }
@@ -232,12 +233,12 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
     // Turn on Optimization if it is forced via command line
     if (config->BuildConfig.ForceOptimization && !config->Optimization) {
-        MudaReport("Note", "Optimization turned on forcefully\n");
+        LogInfo("Optimization turned on forcefully\n");
         config->Optimization = true;
     }
 
     if (compiler & Compiler_Bit_CL) {
-        MudaReport("Compiler", "CL Detected.\n");
+        LogInfo("Compiler: CL Detected.\n");
 
         OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
 
@@ -280,11 +281,11 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
     } else if (compiler & (Compiler_Bit_GCC | Compiler_Bit_CLANG)) {
         if (compiler & Compiler_Bit_GCC) {
-            MudaReport("Compiler", "GCC Detected.\n");
+            LogInfo("Compiler: GCC Detected.\n");
             OutFormatted(&out, "gcc -pipe ");
         }
         else {
-            MudaReport("Compiler", "CLANG Detected.\n");
+            LogInfo("Compiler: CLANG Detected.\n");
             OutFormatted(&out, "clang -gcodeview -w ");
         }
 
@@ -325,7 +326,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     String cmd_line = OutBuildString(&out, &scratch_allocator);
 
     if (config->BuildConfig.DisplayCommandLine) {
-        MudaReport("Command Line", "%s\n", cmd_line.Data);
+        LogInfo("Command Line: %s\n", cmd_line.Data);
     }
 
 	OsExecuteCommandLine(cmd_line);
@@ -372,6 +373,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (config_path.Length) {
+        LogInfo("Found muda configuration file: \"%s\"\n", config_path.Data);
+
         Memory_Arena *scratch = ThreadScratchpad();
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
