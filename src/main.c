@@ -84,15 +84,15 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
 		if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
 			if (prsr.Token.Data.Tag.Value.Data) {
 				if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3) {
-					FatalError("Error: Bad file version\n");
+					FatalError("Bad file version\n");
 				}
 			}
 			else {
-				FatalError("Error: Version info missing\n");
+				FatalError("Version info missing\n");
 			}
 		}
 		else {
-			FatalError("Error: Version tag missing at top of file\n");
+			FatalError("Version tag missing at top of file\n");
 		}
 	}
 	version = MudaMakeVersion(major, minor, patch);
@@ -172,8 +172,7 @@ const char *GetCompilerName(Compiler_Kind kind) {
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
-    if (config->BuildConfig.DisableLogs)
-        ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
+    LogInfo("Beginning compilation\n");
 
     if (config->BuildConfig.ForceCompiler) {
         if (compiler & config->BuildConfig.ForceCompiler) {
@@ -182,7 +181,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
         else {
             const char *requested_compiler = GetCompilerName(config->BuildConfig.ForceCompiler);
-            LogInfo("Requested compiler: %s but %s could not be detected.\n",
+            LogInfo("Requested compiler: %s but %s could not be detected\n",
                 requested_compiler, requested_compiler);
         }
     }
@@ -238,7 +237,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     }
 
     if (compiler & Compiler_Bit_CL) {
-        LogInfo("Compiler: CL Detected.\n");
+        LogInfo("Compiler: CL Detected\n");
 
         OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
 
@@ -281,11 +280,11 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         }
     } else if (compiler & (Compiler_Bit_GCC | Compiler_Bit_CLANG)) {
         if (compiler & Compiler_Bit_GCC) {
-            LogInfo("Compiler: GCC Detected.\n");
+            LogInfo("Compiler: GCC Detected\n");
             OutFormatted(&out, "gcc -pipe ");
         }
         else {
-            LogInfo("Compiler: CLANG Detected.\n");
+            LogInfo("Compiler: CLANG Detected\n");
             OutFormatted(&out, "clang -gcodeview -w ");
         }
 
@@ -329,11 +328,13 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         LogInfo("Command Line: %s\n", cmd_line.Data);
     }
 
-	OsExecuteCommandLine(cmd_line);
+    LogInfo("Executing compilation\n");
+    if (OsExecuteCommandLine(cmd_line))
+        LogInfo("Compilation succedded\n\n");
+    else
+        LogInfo("Compilation failed\n\n");
 
 	EndTemporaryMemory(&temp);
-
-    ThreadContext.LogAgent.Procedure = LogProcedure;
 }
 
 int main(int argc, char *argv[]) {
@@ -349,9 +350,12 @@ int main(int argc, char *argv[]) {
     if (HandleCommandLineArguments(argc, argv, &config.BuildConfig))
         return 0;
 
+    if (config.BuildConfig.DisableLogs)
+        ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
+
 	Compiler_Kind compiler = OsDetectCompiler();
     if (compiler == 0) {
-        LogError("Failed to detect compiler! Install one of the compilers from below...\n");
+        LogError("Failed to detect compiler! Installation of compiler is required...\n");
         if (PLATFORM_OS_WINDOWS)
             OsConsoleWrite("[Visual Studio - MSVC] https://visualstudio.microsoft.com/ \n");
         OsConsoleWrite("[CLANG] https://releases.llvm.org/download.html \n");
@@ -392,7 +396,9 @@ int main(int argc, char *argv[]) {
             Uint8 *buffer = PushSize(scratch, size + 1);
             if (OsFileRead(fp, buffer, size)) {
                 buffer[size] = 0;
+                LogInfo("Parsing muda file\n");
                 LoadCompilerConfig(&config, buffer);
+                LogInfo("Finished parsing muda file\n");
             } else {
                 LogError("Could not read the configuration file %s!\n", config_path.Data);
             }

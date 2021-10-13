@@ -50,18 +50,22 @@ INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compile
 
     if (config->BuildDirectory.Length == 0) {
         config->BuildDirectory = StrDuplicateArena(StringLiteral("./bin"), scratch);
+        LogInfo("Using Default Binary Directory: \"%s\"\n", config->BuildDirectory.Data);
     }
 
     if (config->Build.Length == 0) {
         config->Build = StrDuplicateArena(StringLiteral("output"), scratch);
+        LogInfo("Using Default Binary: %s\n", config->Build.Data);
     }
 
     if (StringListIsEmpty(&config->Source)) {
         StringListAdd(&config->Source, StrDuplicateArena(StringLiteral("*.c"), scratch));
+        LogInfo("Using Default Sources: %s\n", config->Source.Head.Data[0].Data);
     }
 
     if ((compiler & Compiler_Bit_CL) && StringListIsEmpty(&config->Defines)) {
         StringListAdd(&config->Defines, StrDuplicateArena(StringLiteral("_CRT_SECURE_NO_WARNINGS"), scratch));
+        LogInfo("Using Default Defines: %s\n", config->Defines.Head.Data[0].Data);
     }
 }
 
