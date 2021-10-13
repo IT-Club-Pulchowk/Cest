@@ -171,8 +171,6 @@ INLINE_PROCEDURE void OptListAdd(Optionals_List *dst, String key, String data, i
 	dst->Used++;
 }
 
-//TODO: reimplement the commented out code
-
 INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {
     Memory_Arena *scratch = ThreadScratchpad();
 
@@ -269,39 +267,4 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
         writer(context, "\n");
 
     writer(context, "\n");
-}
-
-INLINE_PROCEDURE void PrintCompilerConfig(Compiler_Config conf) {
-    Deprecated("Use WriteCompilerConfig function instead");
-    OsConsoleWrite("\nType                : %s", conf.Type == Compile_Type_Project ? "Project" : "Solution");
-    OsConsoleWrite("\nOptimization        : %s", conf.Optimization ? "True" : "False");
-    OsConsoleWrite("\nBuild               : %s", conf.Build.Data);
-    OsConsoleWrite("\nBuild Directory     : %s", conf.BuildDirectory.Data);
-
-    OsConsoleWrite("\nSource              : ");
-    for (String_List_Node *ntr = &conf.Source.Head; ntr && conf.Source.Used; ntr = ntr->Next) {
-        int len = ntr->Next ? 8 : conf.Source.Used;
-        for (int i = 0; i < len; i++) OsConsoleWrite("%s ", ntr->Data[i].Data);
-    }
-    /* OsConsoleWrite("\nDefines             : "); */
-    /* for (String_List_Node *ntr = &conf.Defines.Head; ntr && conf.Defines.Used; ntr = ntr->Next) { */
-    /*     int len = ntr->Next ? 8 : conf.Defines.Used; */
-    /*     for (int i = 0; i < len; i++) OsConsoleWrite("%s ", ntr->Data[i].Data); */
-    /* } */
-    /* OsConsoleWrite("\nInclude Directories : "); */
-    /* for (String_List_Node *ntr = &conf.IncludeDirectory.Head; ntr && conf.IncludeDirectory.Used; ntr = ntr->Next) { */
-    /*     int len = ntr->Next ? 8 : conf.IncludeDirectory.Used; */
-    /*     for (int i = 0; i < len; i++) OsConsoleWrite("%s ", ntr->Data[i].Data); */
-    /* } */
-    /* OsConsoleWrite("\nLibrary Directories : "); */
-    /* for (String_List_Node *ntr = &conf.LibraryDirectory.Head; ntr && conf.LibraryDirectory.Used; ntr = ntr->Next) { */
-    /*     int len = ntr->Next ? 8 : conf.LibraryDirectory.Used; */
-    /*     for (int i = 0; i < len; i++) OsConsoleWrite("%s ", ntr->Data[i].Data); */
-    /* } */
-    /* OsConsoleWrite("\nLibraries           : "); */
-    /* for (String_List_Node *ntr = &conf.Library.Head; ntr && conf.Library.Used; ntr = ntr->Next) { */
-    /*     int len = ntr->Next ? 8 : conf.Library.Used; */
-    /*     for (int i = 0; i < len; i++) OsConsoleWrite("%s ", ntr->Data[i].Data); */
-    /* } */
-    OsConsoleWrite("\n");
 }
