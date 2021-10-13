@@ -14,26 +14,6 @@ static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, vo
 }
 #endif
 
-static void ReadList(String_List *dst, String data, Int64 max){
-    Int64 prev_pos = 0;
-    Int64 curr_pos = 0;
-    Int64 count = 0;
-
-    while (curr_pos < data.Length && (max < 0 || count < max)) {
-        // Remove prefixed spaces (postfix spaces in the case of 2+ iterations)
-        while (curr_pos < data.Length && isspace(data.Data[curr_pos])) 
-            curr_pos += 1;
-        prev_pos = curr_pos;
-
-        // Count number of characters in the string
-        while (curr_pos < data.Length && !isspace(data.Data[curr_pos])) 
-            curr_pos += 1;
-
-        StringListAdd(dst, StrDuplicate(StringMake(data.Data + prev_pos, curr_pos - prev_pos)));
-        count ++;
-    }
-}
-
 void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
     if (!data) return;
 	Memory_Arena *scratch = ThreadScratchpad();
@@ -89,29 +69,24 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Optimization")))
             config->Optimization = StrMatch(prsr.Token.Data.Property.Value, StringLiteral("true"));
 
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("BuildDirectory"))) {
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("BuildDirectory")))
             config->BuildDirectory = StrDuplicate(prsr.Token.Data.Property.Value);
-        }
 
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Build"))) {
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Build")))
             config->Build = StrDuplicate(prsr.Token.Data.Property.Value);
-        }
 
         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Source")))
             ReadList(&config->Source, prsr.Token.Data.Property.Value, -1);
 
-/*  */
-/*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Define"))) */
-/*             ReadList(&config->Defines, prsr.Token.Data.Property.Value); */
-/*  */
-/*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("IncludeDirectory"))) */
-/*             ReadList(&config->IncludeDirectory, prsr.Token.Data.Property.Value); */
-/*  */
-/*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("LibraryDirectory"))) */
-/*             ReadList(&config->LibraryDirectory, prsr.Token.Data.Property.Value); */
-/*  */
-/*         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Library"))) */
-/*             ReadList(&config->Library, prsr.Token.Data.Property.Value); */
+        else {
+            int index = CheckIfOptAvailable(prsr.Token.Data.Property.Key); 
+            if (index == -1) {
+                LogWarn ("Unrecognized option \"%s\" will be skipped\n", prsr.Token.Data.Property.Key.Data);
+                continue;
+            }
+
+            OptListAdd(&config->Optionals, prsr.Token.Data.Property.Key, prsr.Token.Data.Property.Value, index);
+        }
     }
     if (prsr.Token.Kind == Muda_Token_Error)
         LogError("%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
@@ -218,25 +193,16 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
         OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
 
-/*         for (String_List_Node* ntr = &config->Defines.Head; ntr && config->Defines.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->Defines.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data); */
-/*         } */
-/*  */
-/*         for (String_List_Node* ntr = &config->IncludeDirectory.Head; ntr && config->IncludeDirectory.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->IncludeDirectory.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-I\"%s\" ", ntr->Data[i].Data); */
-/*         } */
-/*  */
-/*         for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->LibraryDirectory.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-LIBPATH:\"%s\" ", ntr->Data[i].Data); */
-/*         } */
-/*  */
-/*         for (String_List_Node* ntr = &config->Library.Head; ntr && config->Library.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->Library.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data); */
-/*         } */
+        for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
+            int len = ptr->Next ? 8 : config->Optionals.Used;
+            for (int i = 0; i < len; i ++){
+                int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
+                for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
+                    int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_MSVC, ntr->Data[i].Data);
+                }
+            }
+        }
     } else if (compiler & Compiler_Bit_GCC) {
         LogInfo("[Compiler] GCC Detected.\n");
         OutFormatted(&out, "gcc -pipe ");
@@ -254,25 +220,17 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else if (PLATFORM_OS_WINDOWS)
             OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
 
-/*         for (String_List_Node* ntr = &config->Defines.Head; ntr && config->Defines.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->Defines.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-D%s ", ntr->Data[i].Data); */
-/*         } */
-/*  */
-/*         for (String_List_Node* ntr = &config->IncludeDirectory.Head; ntr && config->IncludeDirectory.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->IncludeDirectory.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-I%s ", ntr->Data[i].Data); */
-/*         } */
-/*  */
-/*         for (String_List_Node* ntr = &config->LibraryDirectory.Head; ntr && config->LibraryDirectory.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->LibraryDirectory.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-L%s ", ntr->Data[i].Data); */
-/*         } */
-/*  */
-/*         for (String_List_Node* ntr = &config->Library.Head; ntr && config->Library.Used; ntr = ntr->Next){ */
-/*             int len = ntr->Next ? 8 : config->Library.Used; */
-/*             for (int i = 0; i < len; i ++) OutFormatted(&out, "-l%s ", ntr->Data[i].Data); */
-/*         } */
+        for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
+            int len = ptr->Next ? 8 : config->Optionals.Used;
+            for (int i = 0; i < len; i ++){
+                int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
+                for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
+                    int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_GCC, ntr->Data[i].Data);
+                }
+            }
+        }
+
     } else if (compiler & Compiler_Bit_CLANG) {
         LogInfo("[Compiler] CLANG Detected.\n");
         OutFormatted(&out, "clang -gcodeview -w ");
@@ -290,6 +248,16 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         else if (PLATFORM_OS_WINDOWS)
             OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
 
+        for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
+            int len = ptr->Next ? 8 : config->Optionals.Used;
+            for (int i = 0; i < len; i ++){
+                int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
+                for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
+                    int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_CLANG, ntr->Data[i].Data);
+                }
+            }
+        }
     }
 
     String cmd_line = OutBuildString(&out, &scratch_allocator);
