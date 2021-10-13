@@ -269,7 +269,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
     LogInfo("Executing compilation\n");
     if (OsExecuteCommandLine(cmd_line))
-        LogInfo("Compilation succedded\n\n");
+        LogInfo("Compilation succeeded\n\n");
     else
         LogInfo("Compilation failed\n\n");
 

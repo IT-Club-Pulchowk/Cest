@@ -207,10 +207,13 @@ bool OsExecuteCommandLine(String cmdline) {
 
 	WaitForSingleObject(process.hProcess, INFINITE);
 
+	DWORD exit_code;
+	GetExitCodeProcess(process.hProcess, &exit_code);
+
 	CloseHandle(process.hProcess);
 	CloseHandle(process.hThread);
 
-	return true;
+	return exit_code == 0;
 }
 
 Uint32 OsCheckIfPathExists(String path) {
