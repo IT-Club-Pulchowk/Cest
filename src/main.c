@@ -198,7 +198,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                 int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
                 for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
                     int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
-                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_MSVC, ntr->Data[i].Data);
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Properties[indx].Fmt_MSVC, ntr->Data[i].Data);
                 }
             }
         }
@@ -225,7 +225,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                 int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
                 for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
                     int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
-                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_GCC, ntr->Data[i].Data);
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Properties[indx].Fmt_GCC, ntr->Data[i].Data);
                 }
             }
         }
@@ -253,7 +253,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                 int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
                 for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
                     int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
-                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Optionals[indx].Fmt_CLANG, ntr->Data[i].Data);
+                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Properties[indx].Fmt_CLANG, ntr->Data[i].Data);
                 }
             }
         }

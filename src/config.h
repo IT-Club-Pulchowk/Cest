@@ -48,7 +48,13 @@ typedef struct {
     Int32 Max_Vals;
 } Compiler_Optionals;
 
-const Compiler_Optionals Available_Optionals[] = {
+const Compiler_Optionals Available_Properties[] = {
+    {StringLiteralExpand("Type"), "Type of compilation (Project or Solution):\n\tProject: Only build using a single muda file\n\tSolution: Iterate through subdirectories and build each muda file found\n", "", "", "", 0},
+    {StringLiteralExpand("BuildDirectory"), "Path to the directory where the output binary should be placed\n", "", "", "", 0},
+    {StringLiteralExpand("Build"), "Name of the output binary\n", "", "", "", 0},
+    {StringLiteralExpand("Optimization"), "Use optimization while compiling or not (true/false)\n", "", "", "", 0},
+    {StringLiteralExpand("Source"), "Path to the source files\n", "", "", "", 0},
+
     {StringLiteralExpand("Define"), "List of preprocessing symbols to be defined", "-D%s ", "-D%s ", "-D%s ", -1},
     {StringLiteralExpand("Library"), "List of additional libraries to be linked [For MSVC: do not include the .lib extension]", "\"%s.lib\" " , "-l%s ", "-l%s ", -1},
     {StringLiteralExpand("IncludeDirectory"), "List of directories to search for include files", "-I\"%s\" ", "-I%s ", "-I%s ", -1},
@@ -119,8 +125,8 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
 }
 
 INLINE_PROCEDURE int CheckIfOptAvailable (String option) {
-    for (int i = 0; i < ArrayCount(Available_Optionals); i ++)
-        if (StrMatch(option, Available_Optionals[i].Name))
+    for (int i = 0; i < ArrayCount(Available_Properties); i ++)
+        if (StrMatch(option, Available_Properties[i].Name))
             return i;
     return -1;
 }
@@ -157,7 +163,7 @@ INLINE_PROCEDURE void OptListAdd(Optionals_List *dst, String key, String data, i
 		dst->Tail->Next = NULL;
 	}
 	dst->Tail->Property_Keys[dst->Used] = key;
-    ReadList(&dst->Tail->Property_Values[dst->Used], data, Available_Optionals[optnum].Max_Vals);
+    ReadList(&dst->Tail->Property_Values[dst->Used], data, Available_Properties[optnum].Max_Vals);
 	dst->Used++;
 }
 
