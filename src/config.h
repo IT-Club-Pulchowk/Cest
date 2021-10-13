@@ -1,4 +1,5 @@
 #pragma once
+#include "version.h"
 #include "lenstring.h"
 #include "os.h"
 #include <ctype.h>
@@ -172,24 +173,40 @@ INLINE_PROCEDURE void OptListAdd(Optionals_List *dst, String key, String data, i
 INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {
     Memory_Arena *scratch = ThreadScratchpad();
 
+    File_Handle fc;
+    const String LocalMudaFile = StringLiteral("build.muda");
+    if (OsCheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
+        fc = OsFileOpen(LocalMudaFile, File_Mode_Append);
+    } else {
+        fc = OsFileOpen(LocalMudaFile, File_Mode_Write);
+        OsFileWriteF(fc, "@version %d.%d.%d\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+    }
+
+    if (!fc.PlatformFileHandle)
+        LogError("Could not open file %s for writing\n", LocalMudaFile.Data);       
+
     if (config->BuildDirectory.Length == 0) {
         config->BuildDirectory = StrDuplicateArena(StringLiteral("./bin"), scratch);
         LogInfo("Using Default Binary Directory: \"%s\"\n", config->BuildDirectory.Data);
+        if (fc.PlatformFileHandle)
+            OsFileWrite(fc, StringLiteral("BuildDirectory=./bin; #Default\n"));
     }
 
     if (config->Build.Length == 0) {
         config->Build = StrDuplicateArena(StringLiteral("output"), scratch);
         LogInfo("Using Default Binary: %s\n", config->Build.Data);
+        if (fc.PlatformFileHandle)
+            OsFileWrite(fc, StringLiteral("Build=output; #Default\n"));
     }
 
     if (StringListIsEmpty(&config->Source)) {
         StringListAdd(&config->Source, StrDuplicateArena(StringLiteral("*.c"), scratch));
         LogInfo("Using Default Sources: %s\n", config->Source.Head.Data[0].Data);
+        if (fc.PlatformFileHandle)
+            OsFileWrite(fc, StringLiteral("Source=*.c; #Default\n"));
     }
-/*  */
-/*     if ((compiler & Compiler_Bit_CL) && StringListIsEmpty(&config->Defines)) { */
-/*         StringListAdd(&config->Defines, StrDuplicateArena(StringLiteral("_CRT_SECURE_NO_WARNINGS"), scratch)); */
-/*     } */
+
+    OsFileClose(fc);
 }
 
 INLINE_PROCEDURE void PrintCompilerConfig(Compiler_Config conf) {
