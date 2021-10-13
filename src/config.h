@@ -1,7 +1,7 @@
 #pragma once
 #include "lenstring.h"
 #include "os.h"
-#include <ctype.h>
+#include "version.h"
 
 typedef enum Compile_Type {
 	Compile_Type_Project,
@@ -194,6 +194,8 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
     const char *fmt = "\n%-15s : %s";
     const char *fmt_no_val = "\n%-15s : ";
 
+    writer(context, "@version %u.%u.%u\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+
     writer(context, fmt, "Type", conf->Type == Compile_Type_Project ? "Project" : "Solution");
     writer(context, fmt, "Optimization", conf->Optimization ? "True" : "False");
     writer(context, fmt, "Build", conf->Build.Data);
@@ -218,6 +220,8 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
             }
         }
     }
+
+    writer(context, "\n");
 }
 
 INLINE_PROCEDURE void PrintCompilerConfig(Compiler_Config conf) {

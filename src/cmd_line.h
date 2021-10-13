@@ -69,34 +69,36 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
     // TODO: We are not using what we have input from console yet... :(
     // TODO: Remove white spaces at start and end of the string as well
 
-    char read_buffer[256];
     File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
 
-    OsFileWriteF(fhandle, "@version %u.%u.%u\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
-    OsFileWrite(fhandle, StringLiteral("# Made With -setup\n\n"));
-    OsFileWrite(fhandle, StringLiteral("Type=Project;\n"));
-    OsFileWrite(fhandle, StringLiteral("Optimization=false;\n"));
+    //OsFileWriteF(fhandle, "@version %u.%u.%u\n\n", MUDA_VERSION_MAJOR, MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
+    //OsFileWrite(fhandle, StringLiteral("# Made With -setup\n\n"));
+    //OsFileWrite(fhandle, StringLiteral("Type=Project;\n"));
+    //OsFileWrite(fhandle, StringLiteral("Optimization=false;\n"));
+
+    char read_buffer[512];
 
     OsConsoleWrite("Build Directory (default: %s) #\n   > ", def.BuildDirectory.Data);
-    OsFileWriteF(fhandle, "BuildDirectory=%s%s", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data, ";\n");
+    OsConsoleRead(read_buffer, sizeof(read_buffer));
+    //OsFileWriteF(fhandle, "BuildDirectory=%s%s", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data, ";\n");
 
     OsConsoleWrite("Build Executable (default: %s) #\n   > ", def.Build.Data);
-    OsFileWriteF(fhandle, "Build=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    //OsFileWriteF(fhandle, "Build=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Defines #\n   > ");
-    OsFileWriteF(fhandle, "Define=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    //OsFileWriteF(fhandle, "Define=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Include Directory #\n   > ");
-    OsFileWriteF(fhandle, "IncludeDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    //OsFileWriteF(fhandle, "IncludeDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Source (default: %s) #\n   > ", def.Source.Head.Data[0].Data);
-    OsFileWriteF(fhandle, "Source=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    //OsFileWriteF(fhandle, "Source=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Library Directory #\n   > ");
-    OsFileWriteF(fhandle, "LibraryDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    //OsFileWriteF(fhandle, "LibraryDirectory=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("Input Library #\n   > ");
-    OsFileWriteF(fhandle, "Library=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
+    //OsFileWriteF(fhandle, "Library=%s;\n", OsConsoleRead(read_buffer, sizeof(read_buffer)).Data);
 
     OsConsoleWrite("\n");
     OsFileClose(fhandle);

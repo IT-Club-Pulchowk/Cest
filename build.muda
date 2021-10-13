@@ -5,7 +5,7 @@
 Type=Project;
 Optimization=false;
 BuildDirectory=./bin;
-Build=bootstrap;
+Build=muda;
 
 # we need to make _CRT_SECURE_NO_WARNINGS Windows only, but we don't support sections yet :(
 Define=ASSERTION_HANDLED DEPRECATION_HANDLED _CRT_SECURE_NO_WARNINGS;
