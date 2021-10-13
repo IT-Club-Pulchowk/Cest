@@ -1,6 +1,7 @@
 #pragma once
 #include "lenstring.h"
 #include "os.h"
+#include <ctype.h>
 
 typedef enum Compile_Type {
 	Compile_Type_Project,
@@ -17,7 +18,8 @@ typedef struct Build_Config {
 #define MAX_OPTIONALS_IN_NODE 8
 
 typedef struct Opt_Lst_Node{
-    String_List Properties[MAX_OPTIONALS_IN_NODE];
+    String Property_Keys[MAX_OPTIONALS_IN_NODE];
+    String_List Property_Values[MAX_OPTIONALS_IN_NODE];
     struct Opt_Lst_Node *Next;
 } Optionals_List_Node;
 
@@ -47,7 +49,7 @@ typedef struct {
 } Compiler_Optionals;
 
 const Compiler_Optionals Available_Optionals[] = {
-    {StringLiteralExpand("Defines"), "List of preprocessing symbols to be defined", "-D%s ", "-D%s ", "-D%s ", -1},
+    {StringLiteralExpand("Define"), "List of preprocessing symbols to be defined", "-D%s ", "-D%s ", "-D%s ", -1},
     {StringLiteralExpand("Library"), "List of additional libraries to be linked [For MSVC: do not include the .lib extension]", "\"%s.lib\" " , "-l%s ", "-l%s ", -1},
     {StringLiteralExpand("IncludeDirectory"), "List of directories to search for include files", "-I\"%s\" ", "-I%s ", "-I%s ", -1},
     {StringLiteralExpand("LibraryDirectory"), "List of paths to be searched for additional libraries", "-LIBPATH:\"%s\" ", "-L%s ", "-L%s ", -1},
@@ -110,8 +112,53 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
 	config->Optionals.Head.Next = NULL;
 	config->Optionals.Tail = &config->Optionals.Head;
 
-    for (int i = 0; i < MAX_OPTIONALS_IN_NODE; i++)
-        StringListInit(&config->Optionals.Head.Properties[i]);
+    for (int i = 0; i < MAX_OPTIONALS_IN_NODE; i++) {
+        config->Optionals.Head.Property_Keys[i] = (String){0, 0};
+        StringListInit(&config->Optionals.Head.Property_Values[i]);
+    }
+}
+
+INLINE_PROCEDURE int CheckIfOptAvailable (String option) {
+    for (int i = 0; i < ArrayCount(Available_Optionals); i ++)
+        if (StrMatch(option, Available_Optionals[i].Name))
+            return i;
+    return -1;
+}
+
+INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max){
+    Int64 prev_pos = 0;
+    Int64 curr_pos = 0;
+    Int64 count = 0;
+
+    while (curr_pos < data.Length && (max < 0 || count < max)) {
+        // Remove prefixed spaces (postfix spaces in the case of 2+ iterations)
+        while (curr_pos < data.Length && isspace(data.Data[curr_pos])) 
+            curr_pos += 1;
+        prev_pos = curr_pos;
+
+        // Count number of characters in the string
+        while (curr_pos < data.Length && !isspace(data.Data[curr_pos])) 
+            curr_pos += 1;
+
+        StringListAdd(dst, StrDuplicate(StringMake(data.Data + prev_pos, curr_pos - prev_pos)));
+        count ++;
+    }
+}
+
+INLINE_PROCEDURE void OptListAdd(Optionals_List *dst, String key, String data, int optnum) {
+	if (dst->Used == MAX_OPTIONALS_IN_NODE) {
+		dst->Used = 0;
+		dst->Tail->Next = (Optionals_List_Node *)MemoryAllocate(sizeof(Optionals_List_Node), &ThreadContext.Allocator);
+		dst->Tail = dst->Tail->Next;
+        for (int i = 0; i < MAX_OPTIONALS_IN_NODE; i++) {
+            dst->Tail[i].Property_Keys[i] = (String){0, 0};
+            StringListInit(&dst->Tail[i].Property_Values[i]);
+        }
+		dst->Tail->Next = NULL;
+	}
+	dst->Tail->Property_Keys[dst->Used] = key;
+    ReadList(&dst->Tail->Property_Values[dst->Used], data, Available_Optionals[optnum].Max_Vals);
+	dst->Used++;
 }
 
 //TODO: reimplement the commented out code
