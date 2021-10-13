@@ -6,7 +6,7 @@
 #include "zBase.h"
 #include <ctype.h>
 
-#define MudaReportError(p, ...) snprintf(p->Token.Data.Error.Desc, sizeof(p->Token.Data.Error.Desc), __VA_ARGS__)
+#define MudaParserReportError(p, ...) snprintf(p->Token.Data.Error.Desc, sizeof(p->Token.Data.Error.Desc), __VA_ARGS__)
 
 typedef enum {
     Muda_Token_Section,
@@ -104,11 +104,11 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             p->Pos = cur;
             if (*(cur - 1) != '\n' && *(cur - 1) != '\r'){
                 GetLineNoAndColumn(cur, p);
-                MudaReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
+                MudaParserReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
             } else{
                 cur -= 2;
                 GetLineNoAndColumn(cur, p);
-                MudaReportError(p, "Missing ']'");
+                MudaParserReportError(p, "Missing ']'");
             }
             return false;
         }
@@ -139,7 +139,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             p->Token.Kind = Muda_Token_Error;
             p->Pos = cur;
             GetLineNoAndColumn(cur, p);
-            MudaReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
+            MudaParserReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
             return 0;
         }
 
@@ -177,9 +177,9 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             p->Pos = cur;
             GetLineNoAndColumn(cur, p);
             if (*cur && *cur != ';')
-                MudaReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
+                MudaParserReportError(p, "Only Alpha-Numeric Characters Allowed for Identifiers");
             else
-                MudaReportError(p, "Property name without assignment");
+                MudaParserReportError(p, "Property name without assignment");
             return false;
         }
 
@@ -221,7 +221,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
             while (*cur && *cur != '\r' && *cur != '\n') cur ++;
             cur --;
             GetLineNoAndColumn(cur, p);
-            MudaReportError(p, "Missing ';'");
+            MudaParserReportError(p, "Missing ';'");
             return false;
         }
         *cur = 0;
@@ -231,7 +231,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
         p->Token.Kind = Muda_Token_Error;
         p->Pos = cur;
         GetLineNoAndColumn(cur, p);
-        MudaReportError(p, "Bad character, unrecognized");
+        MudaParserReportError(p, "Bad character, unrecognized");
         return false;
     }
 }

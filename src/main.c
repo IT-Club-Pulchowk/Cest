@@ -5,39 +5,6 @@
 #include "lenstring.h"
 #include "cmd_line.h"
 
-
-//
-// Base setup
-//
-
-void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
-    TriggerBreakpoint();
-}
-
-void DeprecateHandle(const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
-}
-
-static void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
-    void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
-    OsConsoleOutV(fp, fmt, list);
-}
-
-static void LogProcedureDisabled(void *agent, Log_Kind kind, const char *fmt, va_list list) {
-    if (kind == Log_Kind_Info) return;
-    OsConsoleOutV(OsGetErrorOutputHandle(), fmt, list);
-}
-
-static void FatalErrorProcedure(const char *message) {
-    OsConsoleWrite("%s", message);
-    OsProcessExit(0);
-}
-
-//
-//
-//
-
 #if 0
 static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, void *user_context) {
 	if (info->Atribute & File_Attribute_Hidden) return Directory_Iteration_Continue;
@@ -106,9 +73,9 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
         // Temporary
         if (prsr.Token.Kind == Muda_Token_Tag){
             if (prsr.Token.Data.Tag.Value.Data)
-                LogInfo("[TAG] %s : %s\n", prsr.Token.Data.Tag.Title.Data, prsr.Token.Data.Tag.Value.Data);
-            else 
-                LogInfo("[TAG] %s\n", prsr.Token.Data.Tag.Title.Data);
+                LogInfo("Tag:= %s : %s\n", prsr.Token.Data.Tag.Title.Data, prsr.Token.Data.Tag.Value.Data);
+            else
+                LogInfo("Tag:= %s\n", prsr.Token.Data.Tag.Title.Data);
         }
         if (prsr.Token.Kind != Muda_Token_Property) continue;
 
@@ -163,17 +130,16 @@ const char *GetCompilerName(Compiler_Kind kind) {
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
-    if (config->BuildConfig.DisableLogs)
-        ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
+    LogInfo("Beginning compilation\n");
 
     if (config->BuildConfig.ForceCompiler) {
         if (compiler & config->BuildConfig.ForceCompiler) {
             compiler = config->BuildConfig.ForceCompiler;
-            LogInfo("[Note] Requested compiler: %s\n", GetCompilerName(compiler));
+            LogInfo("Requested compiler: %s\n", GetCompilerName(compiler));
         }
         else {
             const char *requested_compiler = GetCompilerName(config->BuildConfig.ForceCompiler);
-            LogInfo("[Note] Requested compiler: %s but %s could not be detected.\n",
+            LogInfo("Requested compiler: %s but %s could not be detected\n",
                 requested_compiler, requested_compiler);
         }
     }
@@ -190,12 +156,12 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     Uint32 result = OsCheckIfPathExists(config->BuildDirectory);
     if (result == Path_Does_Not_Exist) {
         if (!OsCreateDirectoryRecursively(config->BuildDirectory)) {
-            String error = FmtStr(scratch, "[Fatal Error] Failed to create directory %s!", config->BuildDirectory.Data);
+            String error = FmtStr(scratch, "Failed to create directory %s!", config->BuildDirectory.Data);
             FatalError(error.Data);
         }
     }
     else if (result == Path_Exist_File) {
-        String error = FmtStr(scratch, "[Fatal Errror] %s: Path exist but is a file!\n", config->BuildDirectory.Data);
+        String error = FmtStr(scratch, "%s: Path exist but is a file!\n", config->BuildDirectory.Data);
         FatalError(error.Data);
     }
 
@@ -212,24 +178,24 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         result = OsCheckIfPathExists(intermediate);
         if (result == Path_Does_Not_Exist) {
             if (!OsCreateDirectoryRecursively(intermediate)) {
-                String error = FmtStr(scratch, "[Fatal Error] Failed to create directory %s!", intermediate.Data);
+                String error = FmtStr(scratch, "Failed to create directory %s!", intermediate.Data);
                 FatalError(error.Data);
             }
         }
         else if (result == Path_Exist_File) {
-            String error = FmtStr(scratch, "[Fatal Error] %s: Path exist but is a file!\n", intermediate.Data);
+            String error = FmtStr(scratch, "%s: Path exist but is a file!\n", intermediate.Data);
             FatalError(error.Data);
         }
     }
 
     // Turn on Optimization if it is forced via command line
     if (config->BuildConfig.ForceOptimization && !config->Optimization) {
-        LogInfo("[Note] Optimization turned on forcefully\n");
+        LogInfo("Optimization turned on forcefully\n");
         config->Optimization = true;
     }
 
     if (compiler & Compiler_Bit_CL) {
-        LogInfo("[Compiler] CL Detected.\n");
+        LogInfo("Compiler: CL Detected\n");
 
         OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
 
@@ -328,14 +294,16 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     String cmd_line = OutBuildString(&out, &scratch_allocator);
 
     if (config->BuildConfig.DisplayCommandLine) {
-        LogInfo("[Command Line] %s\n", cmd_line.Data);
+        LogInfo("Command Line: %s\n", cmd_line.Data);
     }
 
-	OsExecuteCommandLine(cmd_line);
+    LogInfo("Executing compilation\n");
+    if (OsExecuteCommandLine(cmd_line))
+        LogInfo("Compilation succedded\n\n");
+    else
+        LogInfo("Compilation failed\n\n");
 
 	EndTemporaryMemory(&temp);
-
-    ThreadContext.LogAgent.Procedure = LogProcedure;
 }
 
 int main(int argc, char *argv[]) {
@@ -351,9 +319,12 @@ int main(int argc, char *argv[]) {
     if (HandleCommandLineArguments(argc, argv, &config.BuildConfig))
         return 0;
 
+    if (config.BuildConfig.DisableLogs)
+        ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
+
 	Compiler_Kind compiler = OsDetectCompiler();
     if (compiler == 0) {
-        LogError("[Error] Failed to detect compiler! Install one of the compilers from below...\n");
+        LogError("Failed to detect compiler! Installation of compiler is required...\n");
         if (PLATFORM_OS_WINDOWS)
             OsConsoleWrite("[Visual Studio - MSVC] https://visualstudio.microsoft.com/ \n");
         OsConsoleWrite("[CLANG] https://releases.llvm.org/download.html \n");
@@ -375,6 +346,8 @@ int main(int argc, char *argv[]) {
     }
 
     if (config_path.Length) {
+        LogInfo("Found muda configuration file: \"%s\"\n", config_path.Data);
+
         Memory_Arena *scratch = ThreadScratchpad();
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
@@ -385,21 +358,23 @@ int main(int argc, char *argv[]) {
 
             if (size > MAX_ALLOWED_MUDA_FILE_SIZE) {
                 float max_size = (float)MAX_ALLOWED_MUDA_FILE_SIZE / (1024 * 1024);
-                String error = FmtStr(scratch, "[Fatal Error] File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
+                String error = FmtStr(scratch, "File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
                 FatalError(error.Data);
             }
 
             Uint8 *buffer = PushSize(scratch, size + 1);
             if (OsFileRead(fp, buffer, size)) {
                 buffer[size] = 0;
+                LogInfo("Parsing muda file\n");
                 LoadCompilerConfig(&config, buffer);
+                LogInfo("Finished parsing muda file\n");
             } else {
-                LogError("[Error] Could not read the configuration file %s!\n", config_path.Data);
+                LogError("Could not read the configuration file %s!\n", config_path.Data);
             }
 
             OsFileClose(fp);
         } else {
-            LogError("[Error] Could not open the configuration file %s!\n", config_path.Data);
+            LogError("Could not open the configuration file %s!\n", config_path.Data);
         }
 
         EndTemporaryMemory(&temp);

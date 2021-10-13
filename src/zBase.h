@@ -154,13 +154,13 @@
 #if !defined(ASSERTION_HANDLED)
 #define AssertHandle(reason, file, line, proc) TriggerBreakpoint()
 #else
-void AssertHandle(const char *reason, const char *file, int line, const char *proc);
+INLINE_PROCEDURE void AssertHandle(const char *reason, const char *file, int line, const char *proc);
 #endif
 
 #if !defined(DEPRECATION_HANDLED)
 #define DeprecateHandle(file, line, proc) TriggerBreakpoint()
 #else
-void DeprecateHandle(const char *file, int line, const char *proc);
+INLINE_PROCEDURE void DeprecateHandle(const char *file, int line, const char *proc);
 #endif
 
 #if defined(BUILD_DEBUG) || defined(BUILD_DEVELOPER)
