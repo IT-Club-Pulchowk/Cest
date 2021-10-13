@@ -28,6 +28,41 @@ typedef struct Compiler_Config {
 } Compiler_Config;
 
 //
+// Base setup
+//
+
+INLINE_PROCEDURE void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
+    OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
+    TriggerBreakpoint();
+}
+
+INLINE_PROCEDURE void DeprecateHandle(const char *file, int line, const char *proc) {
+    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d\n", proc, file, line);
+}
+
+INLINE_PROCEDURE void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
+    void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
+    if (kind == Log_Kind_Info)
+        OsConsoleOut(fp, "%-10s", "[Log] ");
+    else if (kind == Log_Kind_Error)
+        OsConsoleOut(fp, "%-10s", "[Error] ");
+    else if (kind == Log_Kind_Warn)
+        OsConsoleOut(fp, "%-10s", "[Warning] ");
+    OsConsoleOutV(fp, fmt, list);
+}
+
+INLINE_PROCEDURE void LogProcedureDisabled(void *agent, Log_Kind kind, const char *fmt, va_list list) {
+    if (kind == Log_Kind_Info) return;
+    OsConsoleOutV(OsGetErrorOutputHandle(), fmt, list);
+}
+
+INLINE_PROCEDURE void FatalErrorProcedure(const char *message) {
+    OsConsoleWrite("%-10s", "[Fatal Error] ");
+    OsConsoleWrite("%s", message);
+    OsProcessExit(0);
+}
+
+//
 //
 //
 

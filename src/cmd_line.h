@@ -40,12 +40,14 @@ static bool OptVersion(const char *program, const char *arg[], int count, Build_
 }
 
 static bool OptDefault(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
+    ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
     OsConsoleWrite(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
     Compiler_Config def;
     CompilerConfigInit(&def);
     PushDefaultCompilerConfig(&def, 0);
     PrintCompilerConfig(def);
     OsConsoleWrite("\n");
+    ThreadContext.LogAgent.Procedure = LogProcedure;
     return true;
 }
 
