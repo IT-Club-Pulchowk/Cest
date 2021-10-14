@@ -14,7 +14,7 @@ static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, vo
 }
 #endif
 
-void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
+void LoadCompilerConfig(Compiler_Config *config, Uint8* data, Compiler_Kind compiler) {
 	Memory_Arena *scratch = ThreadScratchpad();
     
     Muda_Parser prsr = MudaParseInit(data);
@@ -66,9 +66,8 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
             else
                 LogInfo("Tag:= %s\n", prsr.Token.Data.Tag.Title.Data);
         }
-        else if (prsr.Token.Kind == Muda_Token_Section) {
+        else if (prsr.Token.Kind == Muda_Token_Section)
             SectionIsUsable = StrMatchCaseInsensitive(prsr.Token.Data.Section, OsSection) || StrMatchCaseInsensitive(prsr.Token.Data.Section, config->BuildConfig.UseSection);
-        }
         if (prsr.Token.Kind != Muda_Token_Property || !SectionIsUsable) continue;
 
         if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Type"))){
@@ -78,26 +77,62 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
                 config->Type = Compile_Type_Solution;
         }
 
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Optimization")))
-            config->Optimization = StrMatch(prsr.Token.Data.Property.Value, StringLiteral("true"));
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Optimization"))) {
+            bool opti_on = StrMatch(prsr.Token.Data.Property.Value, StringLiteral("true"));
+            if (opti_on) {
+                OutFormatted(&config->Optimization, "-O2 ");
+            } else {
+                if (compiler & Compiler_Bit_CL)
+                    OutFormatted(&config->Optimization, "-Od ");
+                else
+                    OutFormatted(&config->Optimization, "-g ");
+            }
+        }
 
         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("BuildDirectory")))
-            config->BuildDirectory = StrDuplicate(prsr.Token.Data.Property.Value);
+            OutFormatted(&config->BuildDirectory, "%s", prsr.Token.Data.Property.Value.Data);
 
         else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Build")))
-            config->Build = StrDuplicate(prsr.Token.Data.Property.Value);
+            OutFormatted(&config->Build, "%s", prsr.Token.Data.Property.Value.Data);
 
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Source")))
-            ReadList(&config->Source, prsr.Token.Data.Property.Value, -1);
-
-        else {
+        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Source"))) {
+            String_List temp;
+            StringListInit(&temp);
+            ReadList(&temp, prsr.Token.Data.Property.Value, -1);
+            for (String_List_Node* ntr = &temp.Head; ntr && temp.Used; ntr = ntr->Next){
+                int len = ntr->Next ? 8 : temp.Used;
+                for (int i = 0; i < len; i ++) {
+                    if (compiler & Compiler_Bit_CL)
+                        OutFormatted(&config->Source, "\"%s\" ", ntr->Data[i].Data);
+                    else
+                        OutFormatted(&config->Source, "%s ", ntr->Data[i].Data);
+                }
+            }
+        } else {
+            String_List temp;
+            StringListInit(&temp);
             int index = CheckIfOptAvailable(prsr.Token.Data.Property.Key); 
             if (index == -1) {
-                LogWarn ("Unrecognized option \"%s\" will be skipped\n", prsr.Token.Data.Property.Key.Data);
-                continue;
+                ReadList(&temp, prsr.Token.Data.Property.Value, Available_Properties[index].Max_Vals);
+                for (String_List_Node* ntr = &temp.Head; ntr && temp.Used; ntr = ntr->Next){
+                    int len = ntr->Next ? 8 : temp.Used;
+                    for (int i = 0; i < len; i ++)
+                        OutFormatted(&config->Unknown_Properties, Available_Properties[index].Fmt_GCC  , ntr->Data[i].Data);
+                }
+            } else {
+                ReadList(&temp, prsr.Token.Data.Property.Value, Available_Properties[index].Max_Vals);
+                for (String_List_Node* ntr = &temp.Head; ntr && temp.Used; ntr = ntr->Next){
+                    int len = ntr->Next ? 8 : temp.Used;
+                    for (int i = 0; i < len; i ++) {
+                        if (compiler & Compiler_Bit_GCC)
+                            OutFormatted(&config->Known_Properties, Available_Properties[index].Fmt_GCC  , ntr->Data[i].Data);
+                        else if (compiler & Compiler_Bit_CLANG)
+                            OutFormatted(&config->Known_Properties, Available_Properties[index].Fmt_CLANG, ntr->Data[i].Data);
+                        else if (compiler & Compiler_Bit_CL)
+                            OutFormatted(&config->Known_Properties, Available_Properties[index].Fmt_MSVC , ntr->Data[i].Data);
+                    }
+                }
             }
-
-            OptListAdd(&config->Optionals, prsr.Token.Data.Property.Key, prsr.Token.Data.Property.Value, index);
         }
     }
     if (prsr.Token.Kind == Muda_Token_Error) {
@@ -143,27 +178,26 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Out_Stream out;
 	OutCreate(&out, scratch_allocator);
         
-    Uint32 result = OsCheckIfPathExists(config->BuildDirectory);
+    String build_dir = OutBuildString(&config->BuildDirectory, &scratch_allocator);
+    String build     = OutBuildString(&config->Build, &scratch_allocator);
+    Uint32 result = OsCheckIfPathExists(build_dir);
     if (result == Path_Does_Not_Exist) {
-        if (!OsCreateDirectoryRecursively(config->BuildDirectory)) {
-            String error = FmtStr(scratch, "Failed to create directory %s!", config->BuildDirectory.Data);
+        if (!OsCreateDirectoryRecursively(build_dir)) {
+            String error = FmtStr(scratch, "Failed to create directory %s!", build_dir.Data);
             FatalError(error.Data);
         }
     }
     else if (result == Path_Exist_File) {
-        String error = FmtStr(scratch, "%s: Path exist but is a file!\n", config->BuildDirectory.Data);
+        String error = FmtStr(scratch, "%s: Path exist but is a file!\n", build_dir.Data);
         FatalError(error.Data);
     }
 
     if (compiler & Compiler_Bit_CL) {
         // For CL, we output intermediate files to "BuildDirectory/int"
         String intermediate;
-        if (config->BuildDirectory.Data[config->BuildDirectory.Length - 1] == '/') {
-            intermediate = FmtStr(scratch, "%sint", config->BuildDirectory.Data);
-        }
-        else {
-            intermediate = FmtStr(scratch, "%s/int", config->BuildDirectory.Data);
-        }
+        if (build_dir.Data[build_dir.Length - 1] == '/')
+            intermediate = FmtStr(scratch, "%sint", build_dir.Data);
+        else intermediate = FmtStr(scratch, "%s/int", build_dir.Data);
 
         result = OsCheckIfPathExists(intermediate);
         if (result == Path_Does_Not_Exist) {
@@ -179,124 +213,35 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     }
 
     // Turn on Optimization if it is forced via command line
-    if (config->BuildConfig.ForceOptimization && !config->Optimization) {
+    if (config->BuildConfig.ForceOptimization) {
         LogInfo("Optimization turned on forcefully\n");
-        config->Optimization = true;
+        OutReset (&config->Optimization);
+        OutFormatted(&config->Optimization, "-O2 ");
     }
 
-    if (compiler & Compiler_Bit_CL) {
-        LogInfo("Compiler: CL Detected\n");
-
-        OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
-        for (int i = 0; i < ArrayCount(Available_Properties); i ++) {
-            if (!Available_Properties[i].IsOpt) { 
-                if (StrMatch(Available_Properties[i].Name, StringLiteral("Optimization"))) { 
-                    if (config->Optimization)
-                        OutFormatted(&out, "-O2 ");
-                    else
-                        OutFormatted(&out, "-Od ");
-                }
-                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Source"))) {
-                    for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
-                        int len = ntr->Next ? 8 : config->Source.Used;
-                        for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
-                    }
-                }
-                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Build"))) {
-                    // TODO: Make directory if not present, need to add OS api for making directory!
-                    // Until then make "bin/int" directory manually :(
-                    OutFormatted(&out, "-Fo\"%s/int/\" ", config->BuildDirectory.Data);
-                    OutFormatted(&out, "-Fd\"%s/\" ", config->BuildDirectory.Data);
-                    OutFormatted(&out, "-link ");
-                    OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
-                    OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
-                }
-            } else { 
-                for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
-                    int len = ptr->Next ? 8 : config->Optionals.Used;
-                    for (int q = 0; q < len; q ++){
-                        if (StrMatch(Available_Properties[i].Name, ptr->Property_Keys[q])){
-                            for (String_List_Node* ntr = &ptr->Property_Values[q].Head; ntr && ptr->Property_Values[q].Used; ntr = ntr->Next){
-                                int len = ntr->Next ? 8 : ptr->Property_Values[q].Used;
-                                for (int w = 0; w < len; w ++) OutFormatted(&out, Available_Properties[i].Fmt_MSVC, ntr->Data[w].Data);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    } else if (compiler & Compiler_Bit_GCC) {
+    if (compiler & Compiler_Bit_GCC) {
         LogInfo("[Compiler] GCC Detected.\n");
         OutFormatted(&out, "gcc -pipe ");
-
-        for (int i = 0; i < ArrayCount(Available_Properties); i ++) {
-            if (!Available_Properties[i].IsOpt) { 
-                if (StrMatch(Available_Properties[i].Name, StringLiteral("Optimization"))) { 
-                    if (config->Optimization) OutFormatted(&out, "-O2 ");
-                    else OutFormatted(&out, "-g ");
-                }
-                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Source"))) {
-                    for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
-                        int len = ntr->Next ? 8 : config->Source.Used;
-                        for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
-                    }
-                }
-                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Build"))) {
-                    if (PLATFORM_OS_LINUX)
-                        OutFormatted(&out, "-o %s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
-                    else if (PLATFORM_OS_WINDOWS)
-                        OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
-                }
-            } else { 
-                for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
-                    int len = ptr->Next ? 8 : config->Optionals.Used;
-                    for (int q = 0; q < len; q ++){
-                        if (StrMatch(Available_Properties[i].Name, ptr->Property_Keys[q])){
-                            for (String_List_Node* ntr = &ptr->Property_Values[q].Head; ntr && ptr->Property_Values[q].Used; ntr = ntr->Next){
-                                int len = ntr->Next ? 8 : ptr->Property_Values[q].Used;
-                                for (int w = 0; w < len; w ++) OutFormatted(&out, Available_Properties[i].Fmt_GCC, ntr->Data[w].Data);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        OutFormatted(&out, "%s ", OutBuildString(&config->Optimization, &scratch_allocator).Data);
+        OutFormatted(&out, "%s ", OutBuildString(&config->Known_Properties, &scratch_allocator).Data);
+        OutFormatted(&out, "%s ", OutBuildString(&config->Source, &scratch_allocator).Data);
+        OutFormatted(&out, "-o %s/%s ", build_dir.Data, build.Data);
     } else if (compiler & Compiler_Bit_CLANG) {
         LogInfo("[Compiler] CLANG Detected.\n");
-        OutFormatted(&out, "clang -gcodeview -w ");
-
-        for (int i = 0; i < ArrayCount(Available_Properties); i ++) {
-            if (!Available_Properties[i].IsOpt) { 
-                if (StrMatch(Available_Properties[i].Name, StringLiteral("Optimization"))) { 
-                    if (config->Optimization) OutFormatted(&out, "-O2 ");
-                    else OutFormatted(&out, "-g ");
-                }
-                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Source"))) {
-                    for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
-                        int len = ntr->Next ? 8 : config->Source.Used;
-                        for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
-                    }
-                }
-                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Build"))) {
-                    if (PLATFORM_OS_LINUX)
-                        OutFormatted(&out, "-o %s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
-                    else if (PLATFORM_OS_WINDOWS)
-                        OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
-                }
-            } else { 
-                for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
-                    int len = ptr->Next ? 8 : config->Optionals.Used;
-                    for (int q = 0; q < len; q ++){
-                        if (StrMatch(Available_Properties[i].Name, ptr->Property_Keys[q])){
-                            for (String_List_Node* ntr = &ptr->Property_Values[q].Head; ntr && ptr->Property_Values[q].Used; ntr = ntr->Next){
-                                int len = ntr->Next ? 8 : ptr->Property_Values[q].Used;
-                                for (int w = 0; w < len; w ++) OutFormatted(&out, Available_Properties[i].Fmt_CLANG, ntr->Data[w].Data);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        OutFormatted(&out, "clang -gcodeview ");
+        OutFormatted(&out, "%s ", OutBuildString(&config->Optimization, &scratch_allocator).Data);
+        OutFormatted(&out, "%s ", OutBuildString(&config->Known_Properties, &scratch_allocator).Data);
+        OutFormatted(&out, "%s ", OutBuildString(&config->Source, &scratch_allocator).Data);
+        OutFormatted(&out, "-o %s/%s ", build_dir.Data, build.Data);
+    } else if (compiler & Compiler_Bit_CL) {
+        LogInfo("[Compiler] MSVC Detected.\n");
+        OutFormatted(&out, "cl -W3 ");
+        //UNGA BUNGA TERRITORY
+        OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
+        OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
+        OutFormatted(&out, "-link ");
+        OutFormatted(&out, "-out:\"%s/%s.exe\" ", build_dir.Data, build.Data);
+        OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", build_dir.Data, build.Data);
     }
 
     String cmd_line = OutBuildString(&out, &scratch_allocator);
@@ -374,7 +319,7 @@ int main(int argc, char *argv[]) {
             if (OsFileRead(fp, buffer, size) && size > 0) {
                 buffer[size] = 0;
                 LogInfo("Parsing muda file\n");
-                LoadCompilerConfig(&config, buffer);
+                LoadCompilerConfig(&config, buffer, compiler);
                 LogInfo("Finished parsing muda file\n");
             } else if (size == 0) {
                 LogError("File %s is empty!\n", config_path.Data);

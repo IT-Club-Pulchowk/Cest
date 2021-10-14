@@ -48,7 +48,7 @@ static bool OptDefault(const char *program, const char *arg[], int count, Build_
     CompilerConfigInit(&def);
     PushDefaultCompilerConfig(&def, 0);
 
-    WriteCompilerConfig(&def, false, OsConsoleOut, OsGetStdOutputHandle());
+    /* WriteCompilerConfig(&def, false, OsConsoleOut, OsGetStdOutputHandle()); */
 
     OsConsoleWrite("\n");
     ThreadContext.LogAgent.Procedure = LogProcedure;
@@ -80,6 +80,7 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
     OsConsoleWrite("Press [ENTER] to use the default values. Multiple values must be separated by [SPACE]\n\n");
 
     Memory_Arena *scratch = ThreadScratchpad();
+    Memory_Allocator scratch_allocator = MemoryArenaAllocator(scratch);
 
     Push_Allocator pushed = PushThreadAllocator(MemoryArenaAllocator(scratch));
 
@@ -90,30 +91,37 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
     PushDefaultCompilerConfig(&config, 0);
     ThreadContext.LogAgent.Procedure = LogProcedure;
 
-    OsConsoleWrite("Build Executable (default: %s) #\n   > ", config.Build.Data);
+    OsConsoleWrite("Build Executable (default: %s) #\n   > ", OutBuildString(&config.Build, &scratch_allocator).Data);
     input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
-    if (input.Length)
-        config.Build = StrDuplicateArena(input, scratch);
+    if (input.Length) OutFormatted(&config.Build, "%s", input.Data);
 
-    OsConsoleWrite("Build Directory (default: %s) #\n   > ", config.BuildDirectory.Data);
+    OsConsoleWrite("Build Directory (default: %s) #\n   > ", OutBuildString(&config.BuildDirectory, &scratch_allocator).Data);
     input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
-    if (input.Length)
-        config.BuildDirectory = StrDuplicateArena(input, scratch);
+    if (input.Length) OutFormatted(&config.BuildDirectory, "%s", input.Data);
 
-    OsConsoleWrite("Source (default: %s) #\n   > ", config.Source.Head.Data[0].Data);
-    input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
-    if (input.Length) {
-        StringListClear(&config.Source);
-        
-        ReadList(&config.Source, input, -1);
-    }
+    /* OsConsoleWrite("Source (default: %s) #\n   > ", OutBuildString(&config.Source, &scratch_allocator).Data); */
+    /* input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer))); */
+    /* if (input.Length) { */
+    /*     OutReset(&config.Source); */
+    /*     String_List temp; */
+    /*     ReadList(&temp, input, -1); */
+    /*     for (String_List_Node* ntr = &temp.Head; ntr && temp.Used; ntr = ntr->Next){ */
+    /*         int len = ntr->Next ? 8 : temp.Used; */
+    /*         for (int i = 0; i < len; i ++) { */
+    /*             if (compiler & Compiler_Bit_CL) */   // NO COMPILER WHAT DO?
+    /*                 OutFormatted(&config.Source, "\"%s\" ", ntr->Data[i].Data); */
+    /*             else */
+    /*                 OutFormatted(&config.Source, "%s ", ntr->Data[i].Data); */
+    /*         } */
+    /*     } */
+    /* } */
 
     // TODO: More input??
 
     PopThreadAllocator(&pushed);
 
     File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
-    WriteCompilerConfig(&config, true, OptSetupConfigFileWriter, &fhandle);
+    /* WriteCompilerConfig(&config, true, OptSetupConfigFileWriter, &fhandle); */
     OsFileClose(fhandle);
 
     return true;
