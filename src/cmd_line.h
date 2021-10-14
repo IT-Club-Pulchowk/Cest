@@ -24,15 +24,15 @@ static bool OptHelp(const char *program, const char *arg[], int count, Build_Con
 static bool OptUse(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 
 static const Muda_Option Options[] = {
-    { StringLiteralExpand("version"), "Check the version of Muda installed", "", OptVersion, 0 },
-    { StringLiteralExpand("default"), "Display default configuration", "", OptDefault, 0 },
-    { StringLiteralExpand("setup"), "Setup a Muda build system", "", OptSetup, 0 },
-    { StringLiteralExpand("compiler"), "Forces to use specific compiler if the compiler is present", "<compiler_name>", OptCompiler, 1 },
-    { StringLiteralExpand("optimize"), "Forces Optimization to be turned on", "", OptOptimize, 0 },
-    { StringLiteralExpand("cmdline"), "Displays the command line executed to build", "", OptCmdline, 0 },
-    { StringLiteralExpand("nolog"), "Disables logging in the terminal", "", OptNoLog, 0 },
-    { StringLiteralExpand("help"), "Muda description and list all the command", "[command/s]", OptHelp, -255 },
-    { StringLiteralExpand("use"), "Specify a section to use from the muda file", "[section]", OptUse, 1 },
+    { StringExpand("version"), "Check the version of Muda installed", "", OptVersion, 0 },
+    { StringExpand("default"), "Display default configuration", "", OptDefault, 0 },
+    { StringExpand("setup"), "Setup a Muda build system", "", OptSetup, 0 },
+    { StringExpand("compiler"), "Forces to use specific compiler if the compiler is present", "<compiler_name>", OptCompiler, 1 },
+    { StringExpand("optimize"), "Forces Optimization to be turned on", "", OptOptimize, 0 },
+    { StringExpand("cmdline"), "Displays the command line executed to build", "", OptCmdline, 0 },
+    { StringExpand("nolog"), "Disables logging in the terminal", "", OptNoLog, 0 },
+    { StringExpand("help"), "Muda description and list all the command", "[command/s]", OptHelp, -255 },
+    { StringExpand("use"), "Specify a section to use from the muda file", "[section]", OptUse, 1 },
 };
 
 static bool OptVersion(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
@@ -45,7 +45,7 @@ static bool OptDefault(const char *program, const char *arg[], int count, Build_
     ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
     OsConsoleWrite(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
     Compiler_Config def;
-    CompilerConfigInit(&def);
+    CompilerConfigInit(&def, NULL); // TODO: Fix this
     PushDefaultCompilerConfig(&def, 0);
 
     /* WriteCompilerConfig(&def, false, OsConsoleOut, OsGetStdOutputHandle()); */
@@ -87,7 +87,7 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
     Push_Allocator pushed = PushThreadAllocator(MemoryArenaAllocator(scratch));
 
     Compiler_Config config;
-    CompilerConfigInit(&config);
+    CompilerConfigInit(&config, scratch); // TODO: FIX THIS
 
     ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
     PushDefaultCompilerConfig(&config, 0);
@@ -154,7 +154,7 @@ static bool OptCompiler(const char *program, const char *arg[], int count, Build
 }
 
 static bool OptUse (const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
-    config->UseSection = StringMake(arg[0], strlen(arg[0]));
+    config->Configuration = StringMake(arg[0], strlen(arg[0]));
     return false;
 }
 

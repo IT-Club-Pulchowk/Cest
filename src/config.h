@@ -6,68 +6,105 @@
 #include "version.h"
 #include <time.h>
 
-typedef enum Compile_Type {
-	Compile_Type_Project,
-	Compile_Type_Solution,
-} Compile_Type;
+typedef enum Compile_Kind {
+	Compile_Project,
+	Compile_Solution,
+} Compile_Kind;
+
+static const String CompilerKindId[] = {
+	StringExpand("Project"), StringExpand("Solution")
+};
+
+typedef enum Application_Kind {
+	Application_Executable,
+	Application_Static_Library,
+	Application_Dynamic_Library
+} Application_Kind;
+
+static const String ApplicationKindId[] = {
+	StringExpand("Executable"), StringExpand("StaticLibrary"), StringExpand("DynamicLibrary")
+};
+
+typedef enum Subsystem_Kind {
+	Subsystem_Console,
+	Subsystem_Windows,
+} Subsystem_Kind;
+
+static const String SubsystemKindId[] = {
+	StringExpand("Console"), StringExpand("Windows")
+};
 
 typedef struct Build_Config {
-    Compiler_Kind ForceCompiler;
-    bool ForceOptimization;
-    bool DisplayCommandLine;
-    bool DisableLogs;
-    String UseSection;
+	Compiler_Kind ForceCompiler;
+	bool ForceOptimization;
+	bool DisplayCommandLine;
+	bool DisableLogs;
+	String Configuration;
 } Build_Config;
 
-#define MAX_OPTIONALS_IN_NODE 8
-
-typedef struct Opt_Lst_Node{
-    String Property_Keys[MAX_OPTIONALS_IN_NODE];
-    String_List Property_Values[MAX_OPTIONALS_IN_NODE];
-    struct Opt_Lst_Node *Next;
-} Optionals_List_Node;
-
-typedef struct {
-	Optionals_List_Node Head;
-	Optionals_List_Node *Tail;
-	Uint32 Used;
-} Optionals_List;
-
 typedef struct Compiler_Config {
-	Compile_Type Type;
-	Out_Stream Optimization;
+	Out_Stream Name;
+	Uint32 Kind; // Compile_Kind 
+	Uint32 Application; // Application_Kind 
+
+	bool Optimization;
+
 	Out_Stream Build;
 	Out_Stream BuildDirectory;
-    Out_Stream Source;
-    Out_Stream Known_Properties;
-    Out_Stream Unknown_Properties;
-    Build_Config BuildConfig;
+	Out_Stream Sources;
+	Out_Stream Flags;
+	Out_Stream Defines;
+	Out_Stream IncludeDirectories;
+
+	Uint32 Subsystem; // Subsystem_Kind 
+	Out_Stream Libraries;
+	Out_Stream LibraryDirectories;
+	Out_Stream LinkerFlags;
+
+	Build_Config BuildConfig;
+
+	Memory_Arena *Arena;
 } Compiler_Config;
 
-typedef struct {
-    String Name;
-    const char* Desc;
-    const char* Fmt_MSVC;
-    const char* Fmt_GCC;
-    const char* Fmt_CLANG;
-    Int32 Max_Vals;
-    bool IsOptional;
-} Compiler_Properties;
+typedef enum Compiler_Config_Member_Kind {
+	Compiler_Config_Member_Enum,
+	Compiler_Config_Member_Bool,
+	Compiler_Config_Member_String,
+	Compiler_Config_Member_String_Array,
+} Compiler_Config_Member_Kind;
 
-const Compiler_Properties Available_Properties[] = {
-    {StringLiteralExpand("Type"), "Type of compilation (Project or Solution):\n\tProject: Only build using a single muda file\n\tSolution: Iterate through subdirectories and build each muda file found\n", "", "", "", 0, false},
-    {StringLiteralExpand("IncludeDirectory"), "List of directories to search for include files", "-I\"%s\" ", "-I%s ", "-I%s ", -1, true},
-    {StringLiteralExpand("Optimization"), "Use optimization while compiling or not (true/false)\n", "", "", "", 0, false},
-    {StringLiteralExpand("Define"), "List of preprocessing symbols to be defined", "-D%s ", "-D%s ", "-D%s ", -1, true},
-    {StringLiteralExpand("Source"), "Path to the source files\n", "", "", "", -1, false},
-    {StringLiteralExpand("BuildDirectory"), "Path to the directory where the output binary should be placed\n", "", "", "", 1, false},
-    {StringLiteralExpand("Build"), "Name of the output binary\n", "", "", "", 1, false},
-    {StringLiteralExpand("LibraryDirectory"), "List of paths to be searched for additional libraries", "-LIBPATH:\"%s\" ", "-L%s ", "-L%s ", -1, true},
-    {StringLiteralExpand("Library"), "List of additional libraries to be linked [For MSVC: do not include the .lib extension]", "\"%s.lib\" " , "-l%s ", "-l%s ", -1, true},
+typedef struct Enum_Info {
+	const String *Ids;
+	Uint32 Count;
+} Enum_Info;
 
-#if PLATFORM_OS_WINDOWS
-    {StringLiteralExpand("Subsystem"), "Specify the environment for the executable", "-subsystem:%s ", "-subsystem,%s ", "-subsystem:%s ",  1, true},
-#endif
+typedef struct Compiler_Config_Member {
+	String Name;
+	Compiler_Config_Member_Kind Kind;
+	size_t Offset;
+	const char *Desc;
+	const void *KindInfo;
+} Compiler_Config_Member;
+
+static const Enum_Info CompilerKindInfo = { CompilerKindId, ArrayCount(CompilerKindId) };
+static const Enum_Info ApplicationKindInfo = { ApplicationKindId, ArrayCount(ApplicationKindId) };
+static const Enum_Info SubsystemKindInfo = { SubsystemKindId, ArrayCount(SubsystemKindId) };
+
+static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
+	{ StringExpand("Name"), Compiler_Config_Member_String, offsetof(Compiler_Config, Name), "" },
+	{ StringExpand("Kind"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Kind), "", &CompilerKindInfo },
+	{ StringExpand("Application"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Application), "", &ApplicationKindInfo },
+	{ StringExpand("Optimization"), Compiler_Config_Member_Bool, offsetof(Compiler_Config, Optimization), "" },
+	{ StringExpand("Build"), Compiler_Config_Member_String, offsetof(Compiler_Config, Build), "" },
+	{ StringExpand("BuildDirectory"), Compiler_Config_Member_String, offsetof(Compiler_Config, BuildDirectory), "" },
+	{ StringExpand("Sources"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Sources), ""},
+	{ StringExpand("Flags"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Flags), "" },
+	{ StringExpand("Defines"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Defines), "" },
+	{ StringExpand("IncludeDirectories"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, IncludeDirectories), "" },
+	{ StringExpand("Subsystem"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Subsystem), "", &SubsystemKindInfo },
+	{ StringExpand("Libraries"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Libraries), "" },
+	{ StringExpand("LibraryDirectories"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, LibraryDirectories), "" },
+	{ StringExpand("LinkerFlags"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, LinkerFlags), "" },
 };
 
 //
@@ -75,107 +112,111 @@ const Compiler_Properties Available_Properties[] = {
 //
 
 INLINE_PROCEDURE void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
-    TriggerBreakpoint();
+	OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
+	TriggerBreakpoint();
 }
 
 INLINE_PROCEDURE void DeprecateHandle(const char *reason, const char *file, int line, const char *proc) {
-    OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d. %s\n", proc, file, line, reason);
+	OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d. %s\n", proc, file, line, reason);
 }
 
 INLINE_PROCEDURE void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
-    void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
-    if (kind == Log_Kind_Info)
-        OsConsoleOut(fp, "%-10s", "[Log] ");
-    else if (kind == Log_Kind_Error)
-        OsConsoleOut(fp, "%-10s", "[Error] ");
-    else if (kind == Log_Kind_Warn)
-        OsConsoleOut(fp, "%-10s", "[Warning] ");
-    OsConsoleOutV(fp, fmt, list);
+	void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
+	if (kind == Log_Kind_Info)
+		OsConsoleOut(fp, "%-10s", "[Log] ");
+	else if (kind == Log_Kind_Error)
+		OsConsoleOut(fp, "%-10s", "[Error] ");
+	else if (kind == Log_Kind_Warn)
+		OsConsoleOut(fp, "%-10s", "[Warning] ");
+	OsConsoleOutV(fp, fmt, list);
 }
 
 INLINE_PROCEDURE void LogProcedureDisabled(void *agent, Log_Kind kind, const char *fmt, va_list list) {
-    if (kind == Log_Kind_Info) return;
-    OsConsoleOutV(OsGetErrorOutputHandle(), fmt, list);
+	if (kind == Log_Kind_Info) return;
+	OsConsoleOutV(OsGetErrorOutputHandle(), fmt, list);
 }
 
 INLINE_PROCEDURE void FatalErrorProcedure(const char *message) {
-    OsConsoleWrite("%-10s", "[Fatal Error] ");
-    OsConsoleWrite("%s", message);
-    OsProcessExit(0);
+	OsConsoleWrite("%-10s", "[Fatal Error] ");
+	OsConsoleWrite("%s", message);
+	OsProcessExit(0);
 }
 
 //
 //
 //
 
-#define INITIAL_OPT_CAP 5
-INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config) {
-    memset(config, 0, sizeof(*config));
+INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *arena) {
+	Memory_Allocator allocator = MemoryArenaAllocator(arena);
 
-    config->BuildConfig.ForceCompiler      = 0;
-    config->BuildConfig.ForceOptimization  = false;
-    config->BuildConfig.DisplayCommandLine = false;
-    config->BuildConfig.DisableLogs        = false;
+	OutCreate(&config->Name, allocator);
+	config->Kind = Compile_Project;
+	config->Application = Application_Executable;
 
-    Memory_Arena *scratch = ThreadScratchpad();
-    Memory_Allocator scratch_allocator = MemoryArenaAllocator(scratch);
+	config->Optimization = false;
 
-	OutCreate(&config->Build , scratch_allocator);
-	OutCreate(&config->BuildDirectory , scratch_allocator);
-	OutCreate(&config->Source, scratch_allocator);
-	OutCreate(&config->Optimization, scratch_allocator);
-	OutCreate(&config->BuildDirectory, scratch_allocator);
-	OutCreate(&config->Known_Properties, scratch_allocator);
-	OutCreate(&config->Unknown_Properties, scratch_allocator);
+	OutCreate(&config->Build, allocator);
+	OutCreate(&config->BuildDirectory, allocator);
+	OutCreate(&config->Sources, allocator);
+	OutCreate(&config->Flags, allocator);
+	OutCreate(&config->Defines, allocator);
+	OutCreate(&config->IncludeDirectories, allocator);
+
+	config->Subsystem = Subsystem_Console;
+	OutCreate(&config->Libraries, allocator);
+	OutCreate(&config->LibraryDirectories, allocator);
+	OutCreate(&config->LinkerFlags, allocator);
+
+	config->Arena = arena;
+
+	config->BuildConfig.ForceCompiler = 0;
+	config->BuildConfig.ForceOptimization = false;
+	config->BuildConfig.DisplayCommandLine = false;
+	config->BuildConfig.DisableLogs = false;
 }
 
-INLINE_PROCEDURE int CheckIfOptAvailable (String option) {
-    for (int i = 0; i < ArrayCount(Available_Properties); i ++)
-        if (StrMatch(option, Available_Properties[i].Name))
-            return i;
-    return -1;
-}
+INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max) {
+	data = StrTrim(data); // Trimming the end white spaces so that we don't get empty strings at the end
 
-INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max){
-    data = StrTrim(data); // Trimming the end white spaces so that we don't get empty strings at the end
+	Int64 prev_pos = 0;
+	Int64 curr_pos = 0;
+	Int64 count = 0;
 
-    Int64 prev_pos = 0;
-    Int64 curr_pos = 0;
-    Int64 count = 0;
+	while (curr_pos < data.Length && (max < 0 || count < max)) {
+		// Remove prefixed spaces (postfix spaces in the case of 2+ iterations)
+		while (curr_pos < data.Length && isspace(data.Data[curr_pos]))
+			curr_pos += 1;
+		prev_pos = curr_pos;
 
-    while (curr_pos < data.Length && (max < 0 || count < max)) {
-        // Remove prefixed spaces (postfix spaces in the case of 2+ iterations)
-        while (curr_pos < data.Length && isspace(data.Data[curr_pos])) 
-            curr_pos += 1;
-        prev_pos = curr_pos;
+		// Count number of characters in the string
+		while (curr_pos < data.Length && !isspace(data.Data[curr_pos]))
+			curr_pos += 1;
 
-        // Count number of characters in the string
-        while (curr_pos < data.Length && !isspace(data.Data[curr_pos])) 
-            curr_pos += 1;
-
-        StringListAdd(dst, StrDuplicate(StringMake(data.Data + prev_pos, curr_pos - prev_pos)));
-        count ++;
-    }
+		StringListAdd(dst, StrDuplicate(StringMake(data.Data + prev_pos, curr_pos - prev_pos)));
+		count++;
+	}
 }
 
 INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {
-    Memory_Arena *scratch = ThreadScratchpad();
-    Memory_Allocator scratch_allocator = MemoryArenaAllocator(scratch);
-    if (!config->Build.Head.Used && !config->Build.Head.Next) {
-        OutFormatted(&config->Build, "%s", "output");
-        LogInfo("Using Default Binary: %s\n", "output");
-    }
+	Memory_Arena *scratch = ThreadScratchpad();
 
-    if (!config->BuildDirectory.Head.Used && !config->BuildDirectory.Head.Next) {
-        OutFormatted(&config->BuildDirectory, "%s", "./bin");
-        LogInfo("Using Default Binary Directory: \"%s\"\n", "./bin");
-    }
+	CompilerConfigInit(config, scratch);
+	// TODO: Implement this all
 
-    if (!config->Source.Head.Used && !config->Source.Head.Next) {
-        OutFormatted(&config->Source, "%s", "*.c");
-        LogInfo("Using Default Sources: %s\n", "*.c");
-    }
+	//if (!config->Build.Head.Used && !config->Build.Head.Next) {
+	//	OutFormatted(&config->Build, "%s", "output");
+	//	LogInfo("Using Default Binary: %s\n", "output");
+	//}
+	//
+	//if (!config->BuildDirectory.Head.Used && !config->BuildDirectory.Head.Next) {
+	//	OutFormatted(&config->BuildDirectory, "%s", "./bin");
+	//	LogInfo("Using Default Binary Directory: \"%s\"\n", "./bin");
+	//}
+	//
+	//if (!config->Source.Head.Used && !config->Source.Head.Next) {
+	//	OutFormatted(&config->Source, "%s", "*.c");
+	//	LogInfo("Using Default Sources: %s\n", "*.c");
+	//}
 }
 
 typedef void (*Stream_Writer_Proc)(void *context, const char *fmt, ...);

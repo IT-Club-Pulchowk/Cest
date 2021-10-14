@@ -14,18 +14,27 @@ static Directory_Iteration DirectoryIteratorPrintNoBin(const File_Info *info, vo
 }
 #endif
 
-void LoadCompilerConfig(Compiler_Config *config, Uint8* data, Compiler_Kind compiler) {
+typedef enum Muda_Parsing_OS {
+    Muda_Parsing_OS_None,
+    Muda_Parsing_OS_Windows,
+    Muda_Parsing_OS_Linux,
+    Muda_Parsing_OS_Mac,
+} Muda_Parsing_OS;
+
+typedef struct Muda_Parse_State {
+    Muda_Parsing_OS OS;
+    Compiler_Kind Compiler;
+} Muda_Parse_State;
+
+void MudaParseStateInit(Muda_Parse_State *state) {
+    state->OS = Muda_Parsing_OS_None;
+    state->Compiler = 0;
+}
+
+void DeserializeCompilerConfig(Compiler_Config *config, Uint8* data, Compiler_Kind compiler) {
 	Memory_Arena *scratch = ThreadScratchpad();
     
     Muda_Parser prsr = MudaParseInit(data);
-
-    String OsSection;
-    if (PLATFORM_OS_WINDOWS)
-        OsSection = StringLiteral("windows");
-    else if (PLATFORM_OS_LINUX)
-        OsSection = StringLiteral("linux");
-
-    bool SectionIsUsable = true;
 
     Uint32 version = 0;
     Uint32 major = 0, minor = 0, patch = 0;
@@ -38,9 +47,11 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, Compiler_Kind comp
             if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3)
                 FatalError("Error: Bad file version\n");
         }
-        else FatalError("Error: Version info missing\n");
+        else 
+            FatalError("Error: Version info missing\n");
     }
-    else FatalError("Error: Version tag missing at top of file\n");
+    else 
+        FatalError("Error: Version tag missing at top of file\n");
 
 	version = MudaMakeVersion(major, minor, patch);
 
@@ -58,83 +69,133 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data, Compiler_Kind comp
 		FatalError(error.Data);
 	}
 
+    Muda_Parse_State state;
+    MudaParseStateInit(&state);
+
     while (MudaParseNext(&prsr)) {
-        // Temporary
-        if (prsr.Token.Kind == Muda_Token_Tag){
-            if (prsr.Token.Data.Tag.Value.Data)
-                LogInfo("Tag:= %s : %s\n", prsr.Token.Data.Tag.Title.Data, prsr.Token.Data.Tag.Value.Data);
-            else
-                LogInfo("Tag:= %s\n", prsr.Token.Data.Tag.Title.Data);
-        }
-        else if (prsr.Token.Kind == Muda_Token_Section)
-            SectionIsUsable = StrMatchCaseInsensitive(prsr.Token.Data.Section, OsSection) || StrMatchCaseInsensitive(prsr.Token.Data.Section, config->BuildConfig.UseSection);
-        if (prsr.Token.Kind != Muda_Token_Property || !SectionIsUsable) continue;
+        switch (prsr.Token.Kind) {
+            case Muda_Token_Config: {
+                Unimplemented();
+            } break;
 
-        if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Type"))){
-            if (StrMatch(prsr.Token.Data.Property.Value, StringLiteral("Project")))
-                config->Type = Compile_Type_Project;
-            else
-                config->Type = Compile_Type_Solution;
-        }
-
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Optimization"))) {
-            bool opti_on = StrMatch(prsr.Token.Data.Property.Value, StringLiteral("true"));
-            if (opti_on) {
-                OutFormatted(&config->Optimization, "-O2 ");
-            } else {
-                if (compiler & Compiler_Bit_CL)
-                    OutFormatted(&config->Optimization, "-Od ");
-                else
-                    OutFormatted(&config->Optimization, "-g ");
-            }
-        }
-
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("BuildDirectory")))
-            OutFormatted(&config->BuildDirectory, "%s", prsr.Token.Data.Property.Value.Data);
-
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Build")))
-            OutFormatted(&config->Build, "%s", prsr.Token.Data.Property.Value.Data);
-
-        else if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Source"))) {
-            String_List temp;
-            StringListInit(&temp);
-            ReadList(&temp, prsr.Token.Data.Property.Value, -1);
-            for (String_List_Node* ntr = &temp.Head; ntr && temp.Used; ntr = ntr->Next){
-                int len = ntr->Next ? 8 : temp.Used;
-                for (int i = 0; i < len; i ++) {
-                    if (compiler & Compiler_Bit_CL)
-                        OutFormatted(&config->Source, "\"%s\" ", ntr->Data[i].Data);
-                    else
-                        OutFormatted(&config->Source, "%s ", ntr->Data[i].Data);
+            case Muda_Token_Section: {
+                if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
+                    state.OS = Muda_Parsing_OS_None;
+                else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
+                    state.OS = Muda_Parsing_OS_Windows;
+                else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX"), prsr.Token.Data.Section))
+                    state.OS = Muda_Parsing_OS_Linux;
+                else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC"), prsr.Token.Data.Section))
+                    state.OS = Muda_Parsing_OS_Mac;
+                else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CL"), prsr.Token.Data.Section))
+                    state.Compiler = Compiler_Bit_CL;
+                else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CLANG"), prsr.Token.Data.Section))
+                    state.Compiler = Compiler_Bit_CLANG;
+                else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.GCC"), prsr.Token.Data.Section))
+                    state.Compiler = Compiler_Bit_GCC;
+                else {
+                    // TODO: Print line and column number in the error
+                    String error = FmtStr(scratch, "Unknown Section: %s\n", prsr.Token.Data);
+                    FatalError(error.Data);
                 }
-            }
-        } else {
-            String_List temp;
-            StringListInit(&temp);
-            int index = CheckIfOptAvailable(prsr.Token.Data.Property.Key); 
-            if (index == -1) {
-                ReadList(&temp, prsr.Token.Data.Property.Value, Available_Properties[index].Max_Vals);
-                for (String_List_Node* ntr = &temp.Head; ntr && temp.Used; ntr = ntr->Next){
-                    int len = ntr->Next ? 8 : temp.Used;
-                    for (int i = 0; i < len; i ++)
-                        OutFormatted(&config->Unknown_Properties, Available_Properties[index].Fmt_GCC  , ntr->Data[i].Data);
-                }
-            } else {
-                ReadList(&temp, prsr.Token.Data.Property.Value, Available_Properties[index].Max_Vals);
-                for (String_List_Node* ntr = &temp.Head; ntr && temp.Used; ntr = ntr->Next){
-                    int len = ntr->Next ? 8 : temp.Used;
-                    for (int i = 0; i < len; i ++) {
-                        if (compiler & Compiler_Bit_GCC)
-                            OutFormatted(&config->Known_Properties, Available_Properties[index].Fmt_GCC  , ntr->Data[i].Data);
-                        else if (compiler & Compiler_Bit_CLANG)
-                            OutFormatted(&config->Known_Properties, Available_Properties[index].Fmt_CLANG, ntr->Data[i].Data);
-                        else if (compiler & Compiler_Bit_CL)
-                            OutFormatted(&config->Known_Properties, Available_Properties[index].Fmt_MSVC , ntr->Data[i].Data);
+            } break;
+
+            case Muda_Token_Property: {
+                bool reject_os = !(state.OS == Muda_Parsing_OS_None || (PLATFORM_OS_WINDOWS && state.OS == Muda_Parsing_OS_Windows) ||
+                    (PLATFORM_OS_LINUX && state.OS == Muda_Parsing_OS_Linux) ||
+                    (PLATFORM_OS_MAC && state.OS == Muda_Parsing_OS_Mac));
+                
+                if (reject_os || (state.Compiler != 0 && compiler != state.Compiler)) break;
+
+                Muda_Token *token = &prsr.Token;
+                for (Uint32 index = 0; index < ArrayCount(CompilerConfigMemberTypeInfo); ++index) {
+                    const Compiler_Config_Member *const info = &CompilerConfigMemberTypeInfo[index];
+                    if (StrMatch(info->Name, token->Data.Property.Key)) {
+
+                        switch (info->Kind) {
+                            case Compiler_Config_Member_Enum: {
+                                Enum_Info *en = (Enum_Info *)info->KindInfo;
+
+                                bool found = false;
+                                for (Uint32 index = 0; index < en->Count; ++index) {
+                                    if (StrMatch(en->Ids[index], token->Data.Property.Value)) {
+                                        Uint32 *in = (Uint32 *)((char *)config + info->Offset);
+                                        *in = index;
+                                        found = true;
+                                        break;
+                                    }
+                                }
+
+                                if (!found) {
+                                    Out_Stream out;
+                                    Memory_Allocator allocator = MemoryArenaAllocator(scratch);
+                                    OutCreate(&out, allocator);
+
+                                    Temporary_Memory temp = BeginTemporaryMemory(scratch);
+
+                                    for (Uint32 index = 0; index < en->Count; ++index) {
+                                        OutString(&out, en->Ids[index]);
+                                        OutBuffer(&out, ", ", 2);
+                                    }
+
+                                    String accepted_values = OutBuildString(&out, &allocator);
+
+                                    // TODO: Print line and column number in the error
+                                    LogWarn("Invalid value for Property \"%s\" : %s. Acceptable values are: \n",
+                                        info->Name.Data, token->Data.Property.Value.Data, accepted_values);
+
+                                    EndTemporaryMemory(&temp);
+                                }
+                            } break;
+
+                            case Compiler_Config_Member_Bool: {
+                                bool *in = (bool *)((char *)config + info->Offset);
+
+                                if (StrMatch(StringLiteral("1"), token->Data.Property.Value) ||
+                                    StrMatch(StringLiteral("True"), token->Data.Property.Value)) {
+                                    *in = true;
+                                }
+                                else if (StrMatch(StringLiteral("0"), token->Data.Property.Value) ||
+                                    StrMatch(StringLiteral("False"), token->Data.Property.Value)) {
+                                    *in = true;
+                                }
+                                else {
+                                    // TODO: Print line and column number in the error
+                                    String error = FmtStr(scratch, "Expected boolean: %s\n", prsr.Token.Data);
+                                    FatalError(error.Data);
+                                }
+                            } break;
+
+                            case Compiler_Config_Member_String: {
+                                Out_Stream *in = (Out_Stream *)((char *)config + info->Offset);
+                                OutReset(in);
+                                OutString(in, token->Data.Property.Value);
+                            } break;
+
+                            case Compiler_Config_Member_String_Array: {
+                                Out_Stream *in = (Out_Stream *)((char *)config + info->Offset);
+                                OutString(in, token->Data.Property.Value);
+                                OutBuffer(in, " ", 1);
+                            } break;
+
+                            NoDefaultCase();
+                        }
+
+                        break;
                     }
                 }
-            }
+            } break;
+
+            case Muda_Token_Comment: {
+                // ignored
+            } break;
+
+            case Muda_Token_Tag: {
+                Unimplemented();
+            } break;
         }
     }
+
     if (prsr.Token.Kind == Muda_Token_Error) {
         String errmsg = FmtStr(scratch, "%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
         FatalError(errmsg.Data);
@@ -157,19 +218,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
     LogInfo("Beginning compilation\n");
 
-    if (config->BuildConfig.ForceCompiler) {
-        if (compiler & config->BuildConfig.ForceCompiler) {
-            compiler = config->BuildConfig.ForceCompiler;
-            LogInfo("Requested compiler: %s\n", GetCompilerName(compiler));
-        }
-        else {
-            const char *requested_compiler = GetCompilerName(config->BuildConfig.ForceCompiler);
-            LogInfo("Requested compiler: %s but %s could not be detected\n",
-                requested_compiler, requested_compiler);
-        }
-    }
-
-	Assert(config->Type == Compile_Type_Project);
+	Assert(config->Kind == Compile_Project);
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
@@ -215,28 +264,28 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     // Turn on Optimization if it is forced via command line
     if (config->BuildConfig.ForceOptimization) {
         LogInfo("Optimization turned on forcefully\n");
-        OutReset (&config->Optimization);
-        OutFormatted(&config->Optimization, "-O2 ");
+        config->Optimization = true;
     }
 
     if (compiler & Compiler_Bit_GCC) {
-        LogInfo("[Compiler] GCC Detected.\n");
+        LogInfo("Compiler GCC Detected.\n");
         OutFormatted(&out, "gcc -pipe ");
-        OutFormatted(&out, "%s ", OutBuildString(&config->Optimization, &scratch_allocator).Data);
-        OutFormatted(&out, "%s ", OutBuildString(&config->Known_Properties, &scratch_allocator).Data);
-        OutFormatted(&out, "%s ", OutBuildString(&config->Source, &scratch_allocator).Data);
+        OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
+        OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Og");
+        // TODO: Do other properties
         OutFormatted(&out, "-o %s/%s ", build_dir.Data, build.Data);
     } else if (compiler & Compiler_Bit_CLANG) {
-        LogInfo("[Compiler] CLANG Detected.\n");
+        LogInfo("Compiler CLANG Detected.\n");
         OutFormatted(&out, "clang -gcodeview ");
-        OutFormatted(&out, "%s ", OutBuildString(&config->Optimization, &scratch_allocator).Data);
-        OutFormatted(&out, "%s ", OutBuildString(&config->Known_Properties, &scratch_allocator).Data);
-        OutFormatted(&out, "%s ", OutBuildString(&config->Source, &scratch_allocator).Data);
+        OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
+        OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Og");
+        // TODO: Do other properties
         OutFormatted(&out, "-o %s/%s ", build_dir.Data, build.Data);
     } else if (compiler & Compiler_Bit_CL) {
-        LogInfo("[Compiler] MSVC Detected.\n");
+        LogInfo("Compiler MSVC Detected.\n");
         OutFormatted(&out, "cl -W3 ");
-        //UNGA BUNGA TERRITORY
+        OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
+        // TODO: Do other properties
         OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
         OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
         OutFormatted(&out, "-link ");
@@ -267,7 +316,7 @@ int main(int argc, char *argv[]) {
     OsSetupConsole();
     
     Compiler_Config config;
-    CompilerConfigInit(&config);
+    CompilerConfigInit(&config, &arena);
 
     if (HandleCommandLineArguments(argc, argv, &config.BuildConfig))
         return 0;
@@ -284,6 +333,19 @@ int main(int argc, char *argv[]) {
         OsConsoleWrite("[GCC] https://gcc.gnu.org/install/download.html \n");
         return 1;
     }
+
+    if (config.BuildConfig.ForceCompiler) {
+        if (compiler & config.BuildConfig.ForceCompiler) {
+            compiler = config.BuildConfig.ForceCompiler;
+            LogInfo("Requested compiler: %s\n", GetCompilerName(compiler));
+        }
+        else {
+            const char *requested_compiler = GetCompilerName(config.BuildConfig.ForceCompiler);
+            LogInfo("Requested compiler: %s but %s could not be detected\n",
+                requested_compiler, requested_compiler);
+        }
+    }
+
 
     String config_path = { 0,0 };
 
@@ -319,7 +381,7 @@ int main(int argc, char *argv[]) {
             if (OsFileRead(fp, buffer, size) && size > 0) {
                 buffer[size] = 0;
                 LogInfo("Parsing muda file\n");
-                LoadCompilerConfig(&config, buffer, compiler);
+                DeserializeCompilerConfig(&config, buffer, compiler);
                 LogInfo("Finished parsing muda file\n");
             } else if (size == 0) {
                 LogError("File %s is empty!\n", config_path.Data);
@@ -335,7 +397,8 @@ int main(int argc, char *argv[]) {
         EndTemporaryMemory(&temp);
     }
 
-    PushDefaultCompilerConfig(&config, compiler);
+    // TODO: FIX ME
+    //PushDefaultCompilerConfig(&config, compiler);
 
     Compile(&config, compiler);
 
