@@ -43,7 +43,6 @@ typedef struct Build_Config {
 } Build_Config;
 
 typedef struct Compiler_Config {
-	Out_Stream Name;
 	Uint32 Kind; // Compile_Kind 
 	Uint32 Application; // Application_Kind 
 
@@ -91,7 +90,6 @@ static const Enum_Info ApplicationKindInfo = { ApplicationKindId, ArrayCount(App
 static const Enum_Info SubsystemKindInfo = { SubsystemKindId, ArrayCount(SubsystemKindId) };
 
 static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
-	{ StringExpand("Name"), Compiler_Config_Member_String, offsetof(Compiler_Config, Name), "" },
 	{ StringExpand("Kind"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Kind), "", &CompilerKindInfo },
 	{ StringExpand("Application"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Application), "", &ApplicationKindInfo },
 	{ StringExpand("Optimization"), Compiler_Config_Member_Bool, offsetof(Compiler_Config, Optimization), "" },
@@ -149,7 +147,6 @@ INLINE_PROCEDURE void FatalErrorProcedure(const char *message) {
 INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *arena) {
 	Memory_Allocator allocator = MemoryArenaAllocator(arena);
 
-	OutCreate(&config->Name, allocator);
 	config->Kind = Compile_Project;
 	config->Application = Application_Executable;
 
