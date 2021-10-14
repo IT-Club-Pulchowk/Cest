@@ -154,7 +154,7 @@
 #if !defined(ASSERTION_HANDLED)
 #define AssertHandle(reason, file, line, proc) TriggerBreakpoint()
 #else
-INLINE_PROCEDURE void AssertHandle(const char *reason, const char *file, int line, const char *proc);
+void AssertHandle(const char *reason, const char *file, int line, const char *proc);
 #endif
 
 #if !defined(DEPRECATION_HANDLED)
