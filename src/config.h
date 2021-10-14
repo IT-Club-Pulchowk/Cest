@@ -15,6 +15,7 @@ typedef struct Build_Config {
     bool ForceOptimization;
     bool DisplayCommandLine;
     bool DisableLogs;
+    String UseSection;
 } Build_Config;
 
 #define MAX_OPTIONALS_IN_NODE 8

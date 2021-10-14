@@ -19,6 +19,14 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
     
     Muda_Parser prsr = MudaParseInit(data);
 
+    String OsSection;
+    if (PLATFORM_OS_WINDOWS)
+        OsSection = StringLiteral("windows");
+    else if (PLATFORM_OS_LINUX)
+        OsSection = StringLiteral("linux");
+
+    bool SectionIsUsable = true;
+
     Uint32 version = 0;
     Uint32 major = 0, minor = 0, patch = 0;
 
@@ -58,7 +66,10 @@ void LoadCompilerConfig(Compiler_Config *config, Uint8* data) {
             else
                 LogInfo("Tag:= %s\n", prsr.Token.Data.Tag.Title.Data);
         }
-        if (prsr.Token.Kind != Muda_Token_Property) continue;
+        else if (prsr.Token.Kind == Muda_Token_Section) {
+            SectionIsUsable = StrMatchCaseInsensitive(prsr.Token.Data.Section, OsSection) || StrMatchCaseInsensitive(prsr.Token.Data.Section, config->BuildConfig.UseSection);
+        }
+        if (prsr.Token.Kind != Muda_Token_Property || !SectionIsUsable) continue;
 
         if (StrMatch(prsr.Token.Data.Property.Key, StringLiteral("Type"))){
             if (StrMatch(prsr.Token.Data.Property.Value, StringLiteral("Project")))
@@ -209,7 +220,6 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                                 int len = ntr->Next ? 8 : ptr->Property_Values[q].Used;
                                 for (int w = 0; w < len; w ++) OutFormatted(&out, Available_Properties[i].Fmt_MSVC, ntr->Data[w].Data);
                             }
-                            break;
                         }
                     }
                 }
@@ -246,7 +256,6 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                                 int len = ntr->Next ? 8 : ptr->Property_Values[q].Used;
                                 for (int w = 0; w < len; w ++) OutFormatted(&out, Available_Properties[i].Fmt_GCC, ntr->Data[w].Data);
                             }
-                            break;
                         }
                     }
                 }
@@ -283,7 +292,6 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                                 int len = ntr->Next ? 8 : ptr->Property_Values[q].Used;
                                 for (int w = 0; w < len; w ++) OutFormatted(&out, Available_Properties[i].Fmt_CLANG, ntr->Data[w].Data);
                             }
-                            break;
                         }
                     }
                 }

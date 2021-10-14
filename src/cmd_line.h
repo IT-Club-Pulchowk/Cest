@@ -21,6 +21,7 @@ static bool OptOptimize(const char *program, const char *arg[], int count, Build
 static bool OptCmdline(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptNoLog(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptHelp(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
+static bool OptUse(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 
 static const Muda_Option Options[] = {
     { StringLiteralExpand("version"), "Check the version of Muda installed", "", OptVersion, 0 },
@@ -31,6 +32,7 @@ static const Muda_Option Options[] = {
     { StringLiteralExpand("cmdline"), "Displays the command line executed to build", "", OptCmdline, 0 },
     { StringLiteralExpand("nolog"), "Disables logging in the terminal", "", OptNoLog, 0 },
     { StringLiteralExpand("help"), "Muda description and list all the command", "[command/s]", OptHelp, -255 },
+    { StringLiteralExpand("use"), "Specify a section to use from the muda file", "[section]", OptUse, 1 },
 };
 
 static bool OptVersion(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
@@ -136,6 +138,11 @@ static bool OptCompiler(const char *program, const char *arg[], int count, Build
         return true;
     }
 
+    return false;
+}
+
+static bool OptUse (const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
+    config->UseSection = StringMake(arg[0], strlen(arg[0]));
     return false;
 }
 
