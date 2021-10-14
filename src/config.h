@@ -48,22 +48,22 @@ typedef struct {
     const char* Fmt_GCC;
     const char* Fmt_CLANG;
     Int32 Max_Vals;
+    bool IsOpt;
 } Compiler_Optionals;
 
 const Compiler_Optionals Available_Properties[] = {
-    {StringLiteralExpand("Type"), "Type of compilation (Project or Solution):\n\tProject: Only build using a single muda file\n\tSolution: Iterate through subdirectories and build each muda file found\n", "", "", "", 0},
-    {StringLiteralExpand("BuildDirectory"), "Path to the directory where the output binary should be placed\n", "", "", "", 0},
-    {StringLiteralExpand("Build"), "Name of the output binary\n", "", "", "", 0},
-    {StringLiteralExpand("Optimization"), "Use optimization while compiling or not (true/false)\n", "", "", "", 0},
-    {StringLiteralExpand("Source"), "Path to the source files\n", "", "", "", 0},
-
-    {StringLiteralExpand("Define"), "List of preprocessing symbols to be defined", "-D%s ", "-D%s ", "-D%s ", -1},
-    {StringLiteralExpand("Library"), "List of additional libraries to be linked [For MSVC: do not include the .lib extension]", "\"%s.lib\" " , "-l%s ", "-l%s ", -1},
-    {StringLiteralExpand("IncludeDirectory"), "List of directories to search for include files", "-I\"%s\" ", "-I%s ", "-I%s ", -1},
-    {StringLiteralExpand("LibraryDirectory"), "List of paths to be searched for additional libraries", "-LIBPATH:\"%s\" ", "-L%s ", "-L%s ", -1},
+    {StringLiteralExpand("Type"), "Type of compilation (Project or Solution):\n\tProject: Only build using a single muda file\n\tSolution: Iterate through subdirectories and build each muda file found\n", "", "", "", 0, false},
+    {StringLiteralExpand("IncludeDirectory"), "List of directories to search for include files", "-I\"%s\" ", "-I%s ", "-I%s ", -1, true},
+    {StringLiteralExpand("Optimization"), "Use optimization while compiling or not (true/false)\n", "", "", "", 0, false},
+    {StringLiteralExpand("Define"), "List of preprocessing symbols to be defined", "-D%s ", "-D%s ", "-D%s ", -1, true},
+    {StringLiteralExpand("Source"), "Path to the source files\n", "", "", "", -1, false},
+    {StringLiteralExpand("BuildDirectory"), "Path to the directory where the output binary should be placed\n", "", "", "", 1, false},
+    {StringLiteralExpand("Build"), "Name of the output binary\n", "", "", "", 1, false},
+    {StringLiteralExpand("LibraryDirectory"), "List of paths to be searched for additional libraries", "-LIBPATH:\"%s\" ", "-L%s ", "-L%s ", -1, true},
+    {StringLiteralExpand("Library"), "List of additional libraries to be linked [For MSVC: do not include the .lib extension]", "\"%s.lib\" " , "-l%s ", "-l%s ", -1, true},
 
 #if PLATFORM_OS_WINDOWS
-    {StringLiteralExpand("Subsystem"), "Specify the environment for the executable", "-subsystem:%s ", "-subsystem,%s ", "-subsystem:%s ",  1},
+    {StringLiteralExpand("Subsystem"), "Specify the environment for the executable", "-subsystem:%s ", "-subsystem,%s ", "-subsystem:%s ",  1, true},
 #endif
 };
 

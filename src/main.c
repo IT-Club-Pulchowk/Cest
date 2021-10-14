@@ -177,32 +177,41 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         LogInfo("Compiler: CL Detected\n");
 
         OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
-
-        if (config->Optimization)
-            OutFormatted(&out, "-O2 ");
-        else
-            OutFormatted(&out, "-Od ");
-
-        for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->Source.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
-        }
-
-        // TODO: Make directory if not present, need to add OS api for making directory!
-        // Until then make "bin/int" directory manually :(
-        OutFormatted(&out, "-Fo\"%s/int/\" ", config->BuildDirectory.Data);
-        OutFormatted(&out, "-Fd\"%s/\" ", config->BuildDirectory.Data);
-        OutFormatted(&out, "-link ");
-        OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
-        OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
-
-        for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
-            int len = ptr->Next ? 8 : config->Optionals.Used;
-            for (int i = 0; i < len; i ++){
-                int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
-                for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
-                    int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
-                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Properties[indx].Fmt_MSVC, ntr->Data[i].Data);
+        for (int i = 0; i < ArrayCount(Available_Properties); i ++) {
+            if (!Available_Properties[i].IsOpt) { 
+                if (StrMatch(Available_Properties[i].Name, StringLiteral("Optimization"))) { 
+                    if (config->Optimization)
+                        OutFormatted(&out, "-O2 ");
+                    else
+                        OutFormatted(&out, "-Od ");
+                }
+                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Source"))) {
+                    for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
+                        int len = ntr->Next ? 8 : config->Source.Used;
+                        for (int i = 0; i < len; i ++) OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
+                    }
+                }
+                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Build"))) {
+                    // TODO: Make directory if not present, need to add OS api for making directory!
+                    // Until then make "bin/int" directory manually :(
+                    OutFormatted(&out, "-Fo\"%s/int/\" ", config->BuildDirectory.Data);
+                    OutFormatted(&out, "-Fd\"%s/\" ", config->BuildDirectory.Data);
+                    OutFormatted(&out, "-link ");
+                    OutFormatted(&out, "-out:\"%s/%s.exe\" ", config->BuildDirectory.Data, config->Build.Data);
+                    OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", config->BuildDirectory.Data, config->Build.Data);
+                }
+            } else { 
+                for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
+                    int len = ptr->Next ? 8 : config->Optionals.Used;
+                    for (int q = 0; q < len; q ++){
+                        if (StrMatch(Available_Properties[i].Name, ptr->Property_Keys[q])){
+                            for (String_List_Node* ntr = &ptr->Property_Values[q].Head; ntr && ptr->Property_Values[q].Used; ntr = ntr->Next){
+                                int len = ntr->Next ? 8 : ptr->Property_Values[q].Used;
+                                for (int w = 0; w < len; w ++) OutFormatted(&out, Available_Properties[i].Fmt_MSVC, ntr->Data[w].Data);
+                            }
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -210,54 +219,73 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         LogInfo("[Compiler] GCC Detected.\n");
         OutFormatted(&out, "gcc -pipe ");
 
-        if (config->Optimization) OutFormatted(&out, "-O2 ");
-        else OutFormatted(&out, "-g ");
-
-        for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->Source.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
-        }
-
-        if (PLATFORM_OS_LINUX)
-            OutFormatted(&out, "-o %s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
-        else if (PLATFORM_OS_WINDOWS)
-            OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
-
-        for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
-            int len = ptr->Next ? 8 : config->Optionals.Used;
-            for (int i = 0; i < len; i ++){
-                int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
-                for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
-                    int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
-                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Properties[indx].Fmt_GCC, ntr->Data[i].Data);
+        for (int i = 0; i < ArrayCount(Available_Properties); i ++) {
+            if (!Available_Properties[i].IsOpt) { 
+                if (StrMatch(Available_Properties[i].Name, StringLiteral("Optimization"))) { 
+                    if (config->Optimization) OutFormatted(&out, "-O2 ");
+                    else OutFormatted(&out, "-g ");
+                }
+                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Source"))) {
+                    for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
+                        int len = ntr->Next ? 8 : config->Source.Used;
+                        for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
+                    }
+                }
+                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Build"))) {
+                    if (PLATFORM_OS_LINUX)
+                        OutFormatted(&out, "-o %s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
+                    else if (PLATFORM_OS_WINDOWS)
+                        OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
+                }
+            } else { 
+                for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
+                    int len = ptr->Next ? 8 : config->Optionals.Used;
+                    for (int q = 0; q < len; q ++){
+                        if (StrMatch(Available_Properties[i].Name, ptr->Property_Keys[q])){
+                            for (String_List_Node* ntr = &ptr->Property_Values[q].Head; ntr && ptr->Property_Values[q].Used; ntr = ntr->Next){
+                                int len = ntr->Next ? 8 : ptr->Property_Values[q].Used;
+                                for (int w = 0; w < len; w ++) OutFormatted(&out, Available_Properties[i].Fmt_GCC, ntr->Data[w].Data);
+                            }
+                            break;
+                        }
+                    }
                 }
             }
         }
-
     } else if (compiler & Compiler_Bit_CLANG) {
         LogInfo("[Compiler] CLANG Detected.\n");
         OutFormatted(&out, "clang -gcodeview -w ");
 
-        if (config->Optimization) OutFormatted(&out, "-O2 ");
-        else OutFormatted(&out, "-g ");
-
-        for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
-            int len = ntr->Next ? 8 : config->Source.Used;
-            for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
-        }
-
-        if (PLATFORM_OS_LINUX)
-            OutFormatted(&out, "-o %s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
-        else if (PLATFORM_OS_WINDOWS)
-            OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
-
-        for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
-            int len = ptr->Next ? 8 : config->Optionals.Used;
-            for (int i = 0; i < len; i ++){
-                int indx = CheckIfOptAvailable(ptr->Property_Keys[i]);
-                for (String_List_Node* ntr = &ptr->Property_Values[i].Head; ntr && ptr->Property_Values[i].Used; ntr = ntr->Next){
-                    int len = ntr->Next ? 8 : ptr->Property_Values[i].Used;
-                    for (int i = 0; i < len; i ++) OutFormatted(&out, Available_Properties[indx].Fmt_CLANG, ntr->Data[i].Data);
+        for (int i = 0; i < ArrayCount(Available_Properties); i ++) {
+            if (!Available_Properties[i].IsOpt) { 
+                if (StrMatch(Available_Properties[i].Name, StringLiteral("Optimization"))) { 
+                    if (config->Optimization) OutFormatted(&out, "-O2 ");
+                    else OutFormatted(&out, "-g ");
+                }
+                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Source"))) {
+                    for (String_List_Node* ntr = &config->Source.Head; ntr && config->Source.Used; ntr = ntr->Next){
+                        int len = ntr->Next ? 8 : config->Source.Used;
+                        for (int i = 0; i < len; i ++) OutFormatted(&out, "%s ", ntr->Data[i].Data);
+                    }
+                }
+                else if (StrMatch(Available_Properties[i].Name, StringLiteral("Build"))) {
+                    if (PLATFORM_OS_LINUX)
+                        OutFormatted(&out, "-o %s/%s.out ", config->BuildDirectory.Data, config->Build.Data);
+                    else if (PLATFORM_OS_WINDOWS)
+                        OutFormatted(&out, "-o %s/%s.exe ", config->BuildDirectory.Data, config->Build.Data);
+                }
+            } else { 
+                for (Optionals_List_Node* ptr = &config->Optionals.Head; ptr && config->Optionals.Used; ptr = ptr->Next){
+                    int len = ptr->Next ? 8 : config->Optionals.Used;
+                    for (int q = 0; q < len; q ++){
+                        if (StrMatch(Available_Properties[i].Name, ptr->Property_Keys[q])){
+                            for (String_List_Node* ntr = &ptr->Property_Values[q].Head; ntr && ptr->Property_Values[q].Used; ntr = ntr->Next){
+                                int len = ntr->Next ? 8 : ptr->Property_Values[q].Used;
+                                for (int w = 0; w < len; w ++) OutFormatted(&out, Available_Properties[i].Fmt_CLANG, ntr->Data[w].Data);
+                            }
+                            break;
+                        }
+                    }
                 }
             }
         }
