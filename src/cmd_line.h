@@ -72,8 +72,10 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
     if (OsCheckIfPathExists(muda_file)) {
         OsConsoleWrite("Muda build file is already present in this directory. Enter [Y] or [y] to replace the file # > ");
         input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
-        if (input.Length != 1 || (input.Data[0] != 'y' && input.Data[0] != 'Y'))
+        if (input.Length != 1 || (input.Data[0] != 'y' && input.Data[0] != 'Y')) {
+            OsConsoleWrite("Muda build file setup terminated.\n\n");
             return true;
+        }
     }
 
     OsConsoleWrite("Muda Configuration:\n");
@@ -115,6 +117,8 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
     File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
     WriteCompilerConfig(&config, true, OptSetupConfigFileWriter, &fhandle);
     OsFileClose(fhandle);
+
+    OsConsoleWrite("Muda build file setup completed.\n\n");
 
     return true;
 }
