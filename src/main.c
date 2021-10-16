@@ -335,7 +335,9 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                     OutFormatted(&out, "%s ", ntr->Data[i].Data);
             }
 
-            OutFormatted(&out, "-SUBSYSTEM:%s ", config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
+            if (PLATFORM_OS_WINDOWS) {
+                OutFormatted(&out, "-SUBSYSTEM:%s ", config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
+            }
         } break;
 
         case Compiler_Bit_CLANG: {
