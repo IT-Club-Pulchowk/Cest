@@ -90,19 +90,47 @@ static const Enum_Info ApplicationKindInfo = { ApplicationKindId, ArrayCount(App
 static const Enum_Info SubsystemKindInfo = { SubsystemKindId, ArrayCount(SubsystemKindId) };
 
 static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
-	{ StringExpand("Kind"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Kind), "", &CompilerKindInfo },
-	{ StringExpand("Application"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Application), "", &ApplicationKindInfo },
-	{ StringExpand("Optimization"), Compiler_Config_Member_Bool, offsetof(Compiler_Config, Optimization), "" },
-	{ StringExpand("Build"), Compiler_Config_Member_String, offsetof(Compiler_Config, Build), "" },
-	{ StringExpand("BuildDirectory"), Compiler_Config_Member_String, offsetof(Compiler_Config, BuildDirectory), "" },
-	{ StringExpand("Sources"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Sources), ""},
-	{ StringExpand("Flags"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Flags), "" },
-	{ StringExpand("Defines"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Defines), "" },
-	{ StringExpand("IncludeDirectories"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, IncludeDirectories), "" },
-	{ StringExpand("Subsystem"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Subsystem), "", &SubsystemKindInfo },
-	{ StringExpand("Libraries"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Libraries), "" },
-	{ StringExpand("LibraryDirectories"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, LibraryDirectories), "" },
-	{ StringExpand("LinkerFlags"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, LinkerFlags), "" },
+	{ StringExpand("Kind"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Kind),
+	"Type of compilation (Project or Solution). Default is Project. "
+	"Project only build using a single muda file. "
+	"Solution iterates through subdirectories and build each muda file found.",
+	&CompilerKindInfo },
+
+	{ StringExpand("Application"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Application), 
+	"Application can be Executable, StaticLibrary or DynamicLibrary. Default is Executable.", &ApplicationKindInfo },
+
+	{ StringExpand("Optimization"), Compiler_Config_Member_Bool, offsetof(Compiler_Config, Optimization), 
+	"Use optimization while compiling or not (true/false). Default is false." },
+
+	{ StringExpand("Build"), Compiler_Config_Member_String, offsetof(Compiler_Config, Build), 
+	"Name of the output binary." },
+
+	{ StringExpand("BuildDirectory"), Compiler_Config_Member_String, offsetof(Compiler_Config, BuildDirectory), 
+	"Path to the directory where the output binary should be placed." },
+
+	{ StringExpand("Sources"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Sources), 
+	"Path to the source files."},
+
+	{ StringExpand("Flags"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Flags), 
+	"Flags for the compiler. Different compiler may use different flags, so it is recommended to use sections for using this property." },
+
+	{ StringExpand("Defines"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Defines), 
+	"List of preprocessing symbols to be defined." },
+
+	{ StringExpand("IncludeDirectories"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, IncludeDirectories), 
+	"List of directories to search for include files." },
+
+	{ StringExpand("Subsystem"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Subsystem), 
+	"This property is only used in Windows. can be Console or Windows. Windows uses the win main entry point.", &SubsystemKindInfo },
+
+	{ StringExpand("Libraries"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, Libraries), 
+	"List of additional libraries to be linked (For MSVC: do not include the .lib extension)." },
+
+	{ StringExpand("LibraryDirectories"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, LibraryDirectories), 
+	"List of paths to be searched for additional libraries." },
+
+	{ StringExpand("LinkerFlags"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, LinkerFlags), 
+	"Flags for the linker. Different linkers may use different flags, so it is recommended to use sections for using this property." },
 };
 
 //
