@@ -100,6 +100,7 @@ INLINE_PROCEDURE void OutReset(Out_Stream *out) {
 		buk = buk->Next;
 	}
 	out->Size = 0;
+	out->Tail = &out->Head;
 }
 
 INLINE_PROCEDURE void OutCreate(Out_Stream *out, Memory_Allocator allocator) {

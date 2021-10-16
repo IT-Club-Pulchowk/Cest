@@ -228,12 +228,13 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 	Out_Stream out;
 	OutCreate(&out, scratch_allocator);
         
+    // TODO: Make this iteratable
     String build_dir = OutBuildString(&config->BuildDirectory, &scratch_allocator);
     String build     = OutBuildString(&config->Build, &scratch_allocator);
     Uint32 result = OsCheckIfPathExists(build_dir);
     if (result == Path_Does_Not_Exist) {
         if (!OsCreateDirectoryRecursively(build_dir)) {
-            String error = FmtStr(scratch, "Failed to create directory %s!", build_dir.Data);
+            String error = FmtStr(scratch, "Failed to create directory %s!\n", build_dir.Data);
             FatalError(error.Data);
         }
     }
@@ -242,7 +243,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         FatalError(error.Data);
     }
 
-    if (compiler & Compiler_Bit_CL) {
+    if (compiler == Compiler_Bit_CL) {
         // For CL, we output intermediate files to "BuildDirectory/int"
         String intermediate;
         if (build_dir.Data[build_dir.Length - 1] == '/')
@@ -252,7 +253,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         result = OsCheckIfPathExists(intermediate);
         if (result == Path_Does_Not_Exist) {
             if (!OsCreateDirectoryRecursively(intermediate)) {
-                String error = FmtStr(scratch, "Failed to create directory %s!", intermediate.Data);
+                String error = FmtStr(scratch, "Failed to create directory %s!\n", intermediate.Data);
                 FatalError(error.Data);
             }
         }
@@ -268,30 +269,63 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         config->Optimization = true;
     }
 
-    if (compiler & Compiler_Bit_GCC) {
-        LogInfo("Compiler GCC Detected.\n");
-        OutFormatted(&out, "gcc -pipe ");
-        //OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
-        OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Og");
-        // TODO: Do other properties
-        OutFormatted(&out, "-o %s/%s ", build_dir.Data, build.Data);
-    } else if (compiler & Compiler_Bit_CLANG) {
-        LogInfo("Compiler CLANG Detected.\n");
-        OutFormatted(&out, "clang -gcodeview ");
-        //OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
-        OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Og");
-        // TODO: Do other properties
-        OutFormatted(&out, "-o %s/%s ", build_dir.Data, build.Data);
-    } else if (compiler & Compiler_Bit_CL) {
-        LogInfo("Compiler MSVC Detected.\n");
-        OutFormatted(&out, "cl -W3 ");
-        //OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
-        // TODO: Do other properties
-        OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
-        OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
-        OutFormatted(&out, "-link ");
-        OutFormatted(&out, "-out:\"%s/%s.exe\" ", build_dir.Data, build.Data);
-        OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", build_dir.Data, build.Data);
+    switch (compiler) {
+        case Compiler_Bit_CL: {
+            LogInfo("Compiler MSVC Detected.\n");
+            OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
+            OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Od");
+
+            for (String_List_Node *ntr = &config->Defines.Head; 
+                ntr && config->Defines.Used; ntr = ntr->Next) {
+                Uint32 len = ntr->Next ? 8 : config->Defines.Used;
+                for (Uint32 i = 0; i < len; i++)
+                    OutFormatted(&out, "-D%s ", ntr->Data[i].Data);
+            }
+
+            for (String_List_Node *ntr = &config->IncludeDirectories.Head; 
+                ntr && config->IncludeDirectories.Used; ntr = ntr->Next) {
+                Uint32 len = ntr->Next ? 8 : config->IncludeDirectories.Used;
+                for (Uint32 i = 0; i < len; i++)
+                    OutFormatted(&out, "-I\"%s\" ", ntr->Data[i].Data);
+            }
+
+            for (String_List_Node *ntr = &config->Sources.Head; 
+                ntr && config->Sources.Used; ntr = ntr->Next) {
+                Uint32 len = ntr->Next ? 8 : config->Sources.Used;
+                for (Uint32 i = 0; i < len; i++)
+                    OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
+            }
+
+            OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
+            OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
+            OutFormatted(&out, "-link ");
+            OutFormatted(&out, "-out:\"%s/%s.exe\" ", build_dir.Data, build.Data);
+            OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", build_dir.Data, build.Data);
+
+            for (String_List_Node *ntr = &config->LibraryDirectories.Head;
+                ntr && config->LibraryDirectories.Used; ntr = ntr->Next) {
+                Uint32 len = ntr->Next ? 8 : config->LibraryDirectories.Used;
+                for (Uint32 i = 0; i < len; i++)
+                    OutFormatted(&out, "-LIBPATH:\"%s\" ", ntr->Data[i].Data);
+            }
+
+            for (String_List_Node *ntr = &config->Libraries.Head; 
+                ntr && config->Libraries.Used; ntr = ntr->Next) {
+                Uint32 len = ntr->Next ? 8 : config->Libraries.Used;
+                for (Uint32 i = 0; i < len; i++) 
+                    OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
+            }
+        } break;
+
+        case Compiler_Bit_CLANG: {
+            Unimplemented();
+            LogInfo("Compiler CLANG Detected.\n");
+        } break;
+
+        case Compiler_Bit_GCC: {
+            Unimplemented();
+            LogInfo("Compiler GCC Detected.\n");
+        } break;
     }
 
     String cmd_line = OutBuildString(&out, &scratch_allocator);
@@ -345,15 +379,16 @@ int main(int argc, char *argv[]) {
             LogInfo("Requested compiler: %s but %s could not be detected\n",
                 requested_compiler, requested_compiler);
         }
-    } else {
-        if (compiler & Compiler_Bit_CL)
-            compiler = Compiler_Bit_CL;
-        else if (compiler & Compiler_Bit_CLANG)
-            compiler = Compiler_Bit_CLANG;
-        else
-            compiler = Compiler_Bit_GCC;
     }
 
+    // Set one compiler from all available compilers
+    // This priorities one compiler over the other
+    if (compiler & Compiler_Bit_CL)
+        compiler = Compiler_Bit_CL;
+    else if (compiler & Compiler_Bit_CLANG)
+        compiler = Compiler_Bit_CLANG;
+    else
+        compiler = Compiler_Bit_GCC;
 
     String config_path = { 0,0 };
 
