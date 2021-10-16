@@ -226,6 +226,9 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
 	Out_Stream out;
 	OutCreate(&out, MemoryArenaAllocator(config->Arena));
+
+    Out_Stream lib;
+	OutCreate(&lib, MemoryArenaAllocator(config->Arena));
         
     String build_dir = OutBuildStringSerial(&config->BuildDirectory, scratch);
     String build     = OutBuildStringSerial(&config->Build, scratch);
@@ -278,71 +281,82 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         case Compiler_Bit_CL: {
             LogInfo("Compiler MSVC Detected.\n");
 
+			OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
+			OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Od");
+
+			ForList(String_List_Node, &config->Defines) {
+				ForListNode(&config->Defines, MAX_STRING_NODE_DATA_COUNT) {
+					OutFormatted(&out, "-D%s ", it->Data[index].Data);
+				}
+			}
+
+			ForList(String_List_Node, &config->IncludeDirectories) {
+				ForListNode(&config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
+					OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+				}
+			}
+
+			ForList(String_List_Node, &config->Sources) {
+				ForListNode(&config->Sources, MAX_STRING_NODE_DATA_COUNT) {
+					OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+				}
+			}
+
+			ForList(String_List_Node, &config->Flags) {
+				ForListNode(&config->Flags, MAX_STRING_NODE_DATA_COUNT) {
+					OutFormatted(&out, "%s ", it->Data[index].Data);
+				}
+			}
+
+            OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
+
             if (config->Application != Application_Static_Library) {
-                OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
-                OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Od");
-
-                ForList(String_List_Node, &config->Defines) {
-                    ForListNode(&config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-                        OutFormatted(&out, "-D%s ", it->Data[index].Data);
-                    }
-                }
-
-                ForList(String_List_Node, &config->IncludeDirectories) {
-                    ForListNode(&config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-                        OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
-                    }
-                }
-
-                ForList(String_List_Node, &config->Sources) {
-                    ForListNode(&config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-                        OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
-                    }
-                }
-
-                ForList(String_List_Node, &config->Flags) {
-                    ForListNode(&config->Flags, MAX_STRING_NODE_DATA_COUNT) {
-                        OutFormatted(&out, "%s ", it->Data[index].Data);
-                    }
-                }
-
                 OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
-                OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
 
                 if (config->Application == Application_Dynamic_Library)
                     OutFormatted(&out, "-LD ");
+
                 OutFormatted(&out, "-link ");
-                OutFormatted(&out, "-out:\"%s/%s.%s\" ", build_dir.Data, build.Data, config->Application == Application_Executable ? "exe" : "dll");
                 OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", build_dir.Data, build.Data);
+
+                if (config->Application != Application_Static_Library)
+                    OutFormatted(&out, "-out:\"%s/%s.%s\" ", build_dir.Data, build.Data,
+                        config->Application == Application_Executable ? "exe" : "dll");
 
                 if (config->Application == Application_Dynamic_Library)
                     OutFormatted(&out, "-IMPLIB:\"%s/%s.lib\" ", build_dir.Data, build.Data);
-
-                ForList(String_List_Node, &config->LibraryDirectories) {
-                    ForListNode(&config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
-                        OutFormatted(&out, "-LIBPATH:\"%s\" ", it->Data[index].Data);
-                    }
-                }
-
-                ForList(String_List_Node, &config->Libraries) {
-                    ForListNode(&config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
-                        OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
-                    }
-                }
 
                 ForList(String_List_Node, &config->LinkerFlags) {
                     ForListNode(&config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
                         OutFormatted(&out, "%s ", it->Data[index].Data);
                     }
                 }
-
-                if (PLATFORM_OS_WINDOWS) {
-                    OutFormatted(&out, "-SUBSYSTEM:%s ", config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
-                }
             }
             else {
-                Unimplemented();
+                OutFormatted(&out, "-c ");
+                OutFormatted(&out, "-Fo\"%s/int/%s.obj\" ", build_dir.Data, build.Data);
+
+                OutFormatted(&lib, "lib -nologo \"%s/int/%s.obj\" ", build_dir.Data, build.Data);
+                OutFormatted(&lib, "-out:\"%s/%s.lib\" ", build_dir.Data, build.Data);
             }
+
+            Out_Stream *target = ((config->Application != Application_Static_Library) ? &out : &lib);
+
+            ForList(String_List_Node, &config->LibraryDirectories) {
+                ForListNode(&config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(target, "-LIBPATH:\"%s\" ", it->Data[index].Data);
+                }
+            }
+
+			ForList(String_List_Node, &config->Libraries) {
+				ForListNode(&config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
+					OutFormatted(target, "\"%s\" ", it->Data[index].Data);
+				}
+			}
+
+			if (PLATFORM_OS_WINDOWS) {
+				OutFormatted(target, "-SUBSYSTEM:%s ", config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
+			}
         } break;
 
         case Compiler_Bit_CLANG: {
@@ -363,10 +377,20 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     }
 
     LogInfo("Executing compilation\n");
-    if (OsExecuteCommandLine(cmd_line))
+    if (OsExecuteCommandLine(cmd_line, NULL)) {
         LogInfo("Compilation succeeded\n\n");
-    else
+        if (lib.Size) {
+            LogInfo("Creating static library\n");
+            cmd_line = OutBuildStringSerial(&lib, config->Arena);
+            if (OsExecuteCommandLine(cmd_line, NULL))
+                LogInfo("Library creation succeeded\n\n");
+            else
+                LogInfo("Library creation failed\n\n");
+        }
+    }
+    else {
         LogInfo("Compilation failed\n\n");
+    }
 
 	EndTemporaryMemory(&temp);
 }
@@ -378,13 +402,13 @@ int main(int argc, char *argv[]) {
     
     Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
 
-    Compiler_Config config;
-    CompilerConfigInit(&config, &arena);
+    Compiler_Config *config = (Compiler_Config *)PushSize(&arena, sizeof(Compiler_Config));
+    CompilerConfigInit(config, &arena);
 
-    if (HandleCommandLineArguments(argc, argv, &config.BuildConfig))
+    if (HandleCommandLineArguments(argc, argv, &config->BuildConfig))
         return 0;
 
-    if (config.BuildConfig.DisableLogs)
+    if (config->BuildConfig.DisableLogs)
         ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
 
 	Compiler_Kind compiler = OsDetectCompiler();
@@ -397,13 +421,13 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (config.BuildConfig.ForceCompiler) {
-        if (compiler & config.BuildConfig.ForceCompiler) {
-            compiler = config.BuildConfig.ForceCompiler;
+    if (config->BuildConfig.ForceCompiler) {
+        if (compiler & config->BuildConfig.ForceCompiler) {
+            compiler = config->BuildConfig.ForceCompiler;
             LogInfo("Requested compiler: %s\n", GetCompilerName(compiler));
         }
         else {
-            const char *requested_compiler = GetCompilerName(config.BuildConfig.ForceCompiler);
+            const char *requested_compiler = GetCompilerName(config->BuildConfig.ForceCompiler);
             LogInfo("Requested compiler: %s but %s could not be detected\n",
                 requested_compiler, requested_compiler);
         }
@@ -452,7 +476,7 @@ int main(int argc, char *argv[]) {
             if (OsFileRead(fp, buffer, size) && size > 0) {
                 buffer[size] = 0;
                 LogInfo("Parsing muda file\n");
-                DeserializeCompilerConfig(&config, buffer, compiler);
+                DeserializeCompilerConfig(config, buffer, compiler);
                 LogInfo("Finished parsing muda file\n");
             } else if (size == 0) {
                 LogError("File %s is empty!\n", config_path.Data);
@@ -468,9 +492,9 @@ int main(int argc, char *argv[]) {
         EndTemporaryMemory(&temp);
     }
 
-    PushDefaultCompilerConfig(&config, true);
+    PushDefaultCompilerConfig(config, true);
 
-    Compile(&config, compiler);
+    Compile(config, compiler);
 
 	return 0;
 }

@@ -56,7 +56,7 @@ enum {
 	Path_Does_Not_Exist
 };
 
-bool OsExecuteCommandLine(String cmdline);
+bool OsExecuteCommandLine(String cmdline, String *current_dir);
 Uint32 OsCheckIfPathExists(String path);
 bool OsCreateDirectoryRecursively(String path);
 
