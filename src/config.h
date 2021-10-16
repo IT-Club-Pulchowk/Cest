@@ -131,6 +131,20 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 	"Flags for the linker. Different linkers may use different flags, so it is recommended to use sections for using this property." },
 };
 
+static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberTypeInfo)] = {
+	/*Kind*/ false, /*Application*/ false,
+
+	/*Optimization*/ false,
+
+	/*Build*/ true, /*BuildDirectory*/ true, /*Sources*/ true,
+	/*Flags*/ false,
+	/*Defines*/ true, /*IncludeDirectories*/ true,
+
+	/*Subsystem*/ false,
+	/*Libraries*/ true, /*LibraryDirectories*/ true,
+	/*LinkerFlags*/ false
+};
+
 //
 // Base setup
 //
