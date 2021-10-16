@@ -274,8 +274,6 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
     // TODO: Use the following values
     // Compiler_Config::Kind
-    // Compiler_Config::Application
-    // 
 
     switch (compiler) {
         case Compiler_Bit_CL: {

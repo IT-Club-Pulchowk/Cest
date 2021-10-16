@@ -16,5 +16,5 @@ Libraries          : ;
 LibraryDirectories : ;
 LinkerFlags        : ;
 
-: COMPILER.CL
+:COMPILER.CL
 Defines            :  _CRT_SECURE_NO_WARNINGS;
