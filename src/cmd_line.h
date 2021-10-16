@@ -20,8 +20,8 @@ static bool OptCompiler(const char *program, const char *arg[], int count, Build
 static bool OptOptimize(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptCmdline(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptNoLog(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
+static bool OptConfig(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptHelp(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
-static bool OptUse(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 
 static const Muda_Option Options[] = {
     { StringExpand("version"), "Check the version of Muda installed", "", OptVersion, 0 },
@@ -31,8 +31,8 @@ static const Muda_Option Options[] = {
     { StringExpand("optimize"), "Forces Optimization to be turned on", "", OptOptimize, 0 },
     { StringExpand("cmdline"), "Displays the command line executed to build", "", OptCmdline, 0 },
     { StringExpand("nolog"), "Disables logging in the terminal", "", OptNoLog, 0 },
+    { StringExpand("config"), "Specify a configuration to use from the muda file", "<configuration>", OptConfig, 1 },
     { StringExpand("help"), "Muda description and list all the command", "[command/s]", OptHelp, -255 },
-    { StringExpand("use"), "Specify a section to use from the muda file", "[section]", OptUse, 1 },
 };
 
 static bool OptVersion(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
@@ -139,12 +139,12 @@ static bool OptCompiler(const char *program, const char *arg[], int count, Build
 
     String suggestion = StringMake(arg[0], strlen(arg[0]));
     if (StrMatchCaseInsensitive(suggestion, StringLiteral("clang")))
-            config->ForceCompiler |= Compiler_Bit_CLANG;
+            config->ForceCompiler = Compiler_Bit_CLANG;
     else if (StrMatchCaseInsensitive(suggestion, StringLiteral("gcc")))
-            config->ForceCompiler |= Compiler_Bit_GCC;
+            config->ForceCompiler = Compiler_Bit_GCC;
     else if (StrMatchCaseInsensitive(suggestion, StringLiteral("cl")) ||
              StrMatchCaseInsensitive(suggestion, StringLiteral("msvc")))
-            config->ForceCompiler |= Compiler_Bit_CL;
+            config->ForceCompiler = Compiler_Bit_CL;
     else {
         LogError("Unknown compiler \"%s\"\n\n", arg[0]);
         return true;
@@ -153,7 +153,7 @@ static bool OptCompiler(const char *program, const char *arg[], int count, Build
     return false;
 }
 
-static bool OptUse (const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
+static bool OptConfig(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
     config->Configuration = StringMake(arg[0], strlen(arg[0]));
     return false;
 }
