@@ -79,7 +79,7 @@ void DeserializeCompilerConfig(Compiler_Config *config, Uint8* data, Compiler_Ki
             } break;
 
             case Muda_Token_Section: {
-                if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
+                if (StrMatchCaseInsensitive(StringLiteral("OS.ALL"), prsr.Token.Data.Section))
                     state.OS = Muda_Parsing_OS_None;
                 else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
                     state.OS = Muda_Parsing_OS_Windows;
@@ -87,6 +87,8 @@ void DeserializeCompilerConfig(Compiler_Config *config, Uint8* data, Compiler_Ki
                     state.OS = Muda_Parsing_OS_Linux;
                 else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC"), prsr.Token.Data.Section))
                     state.OS = Muda_Parsing_OS_Mac;
+                else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.ALL"), prsr.Token.Data.Section))
+                    state.Compiler = 0;
                 else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CL"), prsr.Token.Data.Section))
                     state.Compiler = Compiler_Bit_CL;
                 else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CLANG"), prsr.Token.Data.Section))
@@ -157,7 +159,7 @@ void DeserializeCompilerConfig(Compiler_Config *config, Uint8* data, Compiler_Ki
                                 }
                                 else if (StrMatch(StringLiteral("0"), token->Data.Property.Value) ||
                                     StrMatch(StringLiteral("False"), token->Data.Property.Value)) {
-                                    *in = true;
+                                    *in = false;
                                 }
                                 else {
                                     // TODO: Print line and column number in the error
