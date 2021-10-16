@@ -455,8 +455,7 @@ int main(int argc, char *argv[]) {
         EndTemporaryMemory(&temp);
     }
 
-    // TODO: FIX ME
-    //PushDefaultCompilerConfig(&config, compiler);
+    PushDefaultCompilerConfig(&config, true);
 
     Compile(&config, compiler);
 
