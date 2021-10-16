@@ -42,16 +42,14 @@ static bool OptVersion(const char *program, const char *arg[], int count, Build_
 }
 
 static bool OptDefault(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
-    ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
     OsConsoleWrite(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
     Compiler_Config def;
-    CompilerConfigInit(&def, NULL); // TODO: Fix this
-    PushDefaultCompilerConfig(&def, 0);
+    CompilerConfigInit(&def, ThreadScratchpad());
+    PushDefaultCompilerConfig(&def, 0, false);
 
-    /* WriteCompilerConfig(&def, false, OsConsoleOut, OsGetStdOutputHandle()); */
+    WriteCompilerConfig(&def, false, OsConsoleOut, OsGetStdOutputHandle());
 
     OsConsoleWrite("\n");
-    ThreadContext.LogAgent.Procedure = LogProcedure;
     return true;
 }
 
@@ -87,11 +85,8 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
     Push_Allocator pushed = PushThreadAllocator(MemoryArenaAllocator(scratch));
 
     Compiler_Config config;
-    CompilerConfigInit(&config, scratch); // TODO: FIX THIS
-
-    ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
-    PushDefaultCompilerConfig(&config, 0);
-    ThreadContext.LogAgent.Procedure = LogProcedure;
+    CompilerConfigInit(&config, scratch);
+    PushDefaultCompilerConfig(&config, 0, false);
 
     OsConsoleWrite("Build Executable (default: %s) #\n   > ", OutBuildString(&config.Build, &scratch_allocator).Data);
     input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));

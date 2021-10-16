@@ -92,6 +92,33 @@ INLINE_PROCEDURE String OutBuildString(Out_Stream *out, Memory_Allocator *alloca
 	return string;
 }
 
+INLINE_PROCEDURE String OutBuildStringSerial(Out_Stream *out, Memory_Arena *arena) {
+	String string;
+
+	if (out->Size < OSTREAM_BUCKET_SIZE) {
+		out->Head.Data[out->Size - 1] = 0;
+		string.Data = out->Head.Data;
+		string.Length = out->Size;
+	}
+	else {
+		string.Data = (Uint8 *)PushSize(arena, out->Size + 1);
+		string.Length = 0;
+
+		struct Out_Stream_Bucket *buk = &out->Head;
+
+		while (buk) {
+			Int64 copy = buk->Used;
+			memcpy(string.Data + string.Length, buk->Data, copy);
+			string.Length += copy;
+			buk = buk->Next;
+		}
+
+		string.Data[string.Length] = 0;
+	}
+
+	return string;
+}
+
 INLINE_PROCEDURE void OutReset(Out_Stream *out) {
 	Assert(out->Tail->Next == NULL);	
 	struct Out_Stream_Bucket *buk = &out->Head;

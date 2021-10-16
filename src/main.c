@@ -215,22 +215,20 @@ const char *GetCompilerName(Compiler_Kind kind) {
 }
 
 void Compile(Compiler_Config *config, Compiler_Kind compiler) {
-	Memory_Arena *scratch = ThreadScratchpad();
+    Memory_Arena *scratch = ThreadScratchpad();
+
+    Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
     LogInfo("Beginning compilation\n");
 
 	Assert(config->Kind == Compile_Project);
 
-	Temporary_Memory temp = BeginTemporaryMemory(scratch);
-
-    Memory_Allocator scratch_allocator = MemoryArenaAllocator(scratch);
-
 	Out_Stream out;
-	OutCreate(&out, scratch_allocator);
+	OutCreate(&out, MemoryArenaAllocator(config->Arena));
         
-    // TODO: Make this iteratable
-    String build_dir = OutBuildString(&config->BuildDirectory, &scratch_allocator);
-    String build     = OutBuildString(&config->Build, &scratch_allocator);
+    String build_dir = OutBuildStringSerial(&config->BuildDirectory, scratch);
+    String build     = OutBuildStringSerial(&config->Build, scratch);
+
     Uint32 result = OsCheckIfPathExists(build_dir);
     if (result == Path_Does_Not_Exist) {
         if (!OsCreateDirectoryRecursively(build_dir)) {
@@ -248,7 +246,8 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         String intermediate;
         if (build_dir.Data[build_dir.Length - 1] == '/')
             intermediate = FmtStr(scratch, "%sint", build_dir.Data);
-        else intermediate = FmtStr(scratch, "%s/int", build_dir.Data);
+        else 
+            intermediate = FmtStr(scratch, "%s/int", build_dir.Data);
 
         result = OsCheckIfPathExists(intermediate);
         if (result == Path_Does_Not_Exist) {
@@ -280,32 +279,28 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
             OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
             OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Od");
 
-            for (String_List_Node *ntr = &config->Defines.Head; 
-                ntr && config->Defines.Used; ntr = ntr->Next) {
-                Uint32 len = ntr->Next ? 8 : config->Defines.Used;
-                for (Uint32 i = 0; i < len; i++)
-                    OutFormatted(&out, "-D%s ", ntr->Data[i].Data);
+            ForList(String_List_Node, &config->Defines) {
+                ForListNode(&config->Defines, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(&out, "-D%s ", it->Data[index].Data);
+                }
             }
 
-            for (String_List_Node *ntr = &config->IncludeDirectories.Head; 
-                ntr && config->IncludeDirectories.Used; ntr = ntr->Next) {
-                Uint32 len = ntr->Next ? 8 : config->IncludeDirectories.Used;
-                for (Uint32 i = 0; i < len; i++)
-                    OutFormatted(&out, "-I\"%s\" ", ntr->Data[i].Data);
+            ForList(String_List_Node, &config->IncludeDirectories) {
+                ForListNode(&config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+                }
             }
 
-            for (String_List_Node *ntr = &config->Sources.Head; 
-                ntr && config->Sources.Used; ntr = ntr->Next) {
-                Uint32 len = ntr->Next ? 8 : config->Sources.Used;
-                for (Uint32 i = 0; i < len; i++)
-                    OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
+            ForList(String_List_Node, &config->Sources) {
+                ForListNode(&config->Sources, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+                }
             }
-            
-            for (String_List_Node *ntr = &config->Flags.Head; 
-                ntr && config->Flags.Used; ntr = ntr->Next) {
-                Uint32 len = ntr->Next ? 8 : config->Flags.Used;
-                for (Uint32 i = 0; i < len; i++)
-                    OutFormatted(&out, "%s ", ntr->Data[i].Data);
+
+            ForList(String_List_Node, &config->Flags) {
+                ForListNode(&config->Flags, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(&out, "%s ", it->Data[index].Data);
+                }
             }
 
             OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
@@ -314,25 +309,22 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
             OutFormatted(&out, "-out:\"%s/%s.exe\" ", build_dir.Data, build.Data);
             OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", build_dir.Data, build.Data);
 
-            for (String_List_Node *ntr = &config->LibraryDirectories.Head;
-                ntr && config->LibraryDirectories.Used; ntr = ntr->Next) {
-                Uint32 len = ntr->Next ? 8 : config->LibraryDirectories.Used;
-                for (Uint32 i = 0; i < len; i++)
-                    OutFormatted(&out, "-LIBPATH:\"%s\" ", ntr->Data[i].Data);
+            ForList(String_List_Node, &config->LibraryDirectories) {
+                ForListNode(&config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(&out, "-LIBPATH:\"%s\" ", it->Data[index].Data);
+                }
             }
 
-            for (String_List_Node *ntr = &config->Libraries.Head; 
-                ntr && config->Libraries.Used; ntr = ntr->Next) {
-                Uint32 len = ntr->Next ? 8 : config->Libraries.Used;
-                for (Uint32 i = 0; i < len; i++) 
-                    OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
+            ForList(String_List_Node, &config->Libraries) {
+                ForListNode(&config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+                }
             }
-            
-            for (String_List_Node *ntr = &config->LinkerFlags.Head; 
-                ntr && config->LinkerFlags.Used; ntr = ntr->Next) {
-                Uint32 len = ntr->Next ? 8 : config->LinkerFlags.Used;
-                for (Uint32 i = 0; i < len; i++) 
-                    OutFormatted(&out, "%s ", ntr->Data[i].Data);
+
+            ForList(String_List_Node, &config->LinkerFlags) {
+                ForListNode(&config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(&out, "%s ", it->Data[index].Data);
+                }
             }
 
             if (PLATFORM_OS_WINDOWS) {
@@ -351,7 +343,7 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         } break;
     }
 
-    String cmd_line = OutBuildString(&out, &scratch_allocator);
+    String cmd_line = OutBuildStringSerial(&out, config->Arena);
 
     if (config->BuildConfig.DisplayCommandLine) {
         LogInfo("Command Line: %s\n", cmd_line.Data);
