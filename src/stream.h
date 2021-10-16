@@ -95,8 +95,8 @@ INLINE_PROCEDURE String OutBuildString(Out_Stream *out, Memory_Allocator *alloca
 INLINE_PROCEDURE String OutBuildStringSerial(Out_Stream *out, Memory_Arena *arena) {
 	String string;
 
-	if (out->Size < OSTREAM_BUCKET_SIZE) {
-		out->Head.Data[out->Size - 1] = 0;
+	if (out->Size < OSTREAM_BUCKET_SIZE - 1) {
+		out->Head.Data[out->Size] = 0;
 		string.Data = out->Head.Data;
 		string.Length = out->Size;
 	}
