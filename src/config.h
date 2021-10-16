@@ -235,8 +235,6 @@ INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max, Memory_
 }
 
 INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, bool write_log) {
-	Memory_Arena *scratch = ThreadScratchpad();
-
 	if (config->Build.Size == 0) {
 		String def_build = StringLiteral("output");
 		OutString(&config->Build, def_build);
@@ -262,8 +260,8 @@ INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, bool wr
 typedef void (*Stream_Writer_Proc)(void *context, const char *fmt, ...);
 
 INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, Stream_Writer_Proc writer, void *context) {
-	const char *fmt = "%-10s : %s;\n";
-	const char *fmt_no_val = "%-10s : ";
+	const char *fmt = "%-18s : %s;\n";
+	const char *fmt_no_val = "%-18s : ";
 
 	if (comments) {
 		time_t t = time(NULL);
@@ -293,14 +291,13 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
 				writer(context, "# Possible values: ");
 				for (Uint32 index = 0; index < en->Count - 1; ++index)
 					writer(context, "%s, ", en->Ids[index].Data);
-				writer(context, "or %s\n\n", en->Ids[en->Count - 1].Data);
+				writer(context, "or %s\n", en->Ids[en->Count - 1].Data);
 			}
 		} break;
 
 		case Compiler_Config_Member_Bool: {
 			bool *in = (bool *)((char *)conf + info->Offset);
 			writer(context, fmt, info->Name.Data, *in ? "True" : "False");
-			writer(context, "\n");
 		} break;
 
 		case Compiler_Config_Member_String: {
@@ -308,7 +305,6 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
 
 			String value = OutBuildStringSerial(in, ThreadScratchpad());
 			writer(context, fmt, info->Name.Data, value.Data);
-			writer(context, "\n");
 		} break;
 
 		case Compiler_Config_Member_String_Array: {
@@ -321,10 +317,13 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
 				}
 			}
 
-			writer(context, "\n");
+			writer(context, ";\n");
 		} break;
 
 			NoDefaultCase();
 		}
+
+		if (comments)
+			writer(context, "\n");
 	}
 }

@@ -53,15 +53,15 @@ INLINE_PROCEDURE String StrTrim(String str) {
 	str.Data += trim;
 	str.Length -= trim;
 
-	trim = 0;
 	for (Int64 index = str.Length - 1; index >= 0; --index) {
-		if (isspace(str.Data[index]))
-			trim += 1;
+		if (isspace(str.Data[index])) {
+			str.Data[index] = '\0';
+			str.Length -= 1;
+		}
 		else
 			break;
 	}
-
-	str.Length -= trim;
+	
 	return str;
 }
 

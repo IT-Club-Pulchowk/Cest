@@ -63,13 +63,13 @@ static void OptSetupConfigFileWriter(void *context, const char *fmt, ...) {
 static bool OptSetup(const char *program, const char *arg[], int count, Build_Config *build_config, Muda_Option *option) {
     OptVersion(program, arg, count, build_config, option);
 
-    char read_buffer[512];
-    String input;
+    const Uint32 READ_MAX_SIZE = 512;
+    char *read_buffer = PushSize(ThreadScratchpad(), READ_MAX_SIZE);
 
     String muda_file = StringLiteral("build.muda");
     if (OsCheckIfPathExists(muda_file)) {
         OsConsoleWrite("Muda build file is already present in this directory. Enter [Y] or [y] to replace the file # > ");
-        input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
+        String input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
         if (input.Length != 1 || (input.Data[0] != 'y' && input.Data[0] != 'Y')) {
             OsConsoleWrite("Muda build file setup terminated.\n\n");
             return true;
@@ -79,46 +79,129 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
     OsConsoleWrite("Muda Configuration:\n");
     OsConsoleWrite("Press [ENTER] to use the default values. Multiple values must be separated by [SPACE]\n\n");
 
-    Memory_Arena *scratch = ThreadScratchpad();
-    Memory_Allocator scratch_allocator = MemoryArenaAllocator(scratch);
-
-    Push_Allocator pushed = PushThreadAllocator(MemoryArenaAllocator(scratch));
-
     Compiler_Config config;
-    CompilerConfigInit(&config, scratch);
+    CompilerConfigInit(&config, ThreadScratchpad());
     PushDefaultCompilerConfig(&config, false);
 
-    OsConsoleWrite("Build Executable (default: %s) #\n   > ", OutBuildString(&config.Build, &scratch_allocator).Data);
-    input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
-    if (input.Length) OutFormatted(&config.Build, "%s", input.Data);
+    for (Uint32 index = 0; index < ArrayCount(CompilerConfigMemberTypeInfo); ++index) {
+        const Compiler_Config_Member *const info = &CompilerConfigMemberTypeInfo[index];
+        if (!CompilerConfigMemberTakeInput[index]) continue;
 
-    OsConsoleWrite("Build Directory (default: %s) #\n   > ", OutBuildString(&config.BuildDirectory, &scratch_allocator).Data);
-    input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));
-    if (input.Length) OutFormatted(&config.BuildDirectory, "%s", input.Data);
+        switch (info->Kind) {
+        case Compiler_Config_Member_Enum: {
+            Enum_Info *en = (Enum_Info *)info->KindInfo;
 
-    /* OsConsoleWrite("Source (default: %s) #\n   > ", OutBuildString(&config.Source, &scratch_allocator).Data); */
-    /* input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer))); */
-    /* if (input.Length) { */
-    /*     OutReset(&config.Source); */
-    /*     String_List temp; */
-    /*     ReadList(&temp, input, -1); */
-    /*     for (String_List_Node* ntr = &temp.Head; ntr && temp.Used; ntr = ntr->Next){ */
-    /*         int len = ntr->Next ? 8 : temp.Used; */
-    /*         for (int i = 0; i < len; i ++) { */
-    /*             if (compiler & Compiler_Bit_CL) */   // NO COMPILER WHAT DO?
-    /*                 OutFormatted(&config.Source, "\"%s\" ", ntr->Data[i].Data); */
-    /*             else */
-    /*                 OutFormatted(&config.Source, "%s ", ntr->Data[i].Data); */
-    /*         } */
-    /*     } */
-    /* } */
+            Uint32 *value = (Uint32 *)((char *)&config + info->Offset);
+            Assert(*value < en->Count);
 
-    // TODO: More input??
+            OsConsoleWrite("%s (", info->Name.Data);
+            for (Uint32 index = 0; index < en->Count - 1; ++index) {
+                if (index == *value)
+                    OsConsoleWrite("default:");
+                OsConsoleWrite("%s, ", en->Ids[index].Data);
+            }
+            if (en->Count - 1 == *value)
+                OsConsoleWrite("default:");
+            OsConsoleWrite("%s) #\n   > ", en->Ids[en->Count - 1].Data);
 
-    PopThreadAllocator(&pushed);
+            String input = StrTrim(OsConsoleRead(read_buffer, READ_MAX_SIZE));
+            if (input.Length) {
+                bool found = false;
+                for (Uint32 index = 0; index < en->Count; ++index) {
+                    if (StrMatch(en->Ids[index], input)) {
+                        *value = index;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    OsConsoleWrite("   Invalid value \"%s\". Using default value.\n", input.Data);
+                }
+            }
+        } break;
+
+        case Compiler_Config_Member_Bool: {
+            bool *in = (bool *)((char *)&config + info->Offset);
+            OsConsoleWrite("%s (default:%s) #\n   > ", info->Name.Data, *in ? "True" : "False");
+
+            String input = StrTrim(OsConsoleRead(read_buffer, READ_MAX_SIZE));
+            if (input.Length) {
+                if (StrMatch(StringLiteral("1"), input) ||
+                    StrMatchCaseInsensitive(StringLiteral("True"), input)) {
+                    *in = true;
+                }
+                else if (StrMatch(StringLiteral("0"), input) ||
+                    StrMatchCaseInsensitive(StringLiteral("False"), input)) {
+                    *in = false;
+                }
+                else {
+                    OsConsoleWrite("   Invalid value \"%s\". Using default value.\n", input.Data);
+                }
+            }
+        } break;
+
+        case Compiler_Config_Member_String: {
+            Out_Stream *in = (Out_Stream *)((char *)&config + info->Offset);
+            String value = OutBuildStringSerial(in, ThreadScratchpad());
+
+            if (value.Length)
+                OsConsoleWrite("%s (default:%s) #\n   > ", info->Name.Data, value.Data);
+            else
+                OsConsoleWrite("%s #\n   > ", info->Name.Data);
+
+            String input = StrTrim(OsConsoleRead(read_buffer, READ_MAX_SIZE));
+            if (input.Length) {
+                OutReset(in);
+                OutString(in, input);
+            }
+        } break;
+
+        case Compiler_Config_Member_String_Array: {
+            String_List *in = (String_List *)((char *)&config + info->Offset);
+
+            if (StringListIsEmpty(in)) {
+                OsConsoleWrite("%s #\n   > ", info->Name.Data);
+            }
+            else {
+                OsConsoleWrite("%s (default:", info->Name.Data);
+                ForList(String_List_Node, in) {
+                    ForListNode(in, MAX_STRING_NODE_DATA_COUNT) {
+                        OsConsoleWrite("%s ", it->Data[index].Data);
+                    }
+                }
+                OsConsoleWrite(") #\n   > ");
+            }
+
+            String input = StrTrim(OsConsoleRead(read_buffer, READ_MAX_SIZE));
+            if (input.Length) {
+                StringListClear(in);
+                ReadList(in, input, -1, config.Arena);
+            }
+        } break;
+
+            NoDefaultCase();
+        }
+    }
+
+    String post_value = StringLiteral(
+        ":OS.WINDOWS\n"
+        "# Place values specific to windows here\n\n"
+        ": OS.LINUX\n"
+        "# Place values specific to linux here\n\n"
+        ": OS.MAC\n"
+        "#Place values specific to mac here\n\n"
+        ": COMPILER.CL\n"
+        "#Place values specific to MSVC compiler here\n\n"
+        ": COMPILER.CLANG\n"
+        "#Place values specific to CLANG compiler here\n\n"
+        ": COMPILER.GCC\n"
+        "#Place values specific to GC compiler here\n\n"
+    );
 
     File_Handle fhandle = OsFileOpen(StringLiteral("build.muda"), File_Mode_Write);
-    /* WriteCompilerConfig(&config, true, OptSetupConfigFileWriter, &fhandle); */
+    WriteCompilerConfig(&config, true, OptSetupConfigFileWriter, &fhandle);
+    OsFileWrite(fhandle, post_value);
     OsFileClose(fhandle);
 
     OsConsoleWrite("Muda build file setup completed.\n\n");
