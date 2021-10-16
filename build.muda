@@ -1,7 +1,7 @@
 @version 1.0.0
 
 Kind               : Project;
-Application        : StaticLibrary;
+Application        : Executable;
 Optimization       : True;
 
 Build              : bootstrap;
