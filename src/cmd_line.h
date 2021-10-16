@@ -45,7 +45,7 @@ static bool OptDefault(const char *program, const char *arg[], int count, Build_
     OsConsoleWrite(" ___                             \n(|  \\  _ |\\  _,        |\\_|_  ,  \n |   ||/ |/ / |  |  |  |/ |  / \\_\n(\\__/ |_/|_/\\/|_/ \\/|_/|_/|_/ \\/ \n         |)                      \n");
     Compiler_Config def;
     CompilerConfigInit(&def, ThreadScratchpad());
-    PushDefaultCompilerConfig(&def, 0, false);
+    PushDefaultCompilerConfig(&def, false);
 
     WriteCompilerConfig(&def, false, OsConsoleOut, OsGetStdOutputHandle());
 
@@ -86,7 +86,7 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
 
     Compiler_Config config;
     CompilerConfigInit(&config, scratch);
-    PushDefaultCompilerConfig(&config, 0, false);
+    PushDefaultCompilerConfig(&config, false);
 
     OsConsoleWrite("Build Executable (default: %s) #\n   > ", OutBuildString(&config.Build, &scratch_allocator).Data);
     input = StrTrim(OsConsoleRead(read_buffer, sizeof(read_buffer)));

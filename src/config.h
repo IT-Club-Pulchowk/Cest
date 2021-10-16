@@ -234,7 +234,7 @@ INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max, Memory_
 	}
 }
 
-INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler, bool write_log) {
+INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, bool write_log) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
 	if (config->Build.Size == 0) {
