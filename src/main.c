@@ -269,6 +269,11 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
         config->Optimization = true;
     }
 
+    // TODO: Use the following values
+    // Compiler_Config::Kind
+    // Compiler_Config::Application
+    // 
+
     switch (compiler) {
         case Compiler_Bit_CL: {
             LogInfo("Compiler MSVC Detected.\n");
@@ -295,6 +300,13 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                 for (Uint32 i = 0; i < len; i++)
                     OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
             }
+            
+            for (String_List_Node *ntr = &config->Flags.Head; 
+                ntr && config->Flags.Used; ntr = ntr->Next) {
+                Uint32 len = ntr->Next ? 8 : config->Flags.Used;
+                for (Uint32 i = 0; i < len; i++)
+                    OutFormatted(&out, "%s ", ntr->Data[i].Data);
+            }
 
             OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
             OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
@@ -315,6 +327,15 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
                 for (Uint32 i = 0; i < len; i++) 
                     OutFormatted(&out, "\"%s\" ", ntr->Data[i].Data);
             }
+            
+            for (String_List_Node *ntr = &config->LinkerFlags.Head; 
+                ntr && config->LinkerFlags.Used; ntr = ntr->Next) {
+                Uint32 len = ntr->Next ? 8 : config->LinkerFlags.Used;
+                for (Uint32 i = 0; i < len; i++) 
+                    OutFormatted(&out, "%s ", ntr->Data[i].Data);
+            }
+
+            OutFormatted(&out, "-SUBSYSTEM:%s ", config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
         } break;
 
         case Compiler_Bit_CLANG: {
