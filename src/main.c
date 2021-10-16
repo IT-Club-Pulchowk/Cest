@@ -221,7 +221,8 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 
     LogInfo("Beginning compilation\n");
 
-	Assert(config->Kind == Compile_Project);
+    if (config->Kind != Compile_Project)
+        Unimplemented();
 
 	Out_Stream out;
 	OutCreate(&out, MemoryArenaAllocator(config->Arena));
