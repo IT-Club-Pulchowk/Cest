@@ -222,26 +222,29 @@ INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max, Memory_
 	}
 }
 
-INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler) {
+INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, Compiler_Kind compiler, bool write_log) {
 	Memory_Arena *scratch = ThreadScratchpad();
 
-	CompilerConfigInit(config, scratch);
-	// TODO: Implement this all
+	if (config->Build.Size == 0) {
+		String def_build = StringLiteral("output");
+		OutString(&config->Build, def_build);
+		if (write_log)
+			LogInfo("Using Default Binary: %s\n", def_build.Data);
+	}
 
-	//if (!config->Build.Head.Used && !config->Build.Head.Next) {
-	//	OutFormatted(&config->Build, "%s", "output");
-	//	LogInfo("Using Default Binary: %s\n", "output");
-	//}
-	//
-	//if (!config->BuildDirectory.Head.Used && !config->BuildDirectory.Head.Next) {
-	//	OutFormatted(&config->BuildDirectory, "%s", "./bin");
-	//	LogInfo("Using Default Binary Directory: \"%s\"\n", "./bin");
-	//}
-	//
-	//if (!config->Source.Head.Used && !config->Source.Head.Next) {
-	//	OutFormatted(&config->Source, "%s", "*.c");
-	//	LogInfo("Using Default Sources: %s\n", "*.c");
-	//}
+	if (config->BuildDirectory.Size == 0) {
+		String def_build_dir = StringLiteral("./bin");
+		OutString(&config->BuildDirectory, def_build_dir);
+		if (write_log)
+			LogInfo("Using Default Binary Directory: \"%s\"\n", def_build_dir.Data);
+	}
+
+	if (StringListIsEmpty(&config->Sources)) {
+		String def_source = StringLiteral("*.c");
+		StringListAdd(&config->Sources, StrDuplicateArena(def_source, config->Arena));
+		if (write_log)
+			LogInfo("Using Default Sources: %s\n", def_source.Data);
+	}
 }
 
 typedef void (*Stream_Writer_Proc)(void *context, const char *fmt, ...);
