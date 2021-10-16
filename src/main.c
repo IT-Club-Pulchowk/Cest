@@ -173,9 +173,8 @@ void DeserializeCompilerConfig(Compiler_Config *config, Uint8* data, Compiler_Ki
                             } break;
 
                             case Compiler_Config_Member_String_Array: {
-                                Out_Stream *in = (Out_Stream *)((char *)config + info->Offset);
-                                OutString(in, token->Data.Property.Value);
-                                OutBuffer(in, " ", 1);
+                                String_List *in = (String_List *)((char *)config + info->Offset);
+                                ReadList(in, token->Data.Property.Value, -1, config->Arena);
                             } break;
 
                             NoDefaultCase();
@@ -270,21 +269,21 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     if (compiler & Compiler_Bit_GCC) {
         LogInfo("Compiler GCC Detected.\n");
         OutFormatted(&out, "gcc -pipe ");
-        OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
+        //OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
         OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Og");
         // TODO: Do other properties
         OutFormatted(&out, "-o %s/%s ", build_dir.Data, build.Data);
     } else if (compiler & Compiler_Bit_CLANG) {
         LogInfo("Compiler CLANG Detected.\n");
         OutFormatted(&out, "clang -gcodeview ");
-        OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
+        //OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
         OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Og");
         // TODO: Do other properties
         OutFormatted(&out, "-o %s/%s ", build_dir.Data, build.Data);
     } else if (compiler & Compiler_Bit_CL) {
         LogInfo("Compiler MSVC Detected.\n");
         OutFormatted(&out, "cl -W3 ");
-        OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
+        //OutFormatted(&out, "%s ", OutBuildString(&config->Sources, &scratch_allocator).Data);
         // TODO: Do other properties
         OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
         OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
@@ -309,12 +308,12 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
 }
 
 int main(int argc, char *argv[]) {
-    Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
-    InitThreadContext(MemoryArenaAllocator(&arena), MegaBytes(512), 
-        (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
+    InitThreadContext(NullMemoryAllocator(), MegaBytes(512), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
 
     OsSetupConsole();
     
+    Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
+
     Compiler_Config config;
     CompilerConfigInit(&config, &arena);
 
@@ -344,6 +343,13 @@ int main(int argc, char *argv[]) {
             LogInfo("Requested compiler: %s but %s could not be detected\n",
                 requested_compiler, requested_compiler);
         }
+    } else {
+        if (compiler & Compiler_Bit_CL)
+            compiler = Compiler_Bit_CL;
+        else if (compiler & Compiler_Bit_CLANG)
+            compiler = Compiler_Bit_CLANG;
+        else
+            compiler = Compiler_Bit_GCC;
     }
 
 

@@ -48,17 +48,17 @@ typedef struct Compiler_Config {
 
 	bool Optimization;
 
-	Out_Stream Build;
-	Out_Stream BuildDirectory;
-	Out_Stream Sources;
-	Out_Stream Flags;
-	Out_Stream Defines;
-	Out_Stream IncludeDirectories;
+	Out_Stream  Build;
+	Out_Stream  BuildDirectory;
+	String_List Sources;
+	String_List Flags;
+	String_List Defines;
+	String_List IncludeDirectories;
 
-	Uint32 Subsystem; // Subsystem_Kind 
-	Out_Stream Libraries;
-	Out_Stream LibraryDirectories;
-	Out_Stream LinkerFlags;
+	Uint32		Subsystem; // Subsystem_Kind 
+	String_List Libraries;
+	String_List LibraryDirectories;
+	String_List LinkerFlags;
 
 	Build_Config BuildConfig;
 
@@ -154,15 +154,15 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 
 	OutCreate(&config->Build, allocator);
 	OutCreate(&config->BuildDirectory, allocator);
-	OutCreate(&config->Sources, allocator);
-	OutCreate(&config->Flags, allocator);
-	OutCreate(&config->Defines, allocator);
-	OutCreate(&config->IncludeDirectories, allocator);
+	StringListInit(&config->Sources);
+	StringListInit(&config->Flags);
+	StringListInit(&config->Defines);
+	StringListInit(&config->IncludeDirectories);
 
 	config->Subsystem = Subsystem_Console;
-	OutCreate(&config->Libraries, allocator);
-	OutCreate(&config->LibraryDirectories, allocator);
-	OutCreate(&config->LinkerFlags, allocator);
+	StringListInit(&config->Libraries);
+	StringListInit(&config->LibraryDirectories);
+	StringListInit(&config->LinkerFlags);
 
 	config->Arena = arena;
 
@@ -172,7 +172,7 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 	config->BuildConfig.DisableLogs = false;
 }
 
-INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max) {
+INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max, Memory_Arena *arena) {
 	data = StrTrim(data); // Trimming the end white spaces so that we don't get empty strings at the end
 
 	Int64 prev_pos = 0;
@@ -189,7 +189,7 @@ INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max) {
 		while (curr_pos < data.Length && !isspace(data.Data[curr_pos]))
 			curr_pos += 1;
 
-		StringListAdd(dst, StrDuplicate(StringMake(data.Data + prev_pos, curr_pos - prev_pos)));
+		StringListAdd(dst, StrDuplicateArena(StringMake(data.Data + prev_pos, curr_pos - prev_pos), arena));
 		count++;
 	}
 }
