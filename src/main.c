@@ -277,59 +277,71 @@ void Compile(Compiler_Config *config, Compiler_Kind compiler) {
     switch (compiler) {
         case Compiler_Bit_CL: {
             LogInfo("Compiler MSVC Detected.\n");
-            OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
-            OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Od");
 
-            ForList(String_List_Node, &config->Defines) {
-                ForListNode(&config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "-D%s ", it->Data[index].Data);
+            if (config->Application != Application_Static_Library) {
+                OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
+                OutFormatted(&out, "%s ", config->Optimization ? "-O2" : "-Od");
+
+                ForList(String_List_Node, &config->Defines) {
+                    ForListNode(&config->Defines, MAX_STRING_NODE_DATA_COUNT) {
+                        OutFormatted(&out, "-D%s ", it->Data[index].Data);
+                    }
+                }
+
+                ForList(String_List_Node, &config->IncludeDirectories) {
+                    ForListNode(&config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
+                        OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+                    }
+                }
+
+                ForList(String_List_Node, &config->Sources) {
+                    ForListNode(&config->Sources, MAX_STRING_NODE_DATA_COUNT) {
+                        OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+                    }
+                }
+
+                ForList(String_List_Node, &config->Flags) {
+                    ForListNode(&config->Flags, MAX_STRING_NODE_DATA_COUNT) {
+                        OutFormatted(&out, "%s ", it->Data[index].Data);
+                    }
+                }
+
+                OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
+                OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
+
+                if (config->Application == Application_Dynamic_Library)
+                    OutFormatted(&out, "-LD ");
+                OutFormatted(&out, "-link ");
+                OutFormatted(&out, "-out:\"%s/%s.%s\" ", build_dir.Data, build.Data, config->Application == Application_Executable ? "exe" : "dll");
+                OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", build_dir.Data, build.Data);
+
+                if (config->Application == Application_Dynamic_Library)
+                    OutFormatted(&out, "-IMPLIB:\"%s/%s.lib\" ", build_dir.Data, build.Data);
+
+                ForList(String_List_Node, &config->LibraryDirectories) {
+                    ForListNode(&config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
+                        OutFormatted(&out, "-LIBPATH:\"%s\" ", it->Data[index].Data);
+                    }
+                }
+
+                ForList(String_List_Node, &config->Libraries) {
+                    ForListNode(&config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
+                        OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+                    }
+                }
+
+                ForList(String_List_Node, &config->LinkerFlags) {
+                    ForListNode(&config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
+                        OutFormatted(&out, "%s ", it->Data[index].Data);
+                    }
+                }
+
+                if (PLATFORM_OS_WINDOWS) {
+                    OutFormatted(&out, "-SUBSYSTEM:%s ", config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
                 }
             }
-
-            ForList(String_List_Node, &config->IncludeDirectories) {
-                ForListNode(&config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
-                }
-            }
-
-            ForList(String_List_Node, &config->Sources) {
-                ForListNode(&config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
-                }
-            }
-
-            ForList(String_List_Node, &config->Flags) {
-                ForListNode(&config->Flags, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "%s ", it->Data[index].Data);
-                }
-            }
-
-            OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
-            OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
-            OutFormatted(&out, "-link ");
-            OutFormatted(&out, "-out:\"%s/%s.exe\" ", build_dir.Data, build.Data);
-            OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", build_dir.Data, build.Data);
-
-            ForList(String_List_Node, &config->LibraryDirectories) {
-                ForListNode(&config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "-LIBPATH:\"%s\" ", it->Data[index].Data);
-                }
-            }
-
-            ForList(String_List_Node, &config->Libraries) {
-                ForListNode(&config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
-                }
-            }
-
-            ForList(String_List_Node, &config->LinkerFlags) {
-                ForListNode(&config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "%s ", it->Data[index].Data);
-                }
-            }
-
-            if (PLATFORM_OS_WINDOWS) {
-                OutFormatted(&out, "-SUBSYSTEM:%s ", config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
+            else {
+                Unimplemented();
             }
         } break;
 
