@@ -2,7 +2,7 @@
 
 setlocal
 
-set OutputDirectory=bin
+set OutputDirectory=release
 set OutputBinary=muda.exe
 set SourceFiles=../src/build.c
 

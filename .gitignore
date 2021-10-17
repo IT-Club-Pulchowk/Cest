@@ -10,3 +10,4 @@ bin
 /release/int
 /release/*.ilk
 /release/*.pdb
+/release/*.obj

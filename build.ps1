@@ -3,7 +3,7 @@
     [switch]$optimize = $false
  )
 
-$OutputDirectory = "bin"
+$OutputDirectory = "release"
 $SourceFiles = "../src/build.c"
 $OutputBinary = "muda.exe"
 
