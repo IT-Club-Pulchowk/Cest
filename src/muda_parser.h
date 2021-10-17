@@ -19,6 +19,7 @@ typedef enum Muda_Token_Kind {
 
 typedef struct Muda_Token {
 	union {
+		String Config;
 		String Section;
 		String Comment;
 		struct {
@@ -97,8 +98,8 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
 			if (*cur != ']')
 				*cur = 0;
 			p->Token.Kind = Muda_Token_Config;
-			p->Token.Data.Section.Data = start;
-			p->Token.Data.Section.Length = cur - start;
+			p->Token.Data.Config.Data = start;
+			p->Token.Data.Config.Length = cur - start;
 			while (*cur != ']') cur++;
 			*cur = 0;
 		}

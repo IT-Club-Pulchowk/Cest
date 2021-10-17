@@ -78,8 +78,13 @@ void DeserializeCompilerConfig(Compiler_Config_List *config_list, Uint8* data, C
     while (MudaParseNext(&prsr)) {
         switch (prsr.Token.Kind) {
             case Muda_Token_Config: {
-                first_config_name = false;
-                Unimplemented();
+                if (first_config_name) {
+                    config->Name = StrDuplicateArena(prsr.Token.Data.Config, config->Arena);
+                    first_config_name = false;
+                }
+                else {
+                    config = CompilerConfigListFindOrAdd(config_list, prsr.Token.Data.Config);
+                }
             } break;
 
             case Muda_Token_Section: {
@@ -496,9 +501,14 @@ int main(int argc, char *argv[]) {
         EndTemporaryMemory(&temp);
     }
 
-    Compiler_Config *config = &configs->Head.Config[0];
-    PushDefaultCompilerConfig(config, true);
-    Compile(config, &configs->BuildConfig, compiler);
-
+    ForList(Compiler_Config_Node, configs) {
+        ForListNode(configs, ArrayCount(configs->Head.Config)) {
+            Compiler_Config *config = &it->Config[index];
+            LogInfo("======== Building Configuration: %s ========\n", config->Name.Data);
+            PushDefaultCompilerConfig(config, true);
+            Compile(config, &configs->BuildConfig, compiler);
+        }
+    }
+    
 	return 0;
 }
