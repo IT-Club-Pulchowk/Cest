@@ -398,7 +398,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
             ForList(String_List_Node, &compiler_config->Libraries) {
                 ForListNode(&compiler_config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(target, "\"%s\" ", it->Data[index].Data);
+                    OutFormatted(target, "\"%s.lib\" ", it->Data[index].Data);
                 }
             }
 
