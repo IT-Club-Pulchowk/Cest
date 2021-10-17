@@ -26,7 +26,7 @@ static bool OptHelp(const char *program, const char *arg[], int count, Build_Con
 static const Muda_Option Options[] = {
     { StringExpand("version"), "Check the version of Muda installed", "", OptVersion, 0 },
     { StringExpand("default"), "Display default configuration", "", OptDefault, 0 },
-    { StringExpand("setup"), "Setup a Muda build system", "", OptSetup, 0 },
+    { StringExpand("setup"), "Setup a Muda build system", "", OptSetup, -1 },
     { StringExpand("compiler"), "Forces to use specific compiler if the compiler is present", "<compiler_name>", OptCompiler, 1 },
     { StringExpand("optimize"), "Forces Optimization to be turned on", "", OptOptimize, 0 },
     { StringExpand("cmdline"), "Displays the command line executed to build", "", OptCmdline, 0 },
@@ -61,6 +61,18 @@ static void OptSetupConfigFileWriter(void *context, const char *fmt, ...) {
 }
 
 static bool OptSetup(const char *program, const char *arg[], int count, Build_Config *build_config, Muda_Option *option) {
+    bool complete_setup = false;
+
+    if (count) {
+        if (StrMatchCaseInsensitive(StringLiteral("complete"), StringMake(arg[0], strlen(arg[0])))) {
+            complete_setup = true;
+        }
+        else {
+            LogError("Unknown option: %s. %s Only accepts complete\n", arg[0], option->Name.Data);
+            return true;
+        }
+    }
+
     OptVersion(program, arg, count, build_config, option);
 
     const Uint32 READ_MAX_SIZE = 512;
@@ -85,7 +97,7 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
 
     for (Uint32 index = 0; index < ArrayCount(CompilerConfigMemberTypeInfo); ++index) {
         const Compiler_Config_Member *const info = &CompilerConfigMemberTypeInfo[index];
-        if (!CompilerConfigMemberTakeInput[index]) continue;
+        if (!CompilerConfigMemberTakeInput[index] && !complete_setup) continue;
 
         switch (info->Kind) {
         case Compiler_Config_Member_Enum: {
