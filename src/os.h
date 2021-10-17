@@ -96,3 +96,8 @@ void OsConsoleWrite(const char *fmt, ...);
 void OsConsoleWriteV(const char *fmt, va_list list);
 
 String OsConsoleRead(char *buffer, Uint32 size);
+
+
+void *OsLibraryLoad(const char *path);
+void OsLibraryFree(void *handle);
+void *OsGetProcedureAddress(void *handle, const char *proc_name);

@@ -273,3 +273,18 @@ String OsConsoleRead(char *buffer, Uint32 size) {
 
     return StringMake(buffer, len);
 }
+
+
+void *OsLibraryLoad(const char *path) {
+    Unimplemented();
+    return NULL;
+}
+
+void OsLibraryFree(void *handle) {
+    Unimplemented();
+}
+
+void *OsGetProcedureAddress(void *handle, const char *proc_name) {
+    Unimplemented();
+    return NULL;
+}

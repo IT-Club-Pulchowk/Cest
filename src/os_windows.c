@@ -450,3 +450,17 @@ String OsConsoleRead(char *buffer, Uint32 size) {
 
 	return StringMake(buffer, len);
 }
+
+
+void *OsLibraryLoad(const char *path) {
+	return LoadLibraryA(path);
+}
+
+void OsLibraryFree(void *handle) {
+	FreeLibrary(handle);
+}
+
+void *OsGetProcedureAddress(void *handle, const char *proc_name) {
+	return GetProcAddress(handle, proc_name);
+}
+

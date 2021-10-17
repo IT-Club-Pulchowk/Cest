@@ -4,6 +4,19 @@
 #include "os.h"
 #include "stream.h"
 #include "version.h"
+
+#define MUDA_PLUGIN_IMPORT_INCLUDE
+#include "plugin.h"
+
+const char *MudaPluginProcedureName = "MudaEventHook";
+#if PLATFORM_OS_WINDOWS == 1
+const char *MudaPluginPath = "./.muda/muda.dll";
+#elif PLATFORM_OS_LINUX
+const char *MudaPluginPath = "./.muda/muda.so";
+#else
+#error "Unimplemented"
+#endif
+
 #include <time.h>
 
 typedef enum Compile_Kind {
@@ -50,6 +63,9 @@ typedef struct Build_Config {
 	bool DisableLogs;
 	String Configurations[128];
 	Uint32 ConfigurationCount;
+
+	Muda_Plugin_Interface Interface;
+	Muda_Event_Hook_Procedure PluginHook;
 } Build_Config;
 
 typedef struct Compiler_Config {
@@ -240,12 +256,72 @@ INLINE_PROCEDURE void FatalErrorProcedure(const char *message) {
 //
 //
 
+static Memory_Arena *MudaPluginInterface_GetThreadScratchpad(Thread_Context *thread_context) {
+	return &thread_context->Scratchpad.Arena[0];
+}
+
+static void *MudaPluginInterface_PushSize(Memory_Arena *arena, uint32_t size) {
+	return PushSize(arena, size);
+}
+
+static void *MudaPluginInterface_PushSizeAligned(Memory_Arena *arena, uint32_t size, uint32_t align) {
+	return PushSizeAligned(arena, size, align);
+}
+
+static void MudaPluginInterface_LogInfo(Thread_Context *thread_context, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	thread_context->LogAgent.Procedure(thread_context->LogAgent.Data, Log_Kind_Info, fmt, args);
+	va_end(args);
+}
+
+static void MudaPluginInterface_LogWarn(Thread_Context *thread_context, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	thread_context->LogAgent.Procedure(thread_context->LogAgent.Data, Log_Kind_Warn, fmt, args);
+	va_end(args);
+}
+
+static void MudaPluginInterface_LogError(Thread_Context *thread_context, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	thread_context->LogAgent.Procedure(thread_context->LogAgent.Data, Log_Kind_Error, fmt, args);
+	va_end(args);
+}
+
+static void MudaPluginInterface_FatalError(Thread_Context *thread_context, const char *msg) {
+	thread_context->FatalError(msg);
+}
+
+static void MUDA_PLUGIN_INTERFACE NullMudaEventHook(Thread_Context *thread_context, Muda_Plugin_Interface *interface, 
+	Muda_Plugin_Event_Kind event, const Muda_Plugin_Config *config) {}
+
 INLINE_PROCEDURE void BuildConfigInit(Build_Config *build_config) {
 	build_config->ForceCompiler = 0;
 	build_config->ForceOptimization = false;
 	build_config->DisplayCommandLine = false;
 	build_config->DisableLogs = false;
 	build_config->ConfigurationCount = 0;
+
+	build_config->Interface.GetThreadScratchpad = MudaPluginInterface_GetThreadScratchpad;
+	build_config->Interface.PushSize = MudaPluginInterface_PushSize;
+	build_config->Interface.PushSizeAligned = MudaPluginInterface_PushSizeAligned;
+	build_config->Interface.BeginTemporaryMemory = BeginTemporaryMemory;
+	build_config->Interface.EndTemporaryMemory = EndTemporaryMemory;
+
+	build_config->Interface.LogInfo = MudaPluginInterface_LogInfo;
+	build_config->Interface.LogWarn = MudaPluginInterface_LogWarn;
+	build_config->Interface.LogError = MudaPluginInterface_LogError;
+	build_config->Interface.FatalError = MudaPluginInterface_FatalError;
+
+	build_config->Interface.PluginName = "-unnamed-";
+	build_config->Interface.UserContext = NULL;
+
+	build_config->Interface.Version.Major = MUDA_VERSION_MAJOR;
+	build_config->Interface.Version.Minor = MUDA_VERSION_MINOR;
+	build_config->Interface.Version.Patch = MUDA_VERSION_PATCH;
+
+	build_config->PluginHook = NullMudaEventHook;
 }
 
 INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *arena) {

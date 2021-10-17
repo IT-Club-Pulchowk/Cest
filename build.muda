@@ -4,7 +4,7 @@ Kind               : Project;
 Application        : Executable;
 Optimization       : False;
 
-Build              : bootstrap0;
+Build              : bootstrap;
 BuildDirectory     : ./bin;
 Sources            : src/build.c;
 Flags              : ;
@@ -18,6 +18,14 @@ LinkerFlags        : ;
 
 :COMPILER.CL
 Defines            :  _CRT_SECURE_NO_WARNINGS;
+
+[Plugin]
+Kind               : Project;
+Application        : DynamicLibrary;
+Optimization       : True;
+Build              : muda;
+BuildDirectory     : ./.muda;
+Sources            : plugin/muda_plug.c;
 
 ##################################################################################
 

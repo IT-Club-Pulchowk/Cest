@@ -254,10 +254,10 @@ static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, voi
     return Directory_Iteration_Continue;
 }
 
-void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *build_config, const Compiler_Kind compiler);
-void SearchExecuteMudaBuild(Memory_Arena *arena, const Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config);
+void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler);
+void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config);
 
-void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *build_config, const Compiler_Kind compiler) {
+void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler) {
     Memory_Arena *scratch = ThreadScratchpad();
 
     Temporary_Memory temp = BeginTemporaryMemory(scratch);
@@ -422,6 +422,15 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
             LogInfo("Command Line: %s\n", cmd_line.Data);
         }
 
+        Muda_Plugin_Config plugin_config;
+        plugin_config.Name = compiler_config->Name.Data;
+        plugin_config.Build = build.Data;
+        plugin_config.BuildDir = build_dir.Data;
+        plugin_config.MudaDir = ".";
+        plugin_config.Succeeded = false;
+
+        build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Prebuild, &plugin_config);
+
         execute_postbuild = false;
         LogInfo("Executing compilation\n");
         if (OsExecuteCommandLine(cmd_line)) {
@@ -444,6 +453,9 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
         else {
             LogError("Compilation failed\n\n");
         }
+
+        plugin_config.Succeeded = execute_postbuild;
+        build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Postbuild, &plugin_config);
     }
     else {
         Assert(compiler_config->Kind == Compile_Solution);
@@ -507,7 +519,9 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
     }
 }
 
-void SearchExecuteMudaBuild(Memory_Arena *arena, const Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config) {
+void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config) {
+    Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
+
     Compiler_Config_List *configs = (Compiler_Config_List *)PushSize(arena, sizeof(Compiler_Config_List));
     CompilerConfigListInit(configs, arena);
 
@@ -601,6 +615,8 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, const Build_Config *build_confi
             }
         }
     }
+
+    EndTemporaryMemory(&arena_temp);
 }
 
 int main(int argc, char *argv[]) {
@@ -621,6 +637,18 @@ int main(int argc, char *argv[]) {
         OsConsoleWrite("[CLANG] https://releases.llvm.org/download.html \n");
         OsConsoleWrite("[GCC] https://gcc.gnu.org/install/download.html \n");
         return 1;
+    }
+
+    void *plugin = OsLibraryLoad(MudaPluginPath);
+    if (plugin) {
+        build_config.PluginHook = (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
+        if (build_config.PluginHook) {
+            build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Detection, NULL);
+            LogInfo("Plugin detected. Name: %s\n", build_config.Interface.PluginName);
+        }
+        else {
+            LogWarn("Plugin dectected by could not be loaded\n");
+        }
     }
 
     if (build_config.DisableLogs)
@@ -656,8 +684,12 @@ int main(int argc, char *argv[]) {
     Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
 
     SearchExecuteMudaBuild(&arena, &build_config, compiler, NULL);
-    MemoryArenaReset(&arena);
-    ResetThreadScratchpad();
+
+    build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Destroy, NULL);
+
+    if (plugin) {
+        OsLibraryFree(plugin);
+    }
     
 	return 0;
 }
