@@ -180,6 +180,11 @@ bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *con
 	return result;
 }
 
+bool OsSetWorkingDirectory(String path) {
+	wchar_t *wpath = UnicodeToWideChar(path.Data, (int)path.Length);
+	return SetCurrentDirectoryW(wpath);
+}
+
 Compiler_Kind OsDetectCompiler() {
 	Compiler_Kind compiler = 0;
 

@@ -1,9 +1,10 @@
 #pragma once
+#include "zBase.h"
+
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
-#include "zBase.h"
 #include <ctype.h>
 
 #define MudaParserReportError(p, ...) snprintf(p->Token.Data.Error.Desc, sizeof(p->Token.Data.Error.Desc), __VA_ARGS__)

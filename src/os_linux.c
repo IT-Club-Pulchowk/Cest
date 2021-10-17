@@ -114,6 +114,10 @@ bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *con
     return res;
 }
 
+bool OsSetWorkingDirectory(String path) {
+    Unimplemented();
+}
+
 Compiler_Kind OsDetectCompiler() {
     Compiler_Kind compiler = 0;
 

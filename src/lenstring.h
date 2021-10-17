@@ -215,10 +215,10 @@ INLINE_PROCEDURE bool StringListIsEmpty(String_List *list) {
 	return list->Head.Next == NULL && list->Used == 0;
 }
 
-INLINE_PROCEDURE void StringListAdd(String_List *dst, String string) {
+INLINE_PROCEDURE void StringListAdd(String_List *dst, String string, Memory_Arena *arena) {
 	if (dst->Used == MAX_STRING_NODE_DATA_COUNT) {
 		dst->Used = 0;
-		dst->Tail->Next = MemoryAllocate(sizeof(String_List_Node), &ThreadContext.Allocator);
+		dst->Tail->Next = PushSize(arena, sizeof(String_List_Node));
 		dst->Tail = dst->Tail->Next;
 		dst->Tail->Next = NULL;
 	}

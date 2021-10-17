@@ -1,6 +1,5 @@
 @version 1.0.0
 
-[bootstrap-debug]
 Kind               : Project;
 Application        : Executable;
 Optimization       : False;

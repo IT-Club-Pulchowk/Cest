@@ -41,6 +41,8 @@ INLINE_PROCEDURE Directory_Iteration DirectoryIteratorPrint(const File_Info *inf
 
 bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *context);
 
+bool OsSetWorkingDirectory(String path);
+
 typedef enum Compiler_Bit {
 	Compiler_Bit_CL = 0x1,
 	Compiler_Bit_CLANG = 0x2,

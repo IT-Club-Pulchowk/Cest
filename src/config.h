@@ -63,6 +63,9 @@ typedef struct Compiler_Config {
 	String_List LibraryDirectories;
 	String_List LinkerFlags;
 
+	String_List IgnoredDirectories;
+	String_List ProjectDirectories;
+
 	Memory_Arena *Arena;
 } Compiler_Config;
 
@@ -76,7 +79,6 @@ typedef struct Compiler_Config_List {
 	Compiler_Config_Node *Tail;
 	Uint32 Used;
 
-	Build_Config BuildConfig;
 	Memory_Arena *Arena;
 } Compiler_Config_List;
 
@@ -144,6 +146,12 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 
 	{ StringExpand("LinkerFlags"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, LinkerFlags),
 	"Flags for the linker. Different linkers may use different flags, so it is recommended to use sections for using this property." },
+
+	{ StringExpand("IgnoredDirectories"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, IgnoredDirectories),
+	"The directories to be ignored when build kind of Solution. Ignored when build kind is Project."},
+
+	{ StringExpand("ProjectDirectories"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, ProjectDirectories),
+	"The directories where build process is to be executed. When this is non-empty IgnoredDirectories is ignored"}
 };
 
 static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberTypeInfo)] = {
@@ -157,7 +165,9 @@ static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberT
 
 	/*Subsystem*/ false,
 	/*Libraries*/ true, /*LibraryDirectories*/ true,
-	/*LinkerFlags*/ false
+	/*LinkerFlags*/ false,
+
+	/*IgnoredDirectories*/ false, /*ProjectDirectories*/ false
 };
 
 //
@@ -199,6 +209,14 @@ INLINE_PROCEDURE void FatalErrorProcedure(const char *message) {
 //
 //
 
+INLINE_PROCEDURE void BuildConfigInit(Build_Config *build_config) {
+	build_config->ForceCompiler = 0;
+	build_config->ForceOptimization = false;
+	build_config->DisplayCommandLine = false;
+	build_config->DisableLogs = false;
+	build_config->ConfigurationCount = 0;
+}
+
 INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *arena) {
 	Memory_Allocator allocator = MemoryArenaAllocator(arena);
 	config->Name = StringMake(NULL, 0);
@@ -219,6 +237,9 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 	StringListInit(&config->LibraryDirectories);
 	StringListInit(&config->LinkerFlags);
 
+	StringListInit(&config->IgnoredDirectories);
+	StringListInit(&config->ProjectDirectories);
+
 	config->Arena = arena;
 }
 
@@ -226,12 +247,6 @@ INLINE_PROCEDURE void CompilerConfigListInit(Compiler_Config_List *list, Memory_
 	list->Used = 0;
 	list->Tail = &list->Head;
 	list->Tail->Next = NULL;
-
-	list->BuildConfig.ForceCompiler = 0;
-	list->BuildConfig.ForceOptimization = false;
-	list->BuildConfig.DisplayCommandLine = false;
-	list->BuildConfig.DisableLogs = false;
-	list->BuildConfig.ConfigurationCount = 0;
 	list->Arena = arena;
 }
 
@@ -247,6 +262,20 @@ INLINE_PROCEDURE Compiler_Config *CompilerConfigListAdd(Compiler_Config_List *li
 	list->Used += 1;
 	CompilerConfigInit(dst, list->Arena);
 	dst->Name = name;
+	return dst;
+}
+
+INLINE_PROCEDURE Compiler_Config *CompilerConfigListCopy(Compiler_Config_List *list, Compiler_Config *src) {
+	if (list->Used == ArrayCount(list->Head.Config)) {
+		list->Used = 0;
+		list->Tail->Next = PushSize(list->Arena, sizeof(Compiler_Config_Node));
+		list->Tail = list->Tail->Next;
+		list->Tail->Next = NULL;
+	}
+
+	Compiler_Config *dst = &list->Tail->Config[list->Used];
+	list->Used += 1;
+	memcpy(dst, src, sizeof(*src));
 	return dst;
 }
 
@@ -278,7 +307,7 @@ INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max, Memory_
 		while (curr_pos < data.Length && !isspace(data.Data[curr_pos]))
 			curr_pos += 1;
 
-		StringListAdd(dst, StrDuplicateArena(StringMake(data.Data + prev_pos, curr_pos - prev_pos), arena));
+		StringListAdd(dst, StrDuplicateArena(StringMake(data.Data + prev_pos, curr_pos - prev_pos), arena), arena);
 		count++;
 	}
 }
@@ -300,7 +329,7 @@ INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, bool wr
 
 	if (StringListIsEmpty(&config->Sources)) {
 		String def_source = StringLiteral("*.c");
-		StringListAdd(&config->Sources, StrDuplicateArena(def_source, config->Arena));
+		StringListAdd(&config->Sources, StrDuplicateArena(def_source, config->Arena), config->Arena);
 		if (write_log)
 			LogInfo("Using Default Sources: %s\n", def_source.Data);
 	}
