@@ -43,6 +43,8 @@ typedef struct Build_Config {
 } Build_Config;
 
 typedef struct Compiler_Config {
+	String Name;
+
 	Uint32 Kind; // Compile_Kind 
 	Uint32 Application; // Application_Kind 
 
@@ -60,10 +62,22 @@ typedef struct Compiler_Config {
 	String_List LibraryDirectories;
 	String_List LinkerFlags;
 
-	Build_Config BuildConfig;
-
 	Memory_Arena *Arena;
 } Compiler_Config;
+
+typedef struct Compiler_Config_Node {
+	Compiler_Config Config[16];
+	struct Compiler_Config_Node *Next;
+} Compiler_Config_Node;
+
+typedef struct Compiler_Config_List {
+	Compiler_Config_Node Head;
+	Compiler_Config_Node *Tail;
+	Uint32 Used;
+
+	Build_Config BuildConfig;
+	Memory_Arena *Arena;
+} Compiler_Config_List;
 
 typedef enum Compiler_Config_Member_Kind {
 	Compiler_Config_Member_Enum,
@@ -186,7 +200,7 @@ INLINE_PROCEDURE void FatalErrorProcedure(const char *message) {
 
 INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *arena) {
 	Memory_Allocator allocator = MemoryArenaAllocator(arena);
-
+	config->Name = StringMake(NULL, 0);
 	config->Kind = Compile_Project;
 	config->Application = Application_Executable;
 
@@ -205,11 +219,44 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 	StringListInit(&config->LinkerFlags);
 
 	config->Arena = arena;
+}
 
-	config->BuildConfig.ForceCompiler = 0;
-	config->BuildConfig.ForceOptimization = false;
-	config->BuildConfig.DisplayCommandLine = false;
-	config->BuildConfig.DisableLogs = false;
+INLINE_PROCEDURE void CompilerConfigListInit(Compiler_Config_List *list, Memory_Arena *arena) {
+	list->Used = 0;
+	list->Tail = &list->Head;
+	list->Tail->Next = NULL;
+
+	list->BuildConfig.ForceCompiler = 0;
+	list->BuildConfig.ForceOptimization = false;
+	list->BuildConfig.DisplayCommandLine = false;
+	list->BuildConfig.DisableLogs = false;
+	list->Arena = arena;
+}
+
+INLINE_PROCEDURE Compiler_Config *CompilerConfigListAdd(Compiler_Config_List *list, String name) {
+	if (list->Used == ArrayCount(list->Head.Config)) {
+		list->Used = 0;
+		list->Tail->Next = PushSize(list->Arena, sizeof(Compiler_Config_Node));
+		list->Tail = list->Tail->Next;
+		list->Tail->Next = NULL;
+	}
+
+	Compiler_Config *dst = &list->Tail->Config[list->Used];
+	list->Used += 1;
+	CompilerConfigInit(dst, list->Arena);
+	dst->Name = name;
+	return dst;
+}
+
+INLINE_PROCEDURE Compiler_Config *CompilerConfigListFindOrAdd(Compiler_Config_List *list, String name) {
+	ForList(Compiler_Config_Node, list) {
+		ForListNode(list, ArrayCount(list->Head.Config)) {
+			if (StrMatch(name, it->Config[index].Name)) {
+				return &it->Config[index];
+			}
+		}
+	}
+	return CompilerConfigListAdd(list, StrDuplicateArena(name, list->Arena));
 }
 
 INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max, Memory_Arena *arena) {

@@ -2,9 +2,9 @@
 
 Kind               : Project;
 Application        : Executable;
-Optimization       : True;
+Optimization       : False;
 
-Build              : bootstrap;
+Build              : bootstrap0;
 BuildDirectory     : ./bin;
 Sources            : src/build.c;
 Flags              : ;
