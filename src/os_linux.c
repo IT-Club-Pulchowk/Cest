@@ -130,8 +130,7 @@ Compiler_Kind OsDetectCompiler() {
     return compiler;
 }
 
-bool OsExecuteCommandLine(String cmdline, String *current_dir) {
-    Deprecated("working directory is not being set for the executed process");
+bool OsExecuteCommandLine(String cmdline) {
     return !system((char *)cmdline.Data);
 }
 

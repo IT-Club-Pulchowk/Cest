@@ -404,12 +404,12 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
         }
 
         LogInfo("Executing compilation\n");
-        if (OsExecuteCommandLine(cmd_line, NULL)) {
+        if (OsExecuteCommandLine(cmd_line)) {
             LogInfo("Compilation succeeded\n\n");
             if (lib.Size) {
                 LogInfo("Creating static library\n");
                 cmd_line = OutBuildStringSerial(&lib, compiler_config->Arena);
-                if (OsExecuteCommandLine(cmd_line, NULL))
+                if (OsExecuteCommandLine(cmd_line))
                     LogInfo("Library creation succeeded\n\n");
                 else
                     LogError("Library creation failed\n\n");

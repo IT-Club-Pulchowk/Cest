@@ -201,17 +201,14 @@ Compiler_Kind OsDetectCompiler() {
 	return compiler;
 }
 
-bool OsExecuteCommandLine(String cmdline, String *current_dir) {
+bool OsExecuteCommandLine(String cmdline) {
 	wchar_t *wcmdline = UnicodeToWideChar(cmdline.Data, (int)cmdline.Length);
-	wchar_t *wcurrent_dir = NULL;
-	if (current_dir)
-		wcurrent_dir = UnicodeToWideChar(cmdline.Data, (int)cmdline.Length);
 
 	STARTUPINFOW start_up = { sizeof(start_up) };
 	PROCESS_INFORMATION process;
 	memset(&process, 0, sizeof(process));
 
-	CreateProcessW(NULL, wcmdline, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, wcurrent_dir, &start_up, &process);
+	CreateProcessW(NULL, wcmdline, NULL, NULL, FALSE, NORMAL_PRIORITY_CLASS, NULL, NULL, &start_up, &process);
 
 	WaitForSingleObject(process.hProcess, INFINITE);
 
