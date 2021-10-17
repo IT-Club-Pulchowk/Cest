@@ -24,7 +24,7 @@ typedef struct Out_Stream {
 INLINE_PROCEDURE void OutBuffer(Out_Stream *out, const void *ptr, Int64 size) {
 	Uint8 *data = (Uint8 *)ptr;
 
-	while (size) {
+	while (size > 0) {
 		if (out->Tail->Used == OSTREAM_BUCKET_SIZE) {
 			if (out->Tail->Next == NULL) {
 				out->Tail->Next = (struct Out_Stream_Bucket *)MemoryAllocate(sizeof(struct Out_Stream_Bucket), &out->Allocator);

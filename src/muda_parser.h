@@ -261,6 +261,10 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
 				cur--;
 			}
 			cur++;
+			// TODO(zero): I don't know why this is here, but this produces 
+			// p->Token.Data.Property.Value.Length -1, which is not correct
+			// when the value is empty, then length of the string needs to be 0
+			// I am not removing this code for now, cuz it might break other things
 			if (*cur != ';')
 				*cur = 0;
 			p->Token.Data.Property.Value.Data = start2;
