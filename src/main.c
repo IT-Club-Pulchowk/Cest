@@ -111,10 +111,13 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
                 
                 if (reject_os || (state.Compiler != 0 && compiler != state.Compiler)) break;
 
+                bool property_found = false;
+
                 Muda_Token *token = &prsr.Token;
                 for (Uint32 index = 0; index < ArrayCount(CompilerConfigMemberTypeInfo); ++index) {
                     const Compiler_Config_Member *const info = &CompilerConfigMemberTypeInfo[index];
                     if (StrMatch(info->Name, token->Data.Property.Key)) {
+                        property_found = true;
 
                         switch (info->Kind) {
                             case Compiler_Config_Member_Enum: {
@@ -145,7 +148,7 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
                                     String accepted_values = OutBuildString(&out, &allocator);
 
                                     // TODO: Print line and column number in the error
-                                    LogWarn("Invalid value for Property \"%s\" : %s. Acceptable values are: \n",
+                                    LogWarn("Invalid value for Property \"%s\" : %s. Acceptable values are: %s\n",
                                         info->Name.Data, token->Data.Property.Value.Data, accepted_values);
 
                                     EndTemporaryMemory(&temp);
@@ -186,6 +189,11 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
 
                         break;
                     }
+                }
+
+                if (!property_found) {
+                    // TODO: Print line and column number in the error
+                    LogWarn("Invalid value for Property \"%s\" Ignored.\n", token->Data.Property.Key.Data);
                 }
             } break;
 
@@ -254,6 +262,20 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
 
     Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
+    if (compiler_config->Prebuild.Size) {
+        LogInfo("Executing Prebuild command\n");
+        Temporary_Memory temp = BeginTemporaryMemory(scratch);
+        String prebuild = OutBuildStringSerial(&compiler_config->Prebuild, scratch);
+        if (!OsExecuteCommandLine(prebuild)) {
+            LogError("Prebuild execution failed. Aborted.\n");
+            return;
+        }
+        EndTemporaryMemory(&temp);
+        LogInfo("Finished executing Prebuild command\n");
+    }
+
+    bool execute_postbuild = true;
+
     if (compiler_config->Kind == Compile_Project) {
         LogInfo("Beginning compilation\n");
 
@@ -269,13 +291,13 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
         Uint32 result = OsCheckIfPathExists(build_dir);
         if (result == Path_Does_Not_Exist) {
             if (!OsCreateDirectoryRecursively(build_dir)) {
-                String error = FmtStr(scratch, "Failed to create directory %s!\n", build_dir.Data);
-                FatalError(error.Data);
+                LogError("Failed to create directory %s! Aborted.\n", build_dir.Data);
+                return;
             }
         }
         else if (result == Path_Exist_File) {
-            String error = FmtStr(scratch, "%s: Path exist but is a file!\n", build_dir.Data);
-            FatalError(error.Data);
+            LogError("%s: Path exist but is a file! Aborted.\n", build_dir.Data);
+            return;
         }
 
         if (compiler == Compiler_Bit_CL) {
@@ -289,13 +311,13 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
             result = OsCheckIfPathExists(intermediate);
             if (result == Path_Does_Not_Exist) {
                 if (!OsCreateDirectoryRecursively(intermediate)) {
-                    String error = FmtStr(scratch, "Failed to create directory %s!\n", intermediate.Data);
-                    FatalError(error.Data);
+                    LogError("Failed to create directory %s! Aborted.\n", intermediate.Data);
+                    return;
                 }
             }
             else if (result == Path_Exist_File) {
-                String error = FmtStr(scratch, "%s: Path exist but is a file!\n", intermediate.Data);
-                FatalError(error.Data);
+                LogError("%s: Path exist but is a file! Aborted.\n", intermediate.Data);
+                return;
             }
         }
 
@@ -304,9 +326,6 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
             LogInfo("Optimization turned on forcefully\n");
             compiler_config->Optimization = true;
         }
-
-        // TODO: Use the following values
-        // Compiler_Config::Kind
 
         switch (compiler) {
         case Compiler_Bit_CL: {
@@ -403,16 +422,20 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
             LogInfo("Command Line: %s\n", cmd_line.Data);
         }
 
+        execute_postbuild = false;
         LogInfo("Executing compilation\n");
         if (OsExecuteCommandLine(cmd_line)) {
             LogInfo("Compilation succeeded\n\n");
             if (lib.Size) {
                 LogInfo("Creating static library\n");
                 cmd_line = OutBuildStringSerial(&lib, compiler_config->Arena);
-                if (OsExecuteCommandLine(cmd_line))
+                if (OsExecuteCommandLine(cmd_line)) {
                     LogInfo("Library creation succeeded\n\n");
-                else
+                    execute_postbuild = true;
+                }
+                else {
                     LogError("Library creation failed\n\n");
+                }
             }
         }
         else {
@@ -453,7 +476,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
                     SearchExecuteMudaBuild(arena, build_config, compiler, compiler_config);
                     EndTemporaryMemory(&arena_temp);
                     if (!OsSetWorkingDirectory(StringLiteral(".."))) {
-                        FatalError("Could not set the original directory as the working directory\n");
+                        LogError("Could not set the original directory as the working directory! Aborted.\n");
+                        return;
                     }
                 }
                 else {
@@ -466,6 +490,18 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
     }
 
 	EndTemporaryMemory(&temp);
+
+    if (execute_postbuild && compiler_config->Postbuild.Size) {
+        LogInfo("Executing Postbuild command\n");
+        Temporary_Memory temp = BeginTemporaryMemory(scratch);
+        String prebuild = OutBuildStringSerial(&compiler_config->Postbuild, scratch);
+        if (!OsExecuteCommandLine(prebuild)) {
+            LogError("Postbuild execution failed. Aborted.\n");
+            return;
+        }
+        EndTemporaryMemory(&temp);
+        LogInfo("Finished executing Prebuild command\n");
+    }
 }
 
 void SearchExecuteMudaBuild(Memory_Arena *arena, const Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config) {
@@ -501,8 +537,8 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, const Build_Config *build_confi
 
             if (size > MAX_ALLOWED_MUDA_FILE_SIZE) {
                 float max_size = (float)MAX_ALLOWED_MUDA_FILE_SIZE / (1024 * 1024);
-                String error = FmtStr(scratch, "File %s too large. Max memory: %.3fMB!\n", config_path.Data, max_size);
-                FatalError(error.Data);
+                LogError("File %s too large. Max memory: %.3fMB! Aborted.\n", config_path.Data, max_size);
+                return;
             }
 
             Uint8 *buffer = PushSize(scratch, size + 1);

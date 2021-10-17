@@ -76,6 +76,9 @@ typedef struct Compiler_Config {
 	String_List IgnoredDirectories;
 	String_List ProjectDirectories;
 
+	Out_Stream Prebuild;
+	Out_Stream Postbuild;
+
 	Memory_Arena *Arena;
 } Compiler_Config;
 
@@ -165,7 +168,13 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 	"The directories to be ignored when build kind of Solution. Ignored when build kind is Project."},
 
 	{ StringExpand("ProjectDirectories"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, ProjectDirectories),
-	"The directories where build process is to be executed. When this is non-empty IgnoredDirectories is ignored"}
+	"The directories where build process is to be executed. When this is non-empty IgnoredDirectories is ignored"},
+
+	{ StringExpand("Prebuild"), Compiler_Config_Member_String, offsetof(Compiler_Config, Prebuild),
+	"Executes the command before executing muda file." },
+
+	{ StringExpand("Postbuild"), Compiler_Config_Member_String, offsetof(Compiler_Config, Postbuild),
+	"Executes the command if the compilation executed sucessfully." }
 };
 
 static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberTypeInfo)] = {
@@ -181,7 +190,9 @@ static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberT
 	/*Libraries*/ true, /*LibraryDirectories*/ true,
 	/*LinkerFlags*/ false,
 
-	/*IgnoredDirectories*/ false, /*ProjectDirectories*/ false
+	/*IgnoredDirectories*/ false, /*ProjectDirectories*/ false,
+
+	/*Prebuild*/ false, /*Postbuild*/ false
 };
 
 //
