@@ -193,7 +193,7 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
 
                 if (!property_found) {
                     // TODO: Print line and column number in the error
-                    LogWarn("Invalid value for Property \"%s\" Ignored.\n", token->Data.Property.Key.Data);
+                    LogWarn("Invalid Property \"%s\". Ignored.\n", token->Data.Property.Key.Data);
                 }
             } break;
 
@@ -263,11 +263,11 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
     Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
     if (compiler_config->Prebuild.Size) {
-        LogInfo("Executing Prebuild command\n");
+        LogInfo("==> Executing Prebuild command\n");
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
         String prebuild = OutBuildStringSerial(&compiler_config->Prebuild, scratch);
         if (!OsExecuteCommandLine(prebuild)) {
-            LogError("Prebuild execution failed. Aborted.\n");
+            LogError("Prebuild execution failed. Aborted.\n\n");
             return;
         }
         EndTemporaryMemory(&temp);
@@ -492,15 +492,15 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
 	EndTemporaryMemory(&temp);
 
     if (execute_postbuild && compiler_config->Postbuild.Size) {
-        LogInfo("Executing Postbuild command\n");
+        LogInfo("==> Executing Postbuild command\n");
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
         String prebuild = OutBuildStringSerial(&compiler_config->Postbuild, scratch);
         if (!OsExecuteCommandLine(prebuild)) {
-            LogError("Postbuild execution failed. Aborted.\n");
+            LogError("Postbuild execution failed. \n\n");
             return;
         }
         EndTemporaryMemory(&temp);
-        LogInfo("Finished executing Prebuild command\n");
+        LogInfo("Finished executing Postbuild command\n");
     }
 }
 

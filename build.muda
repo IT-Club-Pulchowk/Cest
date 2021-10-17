@@ -4,7 +4,7 @@ Kind               : Project;
 Application        : Executable;
 Optimization       : False;
 
-Prebuilld: prebuild.bat;
+Prebuild: prebuild.bat;
 
 Build              : bootstrap;
 BuildDirectory     : ./bin;

@@ -83,6 +83,9 @@ bool OsFileWriteF(File_Handle handle, const char *fmt, ...);
 void OsFileClose(File_Handle handle);
 
 void OsSetupConsole();
+void OsConsoleSetColorRed(void *fp);
+void OsConsoleSetColorYellow(void *fp);
+void OsConsoleResetColor(void *fp);
 
 void *OsGetStdOutputHandle();
 void *OsGetErrorOutputHandle();

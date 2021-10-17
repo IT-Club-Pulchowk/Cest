@@ -221,6 +221,18 @@ void OsSetupConsole() {
     // we have nothing to do here :)
 }
 
+void OsConsoleSetColorRed(void *fp) {
+    fprintf(fp, "\033[0; 31m");
+}
+
+void OsConsoleSetColorYellow(void *fp) {
+    fprintf(fp, "\033[0; 33m");
+}
+
+void OsConsoleResetColor(void *fp) {
+    fprintf(fp, "\033[0m");
+}
+
 void *OsGetStdOutputHandle() {
     return stdout;
 }

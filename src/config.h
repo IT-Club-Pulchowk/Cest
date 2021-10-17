@@ -15,6 +15,15 @@ static const String CompilerKindId[] = {
 	StringExpand("Project"), StringExpand("Solution")
 };
 
+typedef enum Language_Kind {
+	Language_C,
+	Language_Cpp
+} Language_Kind;
+
+static const String LanguageKindId[] = {
+	StringExpand("C"), StringExpand("Cpp"),
+};
+
 typedef enum Application_Kind {
 	Application_Executable,
 	Application_Static_Library,
@@ -23,15 +32,6 @@ typedef enum Application_Kind {
 
 static const String ApplicationKindId[] = {
 	StringExpand("Executable"), StringExpand("StaticLibrary"), StringExpand("DynamicLibrary")
-};
-
-typedef enum Language_Kind {
-	Langauge_C,
-	Language_Cpp
-} Language_Kind;
-
-static const String LanguageKindId[] = {
-	StringExpand("C"), StringExpand("Cpp"),
 };
 
 typedef enum Subsystem_Kind {
@@ -116,8 +116,8 @@ typedef struct Compiler_Config_Member {
 } Compiler_Config_Member;
 
 static const Enum_Info CompilerKindInfo = { CompilerKindId, ArrayCount(CompilerKindId) };
-static const Enum_Info ApplicationKindInfo = { ApplicationKindId, ArrayCount(ApplicationKindId) };
 static const Enum_Info LanguageKindInfo = { LanguageKindId, ArrayCount(LanguageKindId) };
+static const Enum_Info ApplicationKindInfo = { ApplicationKindId, ArrayCount(ApplicationKindId) };
 static const Enum_Info SubsystemKindInfo = { SubsystemKindId, ArrayCount(SubsystemKindId) };
 
 static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
@@ -125,11 +125,11 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 	"Type of compilation. Project only build using a single muda file. Solution iterates through subdirectories and build each muda file found.",
 	&CompilerKindInfo },
 
-	{ StringExpand("Application"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Application),
-	"The type of Application that is to be built", &ApplicationKindInfo },
-
 	{ StringExpand("Language"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Language),
 	"Langauge to be compiled.", &LanguageKindInfo },
+
+	{ StringExpand("Application"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Application),
+	"The type of Application that is to be built", &ApplicationKindInfo },
 
 	{ StringExpand("Optimization"), Compiler_Config_Member_Bool, offsetof(Compiler_Config, Optimization),
 	"Use optimization while compiling or not (true/false)" },
@@ -178,7 +178,7 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 };
 
 static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberTypeInfo)] = {
-	/*Kind*/ false, /*Application*/ false, /*Language*/ false,
+	/*Kind*/ false, /*Language*/ false, /*Application*/ false,
 
 	/*Optimization*/ false,
 
@@ -212,11 +212,16 @@ INLINE_PROCEDURE void LogProcedure(void *agent, Log_Kind kind, const char *fmt, 
 	void *fp = (kind == Log_Kind_Info) ? OsGetStdOutputHandle() : OsGetErrorOutputHandle();
 	if (kind == Log_Kind_Info)
 		OsConsoleOut(fp, "%-10s", "[Log] ");
-	else if (kind == Log_Kind_Error)
+	else if (kind == Log_Kind_Error) {
+		OsConsoleSetColorRed(fp);
 		OsConsoleOut(fp, "%-10s", "[Error] ");
-	else if (kind == Log_Kind_Warn)
+	}
+	else if (kind == Log_Kind_Warn) {
+		OsConsoleSetColorYellow(fp);
 		OsConsoleOut(fp, "%-10s", "[Warning] ");
+	}
 	OsConsoleOutV(fp, fmt, list);
+	OsConsoleResetColor(fp);
 }
 
 INLINE_PROCEDURE void LogProcedureDisabled(void *agent, Log_Kind kind, const char *fmt, va_list list) {
@@ -225,6 +230,7 @@ INLINE_PROCEDURE void LogProcedureDisabled(void *agent, Log_Kind kind, const cha
 }
 
 INLINE_PROCEDURE void FatalErrorProcedure(const char *message) {
+	OsConsoleWrite("\033[0; 31m");
 	OsConsoleWrite("%-10s", "[Fatal Error] ");
 	OsConsoleWrite("%s", message);
 	OsProcessExit(0);
@@ -246,6 +252,7 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 	Memory_Allocator allocator = MemoryArenaAllocator(arena);
 	config->Name = StringMake(NULL, 0);
 	config->Kind = Compile_Project;
+	config->Language = Language_C;
 	config->Application = Application_Executable;
 
 	config->Optimization = false;
@@ -264,6 +271,9 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 
 	StringListInit(&config->IgnoredDirectories);
 	StringListInit(&config->ProjectDirectories);
+
+	OutCreate(&config->Prebuild, allocator);
+	OutCreate(&config->Postbuild, allocator);
 
 	config->Arena = arena;
 }

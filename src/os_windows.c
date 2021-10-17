@@ -372,6 +372,8 @@ void OsFileClose(File_Handle handle) {
 void OsSetupConsole() {
 	SetConsoleCP(CP_UTF8);
 	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), ENABLE_VIRTUAL_TERMINAL_INPUT);
+	SetConsoleMode(GetStdHandle(STD_ERROR_HANDLE), ENABLE_VIRTUAL_TERMINAL_INPUT);
 }
 
 void *OsGetStdOutputHandle() {
@@ -380,6 +382,18 @@ void *OsGetStdOutputHandle() {
 
 void *OsGetErrorOutputHandle() {
 	return GetStdHandle(STD_ERROR_HANDLE);
+}
+
+void OsConsoleSetColorRed(void *fp) {
+	SetConsoleTextAttribute(fp, FOREGROUND_RED | FOREGROUND_INTENSITY);
+}
+
+void OsConsoleSetColorYellow(void *fp) {
+	SetConsoleTextAttribute(fp, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY);
+}
+
+void OsConsoleResetColor(void *fp) {
+	SetConsoleTextAttribute(fp, FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
 }
 
 void OsConsoleOut(void *fp, const char *fmt, ...) {
