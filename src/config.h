@@ -25,6 +25,15 @@ static const String ApplicationKindId[] = {
 	StringExpand("Executable"), StringExpand("StaticLibrary"), StringExpand("DynamicLibrary")
 };
 
+typedef enum Language_Kind {
+	Langauge_C,
+	Language_Cpp
+} Language_Kind;
+
+static const String LanguageKindId[] = {
+	StringExpand("C"), StringExpand("Cpp"),
+};
+
 typedef enum Subsystem_Kind {
 	Subsystem_Console,
 	Subsystem_Windows,
@@ -47,6 +56,7 @@ typedef struct Compiler_Config {
 	String Name;
 
 	Uint32 Kind; // Compile_Kind 
+	Uint32 Language; // Language_Kind
 	Uint32 Application; // Application_Kind 
 
 	bool Optimization;
@@ -104,6 +114,7 @@ typedef struct Compiler_Config_Member {
 
 static const Enum_Info CompilerKindInfo = { CompilerKindId, ArrayCount(CompilerKindId) };
 static const Enum_Info ApplicationKindInfo = { ApplicationKindId, ArrayCount(ApplicationKindId) };
+static const Enum_Info LanguageKindInfo = { LanguageKindId, ArrayCount(LanguageKindId) };
 static const Enum_Info SubsystemKindInfo = { SubsystemKindId, ArrayCount(SubsystemKindId) };
 
 static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
@@ -113,6 +124,9 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 
 	{ StringExpand("Application"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Application),
 	"The type of Application that is to be built", &ApplicationKindInfo },
+
+	{ StringExpand("Language"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Language),
+	"Langauge to be compiled.", &LanguageKindInfo },
 
 	{ StringExpand("Optimization"), Compiler_Config_Member_Bool, offsetof(Compiler_Config, Optimization),
 	"Use optimization while compiling or not (true/false)" },
@@ -155,7 +169,7 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 };
 
 static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberTypeInfo)] = {
-	/*Kind*/ false, /*Application*/ false,
+	/*Kind*/ false, /*Application*/ false, /*Language*/ false,
 
 	/*Optimization*/ false,
 
