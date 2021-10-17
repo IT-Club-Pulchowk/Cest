@@ -85,7 +85,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p) {
 		cur++;
 		while (isspace(*cur)) cur++;
 		start = cur;
-		while (*cur && (isalnum(*cur) || *cur > 125) && *cur != ']') cur += 1;
+		while (*cur && (isalnum(*cur) || *cur > 125 || *cur == '-') && *cur != ']') cur += 1;
 		while (*cur && isspace(*cur) && *cur != ']') cur += 1;
 
 		if (*cur && *cur == ']') {
