@@ -31,7 +31,7 @@ static const Muda_Option Options[] = {
     { StringExpand("optimize"), "Forces Optimization to be turned on", "", OptOptimize, 0 },
     { StringExpand("cmdline"), "Displays the command line executed to build", "", OptCmdline, 0 },
     { StringExpand("nolog"), "Disables logging in the terminal", "", OptNoLog, 0 },
-    { StringExpand("config"), "Specify a configuration to use from the muda file", "<configuration>", OptConfig, 1 },
+    { StringExpand("config"), "Specify default or configurations to use from the muda file.", "[configuration/s]", OptConfig, -255 },
     { StringExpand("help"), "Muda description and list all the command", "[command/s]", OptHelp, -255 },
 };
 
@@ -231,8 +231,24 @@ static bool OptCompiler(const char *program, const char *arg[], int count, Build
     return false;
 }
 
+static void OptConfigAdd(Build_Config *config, String name) {
+    if (config->ConfigurationCount < ArrayCount(config->Configurations)) {
+        config->Configurations[config->ConfigurationCount++] = name;
+    }
+    else {
+        Uint32 count = (Uint32)ArrayCount(config->Configurations);
+        LogWarn("Only %u number of configurations are supported from command line. \"%s\" configuration ignored.\n", count, name.Data);
+    }
+}
+
 static bool OptConfig(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
-    config->Configuration = StringMake(arg[0], strlen(arg[0]));
+    if (count) {
+        for (int i = 0; i < count; ++i)
+            OptConfigAdd(config, StringMake(arg[i], strlen(arg[i])));
+    }
+    else {
+        OptConfigAdd(config, StringLiteral("default"));
+    }
     return false;
 }
 
@@ -301,8 +317,8 @@ static bool HandleCommandLineArguments(int argc, char *argv[], Build_Config *con
 	for (int argi = 1; argi < argc; ++argi) {
 		if (argv[argi][0] != '-') {
             Memory_Arena *scratch = ThreadScratchpad();
-            String error = FmtStr(scratch, "Command line arguments must begin with \"-\". "
-                "For list of command type:\n\t%s -help\n\n", argv[argi]);
+            String error = FmtStr(scratch, "Unknown identifier: \"%s\".Command line arguments must begin with \"-\". "
+                "For list of command type:\n\t%s -help\n\n", argv[argi], argv[0]);
             FatalError(error.Data);
 		}
 

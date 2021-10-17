@@ -501,7 +501,7 @@ int main(int argc, char *argv[]) {
         EndTemporaryMemory(&temp);
     }
 
-    if (configs->BuildConfig.Configuration.Length == 0) {
+    if (configs->BuildConfig.ConfigurationCount == 0) {
         ForList(Compiler_Config_Node, configs) {
             ForListNode(configs, ArrayCount(configs->Head.Config)) {
                 Compiler_Config *config = &it->Config[index];
@@ -512,24 +512,27 @@ int main(int argc, char *argv[]) {
         }
     }
     else {
-        String required_config = configs->BuildConfig.Configuration;
-        Compiler_Config *config = NULL;
-        ForList(Compiler_Config_Node, configs) {
-            ForListNode(configs, ArrayCount(configs->Head.Config)) {
-                if (StrMatch(it->Config[index].Name, required_config)) {
-                    config = &it->Config[index];
-                    break;
+        for (Uint32 index = 0; index < configs->BuildConfig.ConfigurationCount; ++index) {
+            Compiler_Config *config = NULL;
+            String required_config = configs->BuildConfig.Configurations[index];
+
+            ForList(Compiler_Config_Node, configs) {
+                ForListNode(configs, ArrayCount(configs->Head.Config)) {
+                    if (StrMatch(it->Config[index].Name, required_config)) {
+                        config = &it->Config[index];
+                        break;
+                    }
                 }
             }
-        }
 
-        if (config) {
-            LogInfo("======== Building Configuration: %s ========\n", config->Name.Data);
-            PushDefaultCompilerConfig(config, true);
-            Compile(config, &configs->BuildConfig, compiler);
-        }
-        else {
-
+            if (config) {
+                LogInfo("======== Building Configuration: %s ========\n", config->Name.Data);
+                PushDefaultCompilerConfig(config, true);
+                Compile(config, &configs->BuildConfig, compiler);
+            }
+            else {
+                LogError("Configuration \"%s\" not found. Ignored.\n", required_config.Data);
+            }
         }
     }
     

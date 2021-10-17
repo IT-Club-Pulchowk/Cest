@@ -39,7 +39,8 @@ typedef struct Build_Config {
 	bool ForceOptimization;
 	bool DisplayCommandLine;
 	bool DisableLogs;
-	String Configuration;
+	String Configurations[128];
+	Uint32 ConfigurationCount;
 } Build_Config;
 
 typedef struct Compiler_Config {
@@ -230,6 +231,7 @@ INLINE_PROCEDURE void CompilerConfigListInit(Compiler_Config_List *list, Memory_
 	list->BuildConfig.ForceOptimization = false;
 	list->BuildConfig.DisplayCommandLine = false;
 	list->BuildConfig.DisableLogs = false;
+	list->BuildConfig.ConfigurationCount = 0;
 	list->Arena = arena;
 }
 
