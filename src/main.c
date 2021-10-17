@@ -437,6 +437,9 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, const Build_Config *buil
                     LogError("Library creation failed\n\n");
                 }
             }
+            else {
+                execute_postbuild = true;
+            }
         }
         else {
             LogError("Compilation failed\n\n");

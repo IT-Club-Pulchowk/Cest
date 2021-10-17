@@ -6,7 +6,7 @@
 - [x] Print useful and relevant information executing build
 - [ ] Write muda file for all the project in c programming guide samples
 - [ ] Prepare documentation and release v1
-- [ ] Support for prebuild and postbuild commands
+- [x] Support for prebuild and postbuild commands
 - [x] Support for multiple configurations
 - [x] Support for multiple Projects in single muda file
 - [x] Support for Solution type project (i.e. iterate every directory and launch the muda file there)

@@ -4,9 +4,7 @@ Kind               : Project;
 Application        : Executable;
 Optimization       : False;
 
-Prebuild: prebuild.bat;
-
-Build              : bootstrap;
+Build              : bootstrap0;
 BuildDirectory     : ./bin;
 Sources            : src/build.c;
 Flags              : ;
