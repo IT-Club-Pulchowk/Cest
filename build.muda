@@ -21,22 +21,22 @@ Defines            :  _CRT_SECURE_NO_WARNINGS;
 
 ##################################################################################
 
-[release]
-Kind               : Project;
-Application        : Executable;
-Optimization       : True;
-
-Build              : muda;
-BuildDirectory     : ./release;
-Sources            : src/build.c;
-Flags              : ;
-
-Defines            : ASSERTION_HANDLED DEPRECATION_HANDLED;
-
-IncludeDirectories : ;
-Libraries          : ;
-LibraryDirectories : ;
-LinkerFlags        : ;
-
-:COMPILER.CL
-Defines            :  _CRT_SECURE_NO_WARNINGS;
+# [release]
+# Kind               : Project;
+# Application        : Executable;
+# Optimization       : True;
+# 
+# Build              : muda;
+# BuildDirectory     : ./release;
+# Sources            : src/build.c;
+# Flags              : ;
+# 
+# Defines            : ASSERTION_HANDLED DEPRECATION_HANDLED;
+# 
+# IncludeDirectories : ;
+# Libraries          : ;
+# LibraryDirectories : ;
+# LinkerFlags        : ;
+# 
+# :COMPILER.CL
+# Defines            :  _CRT_SECURE_NO_WARNINGS;

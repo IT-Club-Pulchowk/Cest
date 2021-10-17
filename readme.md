@@ -9,7 +9,7 @@
 - [ ] Support for prebuild and postbuild commands
 - [x] Support for multiple configurations
 - [x] Support for multiple Projects in single muda file
-- [ ] Support for Solution type project (i.e. iterate every directory and launch the muda file there)
+- [x] Support for Solution type project (i.e. iterate every directory and launch the muda file there)
 - [ ] Compile build results into structures so that they can be used more effectively
 - [ ] Support event based plugins
 - [ ] Create plugin that runs the built processes after they are compiled successfully
