@@ -501,12 +501,35 @@ int main(int argc, char *argv[]) {
         EndTemporaryMemory(&temp);
     }
 
-    ForList(Compiler_Config_Node, configs) {
-        ForListNode(configs, ArrayCount(configs->Head.Config)) {
-            Compiler_Config *config = &it->Config[index];
+    if (configs->BuildConfig.Configuration.Length == 0) {
+        ForList(Compiler_Config_Node, configs) {
+            ForListNode(configs, ArrayCount(configs->Head.Config)) {
+                Compiler_Config *config = &it->Config[index];
+                LogInfo("======== Building Configuration: %s ========\n", config->Name.Data);
+                PushDefaultCompilerConfig(config, true);
+                Compile(config, &configs->BuildConfig, compiler);
+            }
+        }
+    }
+    else {
+        String required_config = configs->BuildConfig.Configuration;
+        Compiler_Config *config = NULL;
+        ForList(Compiler_Config_Node, configs) {
+            ForListNode(configs, ArrayCount(configs->Head.Config)) {
+                if (StrMatch(it->Config[index].Name, required_config)) {
+                    config = &it->Config[index];
+                    break;
+                }
+            }
+        }
+
+        if (config) {
             LogInfo("======== Building Configuration: %s ========\n", config->Name.Data);
             PushDefaultCompilerConfig(config, true);
             Compile(config, &configs->BuildConfig, compiler);
+        }
+        else {
+
         }
     }
     
