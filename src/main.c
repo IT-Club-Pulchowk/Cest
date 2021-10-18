@@ -431,10 +431,6 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
         String cmd_line = OutBuildStringSerial(&out, compiler_config->Arena);
 
-        if (build_config->DisplayCommandLine) {
-            LogInfo("Command Line: %s\n", cmd_line.Data);
-        }
-
         plugin_config.Name = compiler_config->Name.Data;
         plugin_config.Build = build.Data;
         plugin_config.BuildDir = build_dir.Data;
@@ -449,6 +445,11 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         if (res.Size) {
             LogInfo("Executing Resource compilation\n");
             String resource_cmd_line = OutBuildStringSerial(&res, scratch);
+
+            if (build_config->DisplayCommandLine) {
+                LogInfo("Resource Command Line: %s\n", resource_cmd_line.Data);
+            }
+
             if (OsExecuteCommandLine(resource_cmd_line)) {
                 LogInfo("Resource Compilation succeeded\n");
             }
@@ -459,10 +460,18 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         }
 
         if (resource_compilation_passed) {
+            if (build_config->DisplayCommandLine) {
+                LogInfo("Compiler Command Line: %s\n", cmd_line.Data);
+            }
+
             LogInfo("Executing compilation\n");
             if (OsExecuteCommandLine(cmd_line)) {
                 LogInfo("Compilation succeeded\n\n");
                 if (lib.Size) {
+                    if (build_config->DisplayCommandLine) {
+                        LogInfo("Linker Command Line: %s\n", cmd_line.Data);
+                    }
+
                     LogInfo("Creating static library\n");
                     cmd_line = OutBuildStringSerial(&lib, compiler_config->Arena);
                     if (OsExecuteCommandLine(cmd_line)) {
