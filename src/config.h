@@ -84,6 +84,8 @@ typedef struct Compiler_Config {
 	String_List Defines;
 	String_List IncludeDirectories;
 
+	Out_Stream ResourceFile;
+
 	Uint32		Subsystem; // Subsystem_Kind 
 	String_List Libraries;
 	String_List LibraryDirectories;
@@ -168,6 +170,9 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 	{ StringExpand("IncludeDirectories"), Compiler_Config_Member_String_Array, offsetof(Compiler_Config, IncludeDirectories),
 	"List of directories to search for include files." },
 
+	{ StringExpand("ResourceFile"), Compiler_Config_Member_String, offsetof(Compiler_Config, ResourceFile),
+	"Resource file for embedding into executable. Only used in Windows operating system" },
+
 	{ StringExpand("Subsystem"), Compiler_Config_Member_Enum, offsetof(Compiler_Config, Subsystem),
 	"This property is only used in Windows. can be Console or Windows. Windows uses the win main entry point.", &SubsystemKindInfo },
 
@@ -201,6 +206,8 @@ static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberT
 	/*Build*/ true, /*BuildDirectory*/ true, /*Sources*/ true,
 	/*Flags*/ false,
 	/*Defines*/ true, /*IncludeDirectories*/ true,
+
+	/*ResourceFile*/ false,
 
 	/*Subsystem*/ false,
 	/*Libraries*/ true, /*LibraryDirectories*/ true,
@@ -339,6 +346,8 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 	StringListInit(&config->Flags);
 	StringListInit(&config->Defines);
 	StringListInit(&config->IncludeDirectories);
+
+	OutCreate(&config->ResourceFile, allocator);
 
 	config->Subsystem = Subsystem_Console;
 	StringListInit(&config->Libraries);

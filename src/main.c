@@ -275,6 +275,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
     }
 
     bool execute_postbuild = true;
+    Muda_Plugin_Config plugin_config;
+    memset(&plugin_config, 0, sizeof(plugin_config));
 
     if (compiler_config->Kind == Compile_Project) {
         LogInfo("Beginning compilation\n");
@@ -284,6 +286,9 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
         Out_Stream lib;
         OutCreate(&lib, MemoryArenaAllocator(compiler_config->Arena));
+
+        Out_Stream res;
+        OutCreate(&res, MemoryArenaAllocator(compiler_config->Arena));
 
         String build_dir = OutBuildStringSerial(&compiler_config->BuildDirectory, scratch);
         String build = OutBuildStringSerial(&compiler_config->Build, scratch);
@@ -349,6 +354,14 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                     OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
                 }
             }
+
+#if PLATFORM_OS_WINDOWS == 1
+            if (compiler_config->ResourceFile.Size) {
+                String resource_file = OutBuildStringSerial(&compiler_config->ResourceFile, scratch);
+                OutFormatted(&res, "rc -fo \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data, resource_file.Data);
+                OutFormatted(&out, "\"%s/%s.res\" ", build_dir.Data, build.Data);
+            }
+#endif
 
             ForList(String_List_Node, &compiler_config->Flags) {
                 ForListNode(&compiler_config->Flags, MAX_STRING_NODE_DATA_COUNT) {
@@ -422,7 +435,6 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
             LogInfo("Command Line: %s\n", cmd_line.Data);
         }
 
-        Muda_Plugin_Config plugin_config;
         plugin_config.Name = compiler_config->Name.Data;
         plugin_config.Build = build.Data;
         plugin_config.BuildDir = build_dir.Data;
@@ -432,30 +444,43 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Prebuild, &plugin_config);
 
         execute_postbuild = false;
-        LogInfo("Executing compilation\n");
-        if (OsExecuteCommandLine(cmd_line)) {
-            LogInfo("Compilation succeeded\n\n");
-            if (lib.Size) {
-                LogInfo("Creating static library\n");
-                cmd_line = OutBuildStringSerial(&lib, compiler_config->Arena);
-                if (OsExecuteCommandLine(cmd_line)) {
-                    LogInfo("Library creation succeeded\n\n");
-                    execute_postbuild = true;
+
+        bool resource_compilation_passed = true;
+        if (res.Size) {
+            LogInfo("Executing Resource compilation\n");
+            String resource_cmd_line = OutBuildStringSerial(&res, scratch);
+            if (OsExecuteCommandLine(resource_cmd_line)) {
+                LogInfo("Resource Compilation succeeded\n");
+            }
+            else {
+                LogInfo("Resource Compilation failed\n");
+                resource_compilation_passed = false;
+            }
+        }
+
+        if (resource_compilation_passed) {
+            LogInfo("Executing compilation\n");
+            if (OsExecuteCommandLine(cmd_line)) {
+                LogInfo("Compilation succeeded\n\n");
+                if (lib.Size) {
+                    LogInfo("Creating static library\n");
+                    cmd_line = OutBuildStringSerial(&lib, compiler_config->Arena);
+                    if (OsExecuteCommandLine(cmd_line)) {
+                        LogInfo("Library creation succeeded\n");
+                        execute_postbuild = true;
+                    }
+                    else {
+                        LogError("Library creation failed\n");
+                    }
                 }
                 else {
-                    LogError("Library creation failed\n\n");
+                    execute_postbuild = true;
                 }
             }
             else {
-                execute_postbuild = true;
+                LogError("Compilation failed\n\n");
             }
         }
-        else {
-            LogError("Compilation failed\n\n");
-        }
-
-        plugin_config.Succeeded = execute_postbuild;
-        build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Postbuild, &plugin_config);
     }
     else {
         Assert(compiler_config->Kind == Compile_Solution);
@@ -504,19 +529,22 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         MemoryArenaReset(dir_scratch);
     }
 
-	EndTemporaryMemory(&temp);
-
     if (execute_postbuild && compiler_config->Postbuild.Size) {
         LogInfo("==> Executing Postbuild command\n");
-        Temporary_Memory temp = BeginTemporaryMemory(scratch);
         String prebuild = OutBuildStringSerial(&compiler_config->Postbuild, scratch);
         if (!OsExecuteCommandLine(prebuild)) {
             LogError("Postbuild execution failed. \n\n");
             return;
         }
-        EndTemporaryMemory(&temp);
         LogInfo("Finished executing Postbuild command\n");
     }
+
+    if (compiler_config->Kind == Compile_Project) {
+        plugin_config.Succeeded = execute_postbuild;
+        build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Postbuild, &plugin_config);
+    }
+
+	EndTemporaryMemory(&temp);
 }
 
 void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config) {
