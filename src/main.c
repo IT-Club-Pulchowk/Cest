@@ -667,6 +667,20 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    if (build_config.DisableLogs)
+        ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
+
+    if (build_config.LogFilePath) {
+        File_Handle handle = OsFileOpen(StringMake(build_config.LogFilePath, strlen(build_config.LogFilePath)), File_Mode_Write);
+        if (handle.PlatformFileHandle) {
+            ThreadContext.LogAgent.Data = handle.PlatformFileHandle;
+            LogInfo("Logging to file: %s\n", build_config.LogFilePath);
+        }
+        else {
+            LogError("Could not open file: \"%s\" for logging. Logging to file disabled.\n");
+        }
+    }
+
     void *plugin = OsLibraryLoad(MudaPluginPath);
     if (plugin) {
         build_config.PluginHook = (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
@@ -678,9 +692,6 @@ int main(int argc, char *argv[]) {
             LogWarn("Plugin dectected by could not be loaded\n");
         }
     }
-
-    if (build_config.DisableLogs)
-        ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
 
     if (build_config.ForceCompiler) {
         if (compiler & build_config.ForceCompiler) {
@@ -717,6 +728,12 @@ int main(int argc, char *argv[]) {
 
     if (plugin) {
         OsLibraryFree(plugin);
+    }
+
+    if (ThreadContext.LogAgent.Data) {
+        File_Handle handle;
+        handle.PlatformFileHandle = ThreadContext.LogAgent.Data;
+        OsFileClose(handle);
     }
     
 	return 0;

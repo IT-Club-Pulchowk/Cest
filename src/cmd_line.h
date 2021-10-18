@@ -21,6 +21,7 @@ static bool OptOptimize(const char *program, const char *arg[], int count, Build
 static bool OptCmdline(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptNoLog(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptConfig(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
+static bool OptLog(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptHelp(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 
 static const Muda_Option Options[] = {
@@ -32,6 +33,7 @@ static const Muda_Option Options[] = {
     { StringExpand("cmdline"), "Displays the command line executed to build", "", OptCmdline, 0 },
     { StringExpand("nolog"), "Disables logging in the terminal", "", OptNoLog, 0 },
     { StringExpand("config"), "Specify default or configurations to use from the muda file.", "[configuration/s]", OptConfig, -255 },
+    { StringExpand("log"), "Log to the given file", "<file>", OptLog, 1 },
     { StringExpand("help"), "Muda description and list all the command", "[command/s]", OptHelp, -255 },
 };
 
@@ -276,6 +278,15 @@ static bool OptCmdline(const char *program, const char *arg[], int count, Build_
 
 static bool OptNoLog(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
     config->DisableLogs = true;
+    return false;
+}
+
+static bool OptLog(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
+    if (config->LogFilePath) {
+        LogError("Logging to more than one file not supported. Not logging to: \"%s\"\n", arg[0]);
+        return false;
+    }
+    config->LogFilePath = arg[0];
     return false;
 }
 

@@ -64,6 +64,8 @@ typedef struct Build_Config {
 	String Configurations[128];
 	Uint32 ConfigurationCount;
 
+	const char *LogFilePath;
+
 	Muda_Plugin_Interface Interface;
 	Muda_Event_Hook_Procedure PluginHook;
 } Build_Config;
@@ -245,6 +247,19 @@ INLINE_PROCEDURE void LogProcedure(void *agent, Log_Kind kind, const char *fmt, 
 	}
 	OsConsoleOutV(fp, fmt, list);
 	OsConsoleResetColor(fp);
+
+	if (agent) {
+		File_Handle handle;
+		handle.PlatformFileHandle = agent;
+
+		if (kind == Log_Kind_Info)
+			OsFileWriteF(handle, "%-10s", "[Log] ");
+		else if (kind == Log_Kind_Error)
+			OsFileWriteF(handle, "%-10s", "[Error] ");
+		else if (kind == Log_Kind_Warn)
+			OsFileWriteF(handle, "%-10s", "[Warning] ");
+		OsFileWriteFV(handle, fmt, list);
+	}
 }
 
 INLINE_PROCEDURE void LogProcedureDisabled(void *agent, Log_Kind kind, const char *fmt, va_list list) {
@@ -309,6 +324,8 @@ INLINE_PROCEDURE void BuildConfigInit(Build_Config *build_config) {
 	build_config->DisplayCommandLine = false;
 	build_config->DisableLogs = false;
 	build_config->ConfigurationCount = 0;
+
+	build_config->LogFilePath = NULL;
 
 	build_config->Interface.GetThreadScratchpad = MudaPluginInterface_GetThreadScratchpad;
 	build_config->Interface.PushSize = MudaPluginInterface_PushSize;
