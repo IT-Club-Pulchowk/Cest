@@ -718,6 +718,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         }
 		
         MemoryArenaReset(dir_scratch);
+
+        compiler_config->Kind = Compile_Solution;
     }
 	
     if (execute_postbuild && compiler_config->Postbuild.Size) {
