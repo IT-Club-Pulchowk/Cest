@@ -78,6 +78,10 @@ typedef struct Temporary_Memory {
 #define MUDA_PLUGIN_INTERFACE 
 #endif
 
+#define BUILD_KIND_EXECUTABLE		0
+#define BUILD_KIND_STATIC_LIBRARY	1
+#define BUILD_KIND_DYNAMIC_LIBRARY	2
+
 typedef enum Muda_Plugin_Event_Kind {
 	Muda_Plugin_Event_Kind_Detection,
 	Muda_Plugin_Event_Kind_Prebuild,
@@ -85,16 +89,13 @@ typedef enum Muda_Plugin_Event_Kind {
 	Muda_Plugin_Event_Kind_Destroy
 } Muda_Plugin_Event_Kind;
 
-#define MUDA_PLUGIN_INIT_MUDA_FILE    0x1
-#define MUDA_PLUGIN_INIT_MUDA_GLOBAL  0x2
-#define MUDA_PLUGIN_INIT_MUDA_PARENT  0x3
-#define MUDA_PLUGIN_INIT_MUDA_DEFAULT 0x8
-
 typedef struct Muda_Plugin_Config {
 	const char *Name;
 	const char *Build;
+	const char *BuildExtension;
 	const char *BuildDir;
 	const char *MudaDir;
+	uint32_t	BuildKind;
 	uint32_t	Succeeded;
 } Muda_Plugin_Config;
 

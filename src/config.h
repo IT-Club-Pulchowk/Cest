@@ -38,9 +38,9 @@ static const String LanguageKindId[] = {
 };
 
 typedef enum Application_Kind {
-	Application_Executable,
-	Application_Static_Library,
-	Application_Dynamic_Library
+	Application_Executable = 0,
+	Application_Static_Library = 1,
+	Application_Dynamic_Library = 2
 } Application_Kind;
 
 static const String ApplicationKindId[] = {
@@ -66,6 +66,7 @@ typedef struct Build_Config {
 
 	const char *LogFilePath;
 
+	bool EnablePlugins;
 	Muda_Plugin_Interface Interface;
 	Muda_Event_Hook_Procedure PluginHook;
 } Build_Config;
@@ -78,6 +79,7 @@ typedef struct Compiler_Config {
 	Uint32 Application; // Application_Kind 
 
 	bool Optimization;
+	bool DebugSymbol;
 
 	Out_Stream  Build;
 	Out_Stream  BuildDirectory;
@@ -154,6 +156,9 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 	{ StringExpand("Optimization"), Compiler_Config_Member_Bool, offsetof(Compiler_Config, Optimization),
 	"Use optimization while compiling or not (true/false)" },
 
+	{ StringExpand("DebugSymbol"), Compiler_Config_Member_Bool, offsetof(Compiler_Config, DebugSymbol),
+	"Generate debug symbols while compiling or not (true/false)" },
+
 	{ StringExpand("Build"), Compiler_Config_Member_String, offsetof(Compiler_Config, Build),
 	"Name of the output binary." },
 
@@ -203,7 +208,7 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberTypeInfo)] = {
 	/*Kind*/ false, /*Language*/ false, /*Application*/ false,
 
-	/*Optimization*/ false,
+	/*Optimization*/ false, /*DebugSymbol*/ false,
 
 	/*Build*/ true, /*BuildDirectory*/ true, /*Sources*/ true,
 	/*Flags*/ false,
@@ -227,10 +232,6 @@ static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberT
 INLINE_PROCEDURE void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
 	OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
 	TriggerBreakpoint();
-}
-
-INLINE_PROCEDURE void DeprecateHandle(const char *reason, const char *file, int line, const char *proc) {
-	OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d. %s\n", proc, file, line, reason);
 }
 
 INLINE_PROCEDURE void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {
@@ -338,6 +339,7 @@ INLINE_PROCEDURE void BuildConfigInit(Build_Config *build_config) {
 	build_config->Interface.LogError = MudaPluginInterface_LogError;
 	build_config->Interface.FatalError = MudaPluginInterface_FatalError;
 
+	build_config->EnablePlugins = true;
 	build_config->Interface.PluginName = "-unnamed-";
 	build_config->Interface.UserContext = NULL;
 
@@ -356,6 +358,7 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 	config->Application = Application_Executable;
 
 	config->Optimization = false;
+	config->DebugSymbol = true;
 
 	OutCreate(&config->Build, allocator);
 	OutCreate(&config->BuildDirectory, allocator);

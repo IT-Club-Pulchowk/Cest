@@ -232,6 +232,9 @@ typedef struct Directory_Iteration_Context {
 
 static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, void *user_context) {
     if ((info->Atribute & File_Attribute_Directory) && !(info->Atribute & File_Attribute_Hidden)) {
+        if (StrMatch(info->Name, StringLiteral(".muda")))
+            return Directory_Iteration_Continue;
+
         Directory_Iteration_Context *context = (Directory_Iteration_Context *)user_context;
 		
         String_List *ignore = context->Ignore;
@@ -254,10 +257,10 @@ static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, voi
     return Directory_Iteration_Continue;
 }
 
-void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler);
-void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config);
+void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler, const char *parent);
+void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent);
 
-void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler) {
+void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler, const char *parent) {
     Memory_Arena *scratch = ThreadScratchpad();
 	
     Temporary_Memory temp = BeginTemporaryMemory(scratch);
@@ -333,28 +336,31 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         }
 		
         switch (compiler) {
-			case Compiler_Bit_CL: {
-				OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
-				OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-Od");
-				
-				ForList(String_List_Node, &compiler_config->Defines) {
-					ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-						OutFormatted(&out, "-D%s ", it->Data[index].Data);
-					}
-				}
-				
-				ForList(String_List_Node, &compiler_config->IncludeDirectories) {
-					ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-						OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
-					}
-				}
-				
-				ForList(String_List_Node, &compiler_config->Sources) {
-					ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-						OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
-					}
-				}
-				
+        case Compiler_Bit_CL: {
+            OutFormatted(&out, "cl -nologo -EHsc -W3 ");
+            OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-Od");
+
+            if (compiler_config->DebugSymbol) {
+                OutFormatted(&out, "-Zi ");
+            }
+
+            ForList(String_List_Node, &compiler_config->Defines) {
+                ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(&out, "-D%s ", it->Data[index].Data);
+                }
+            }
+
+            ForList(String_List_Node, &compiler_config->IncludeDirectories) {
+                ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+                }
+            }
+
+            ForList(String_List_Node, &compiler_config->Sources) {
+                ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
+                    OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+                }
+            }
 #if PLATFORM_OS_WINDOWS == 1
 				if (compiler_config->ResourceFile.Size) {
 					String resource_file = OutBuildStringSerial(&compiler_config->ResourceFile, scratch);
@@ -421,11 +427,12 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 			} break;
 			
 			case Compiler_Bit_CLANG: {
-				if(compiler_config->Language == 1) //Clang for C
-					OutFormatted(&out, "clang ");
-				if(compiler_config->Language == 0) //Clang for C++
-					OutFormatted(&out, "clang++ ");
-				OutFormatted(&out, "-Wall -gcodeview ");
+                OutFormatted(&out, "%s -Wall ", compiler_config->Language ? "clang" : "clang++");
+                
+                if (compiler_config->DebugSymbol) {
+                    OutFormatted(&out, "-g -gcodeview ");
+                }
+
 				OutFormatted(&out, "%s ", compiler_config->Optimization ? "--optimize" : "--debug");
 				
 				ForList(String_List_Node, &compiler_config->Defines) {
@@ -510,11 +517,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 			} break;
 			
 			case Compiler_Bit_GCC: {
-				if(compiler_config->Language == 1) //gcc for C
-					OutFormatted(&out, "g ");
-				if(compiler_config->Language == 0) //g++ for C++
-					OutFormatted(&out, "g++ ");
-				OutFormatted(&out, "-Wall ");
+				OutFormatted(&out, "%s -Wall ", compiler_config->Language ? "gcc" : "g++");
 				OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-O");
 				
 				ForList(String_List_Node, &compiler_config->Defines) {
@@ -597,9 +600,28 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         plugin_config.Name = compiler_config->Name.Data;
         plugin_config.Build = build.Data;
         plugin_config.BuildDir = build_dir.Data;
-        plugin_config.MudaDir = ".";
+        plugin_config.MudaDir = (parent ? parent : ".");
         plugin_config.Succeeded = false;
-		
+        plugin_config.BuildKind = compiler_config->Application;
+
+#if PLATFORM_OS_WINDOWS == 1
+        if (compiler_config->Application == Application_Executable)
+            plugin_config.BuildExtension = "exe";
+        else if (compiler_config->Application == Application_Dynamic_Library)
+            plugin_config.BuildExtension = "dll";
+        else
+            plugin_config.BuildExtension = "lib";
+#elif PLATFORM_OS_LINUX
+        if (compiler_config->Application == Application_Executable)
+            plugin_config.BuildExtension = "out";
+        else if (compiler_config->Application == Application_Dynamic_Library)
+            plugin_config.BuildExtension = "so";
+        else
+            plugin_config.BuildExtension = "a";
+#else
+#error "Unimplemented"
+#endif
+
         build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Prebuild, &plugin_config);
 		
         execute_postbuild = false;
@@ -685,7 +707,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 LogInfo("==> Executing Muda Build in \"%s\" \n", it->Data[index].Data);
                 if (OsSetWorkingDirectory(it->Data[index])) {
                     Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
-                    SearchExecuteMudaBuild(arena, build_config, compiler, compiler_config);
+                    SearchExecuteMudaBuild(arena, build_config, compiler, compiler_config, it->Data[index].Data);
                     EndTemporaryMemory(&arena_temp);
                     if (!OsSetWorkingDirectory(StringLiteral(".."))) {
                         LogError("Could not set the original directory as the working directory! Aborted.\n");
@@ -719,7 +741,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 	EndTemporaryMemory(&temp);
 }
 
-void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config) {
+void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent) {
     Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
 	
     Compiler_Config_List *configs = (Compiler_Config_List *)PushSize(arena, sizeof(Compiler_Config_List));
@@ -787,7 +809,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
                 Compiler_Config *config = &it->Config[index];
                 LogInfo("==> Building Configuration: %s \n", config->Name.Data);
                 PushDefaultCompilerConfig(config, config->Kind == Compile_Project);
-                ExecuteMudaBuild(config, build_config, compiler);
+                ExecuteMudaBuild(config, build_config, compiler, parent);
             }
         }
     }
@@ -808,7 +830,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
             if (config) {
                 LogInfo("==> Building Configuration: %s \n", config->Name.Data);
                 PushDefaultCompilerConfig(config, config->Kind == Compile_Project);
-                ExecuteMudaBuild(config, build_config, compiler);
+                ExecuteMudaBuild(config, build_config, compiler, parent);
             }
             else {
                 LogError("Configuration \"%s\" not found. Ignored.\n", required_config.Data);
@@ -852,16 +874,19 @@ int main(int argc, char *argv[]) {
             LogError("Could not open file: \"%s\" for logging. Logging to file disabled.\n");
         }
     }
-	
-    void *plugin = OsLibraryLoad(MudaPluginPath);
-    if (plugin) {
-        build_config.PluginHook = (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
-        if (build_config.PluginHook) {
-            build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Detection, NULL);
-            LogInfo("Plugin detected. Name: %s\n", build_config.Interface.PluginName);
-        }
-        else {
-            LogWarn("Plugin dectected by could not be loaded\n");
+
+    void *plugin = NULL;
+    if (build_config.EnablePlugins) {
+        plugin = OsLibraryLoad(MudaPluginPath);
+        if (plugin) {
+            build_config.PluginHook = (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
+            if (build_config.PluginHook) {
+                build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Detection, NULL);
+                LogInfo("Plugin detected. Name: %s\n", build_config.Interface.PluginName);
+            }
+            else {
+                LogWarn("Plugin dectected by could not be loaded\n");
+            }
         }
     }
 	
@@ -893,19 +918,19 @@ int main(int argc, char *argv[]) {
     }
 	
     Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
-	
-    SearchExecuteMudaBuild(&arena, &build_config, compiler, NULL);
-	
+
+    SearchExecuteMudaBuild(&arena, &build_config, compiler, NULL, NULL);
+
     build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Destroy, NULL);
-	
-    if (plugin) {
-        OsLibraryFree(plugin);
-    }
-	
+
     if (ThreadContext.LogAgent.Data) {
         File_Handle handle;
         handle.PlatformFileHandle = ThreadContext.LogAgent.Data;
         OsFileClose(handle);
+    }
+
+    if (plugin) {
+        OsLibraryFree(plugin);
     }
     
 	return 0;

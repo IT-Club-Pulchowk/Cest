@@ -1,23 +1,23 @@
 @version 1.0.0
 
-Kind               : Project;
-Application        : Executable;
-Optimization       : False;
-
-Build              : bootstrap;
-BuildDirectory     : ./bin;
-Sources            : src/build.c;
-Flags              : ;
-
-Defines            : ASSERTION_HANDLED DEPRECATION_HANDLED;
-
-IncludeDirectories : ;
-Libraries          : ;
-LibraryDirectories : ;
-LinkerFlags        : ;
-
-:COMPILER.CL
-Defines            :  _CRT_SECURE_NO_WARNINGS;
+# Kind               : Project;
+# Application        : Executable;
+# Optimization       : False;
+# 
+# Build              : bootstrap;
+# BuildDirectory     : ./bin;
+# Sources            : src/build.c;
+# Flags              : ;
+# 
+# Defines            : ASSERTION_HANDLED;
+# 
+# IncludeDirectories : ;
+# Libraries          : ;
+# LibraryDirectories : ;
+# LinkerFlags        : ;
+# 
+# :COMPILER.CL
+# Defines            :  _CRT_SECURE_NO_WARNINGS;
 
 [Plugin]
 Kind               : Project;
@@ -39,7 +39,7 @@ Sources            : plugin/muda_plug.c;
 # Sources            : src/build.c;
 # Flags              : ;
 # 
-# Defines            : ASSERTION_HANDLED DEPRECATION_HANDLED;
+# Defines            : ASSERTION_HANDLED;
 # 
 # IncludeDirectories : ;
 # Libraries          : ;
