@@ -1,4 +1,5 @@
-﻿#include "os.h"
+﻿
+#include "os.h"
 #include "zBase.h"
 #include "stream.h"
 #include "muda_parser.h"
@@ -23,194 +24,206 @@ void MudaParseStateInit(Muda_Parse_State *state) {
 }
 
 void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Kind compiler) {
-	Memory_Arena *scratch = ThreadScratchpad();
+  Memory_Arena *scratch = ThreadScratchpad();
     
-    Muda_Parser prsr = MudaParseInit(data);
+  Muda_Parser prsr = MudaParseInit(data);
 
-    Uint32 version = 0;
-    Uint32 major = 0, minor = 0, patch = 0;
+  Uint32 version = 0;
+  Uint32 major = 0, minor = 0, patch = 0;
 
-    while (MudaParseNext(&prsr))
-        if (prsr.Token.Kind != Muda_Token_Comment) break;
+  while (MudaParseNext(&prsr))
+    if (prsr.Token.Kind != Muda_Token_Comment) break;
 
-    if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
-        if (prsr.Token.Data.Tag.Value.Data) {
-            if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3)
-                FatalError("Error: Bad file version\n");
-        }
-        else 
-            FatalError("Error: Version info missing\n");
+  if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
+    if (prsr.Token.Data.Tag.Value.Data) {
+      if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3)
+	FatalError("Error: Bad file version\n");
     }
     else 
-        FatalError("Error: Version tag missing at top of file\n");
+      FatalError("Error: Version info missing\n");
+  }
+  else 
+    FatalError("Error: Version tag missing at top of file\n");
 
-	version = MudaMakeVersion(major, minor, patch);
+  version = MudaMakeVersion(major, minor, patch);
 
-	if (version < MUDA_BACKWARDS_COMPATIBLE_VERSION || version > MUDA_CURRENT_VERSION) {
-		String error = FmtStr(scratch, "Version %u.%u.%u not supported. \n"
-			"Minimum version supported: %u.%u.%u\n"
-			"Current version: %u.%u.%u\n\n",
-			major, minor, patch,
-			MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR,
-			MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR,
-			MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH,
-			MUDA_VERSION_MAJOR,
-			MUDA_VERSION_MINOR,
-			MUDA_VERSION_PATCH);
-		FatalError(error.Data);
-	}
+  if (version < MUDA_BACKWARDS_COMPATIBLE_VERSION || version > MUDA_CURRENT_VERSION) {
+    String error = FmtStr(scratch, "Version %u.%u.%u not supported. \n"
+			  "Minimum version supported: %u.%u.%u\n"
+			  "Current version: %u.%u.%u\n\n",
+			  major, minor, patch,
+			  MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR,
+			  MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR,
+			  MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH,
+			  MUDA_VERSION_MAJOR,
+			  MUDA_VERSION_MINOR,
+			  MUDA_VERSION_PATCH);
+    FatalError(error.Data);
+  }
 
-    Muda_Parse_State state;
-    MudaParseStateInit(&state);
+  Muda_Parse_State state;
+  MudaParseStateInit(&state);
 
-    bool first_config_name = true;
-    Compiler_Config *config = CompilerConfigListAdd(config_list, StringLiteral("default"));
+  bool first_config_name = true;
+  Compiler_Config *config = CompilerConfigListAdd(config_list, StringLiteral("default"));
 
-    while (MudaParseNext(&prsr)) {
-        switch (prsr.Token.Kind) {
-            case Muda_Token_Config: {
-                if (first_config_name) {
-                    config->Name = StrDuplicateArena(prsr.Token.Data.Config, config->Arena);
-                    first_config_name = false;
-                }
-                else {
-                    config = CompilerConfigListFindOrAdd(config_list, prsr.Token.Data.Config);
-                }
-            } break;
+  while (MudaParseNext(&prsr)) {
+    switch (prsr.Token.Kind) {
+    case Muda_Token_Config: {
+      if (first_config_name) {
+	config->Name = StrDuplicateArena(prsr.Token.Data.Config, config->Arena);
+	first_config_name = false;
+      }
+      else {
+	config = CompilerConfigListFindOrAdd(config_list, prsr.Token.Data.Config);
+      }
+    } break;
 
-            case Muda_Token_Section: {
-                if (StrMatchCaseInsensitive(StringLiteral("OS.ALL"), prsr.Token.Data.Section))
-                    state.OS = Muda_Parsing_OS_None;
-                else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
-                    state.OS = Muda_Parsing_OS_Windows;
-                else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX"), prsr.Token.Data.Section))
-                    state.OS = Muda_Parsing_OS_Linux;
-                else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC"), prsr.Token.Data.Section))
-                    state.OS = Muda_Parsing_OS_Mac;
-                else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.ALL"), prsr.Token.Data.Section))
-                    state.Compiler = 0;
-                else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CL"), prsr.Token.Data.Section))
-                    state.Compiler = Compiler_Bit_CL;
-                else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CLANG"), prsr.Token.Data.Section))
-                    state.Compiler = Compiler_Bit_CLANG;
-                else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.GCC"), prsr.Token.Data.Section))
-                    state.Compiler = Compiler_Bit_GCC;
-                else {
-                    // TODO: Print line and column number in the error
-                    String error = FmtStr(scratch, "Unknown Section: %s\n", prsr.Token.Data);
-                    FatalError(error.Data);
-                }
-            } break;
+    case Muda_Token_Section: {
+      if (StrMatchCaseInsensitive(StringLiteral("OS.ALL"), prsr.Token.Data.Section))
+	state.OS = Muda_Parsing_OS_None;
+      else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
+	state.OS = Muda_Parsing_OS_Windows;
+      else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX"), prsr.Token.Data.Section))
+	state.OS = Muda_Parsing_OS_Linux;
+      else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC"), prsr.Token.Data.Section))
+	state.OS = Muda_Parsing_OS_Mac;
+      else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.ALL"), prsr.Token.Data.Section))
+	state.Compiler = 0;
+      else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CL"), prsr.Token.Data.Section))
+	state.Compiler = Compiler_Bit_CL;
+      else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CLANG"), prsr.Token.Data.Section))
+	state.Compiler = Compiler_Bit_CLANG;
+      else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.GCC"), prsr.Token.Data.Section))
+	state.Compiler = Compiler_Bit_GCC;
+      else {
+	// TODO: Print line and column number in the error
+	String error = FmtStr(scratch, "Unknown Section: %s\n", prsr.Token.Data);
+	FatalError(error.Data);
+      }
+    } break;
 
-            case Muda_Token_Property: {
-                first_config_name = false;
+    case Muda_Token_Property: {
+      first_config_name = false;
 
-                bool reject_os = !(state.OS == Muda_Parsing_OS_None || (PLATFORM_OS_WINDOWS && state.OS == Muda_Parsing_OS_Windows) ||
-                    (PLATFORM_OS_LINUX && state.OS == Muda_Parsing_OS_Linux) ||
-                    (PLATFORM_OS_MAC && state.OS == Muda_Parsing_OS_Mac));
+      bool reject_os = !(state.OS == Muda_Parsing_OS_None || (PLATFORM_OS_WINDOWS && state.OS == Muda_Parsing_OS_Windows) ||
+			 (PLATFORM_OS_LINUX && state.OS == Muda_Parsing_OS_Linux) ||
+			 (PLATFORM_OS_MAC && state.OS == Muda_Parsing_OS_Mac));
                 
-                if (reject_os || (state.Compiler != 0 && compiler != state.Compiler)) break;
+      if (reject_os || (state.Compiler != 0 && compiler != state.Compiler)) break;
 
-                bool property_found = false;
+      bool property_found = false;
 
-                Muda_Token *token = &prsr.Token;
-                for (Uint32 index = 0; index < ArrayCount(CompilerConfigMemberTypeInfo); ++index) {
-                    const Compiler_Config_Member *const info = &CompilerConfigMemberTypeInfo[index];
-                    if (StrMatch(info->Name, token->Data.Property.Key)) {
-                        property_found = true;
+      Muda_Token *token = &prsr.Token;
 
-                        switch (info->Kind) {
-                            case Compiler_Config_Member_Enum: {
-                                Enum_Info *en = (Enum_Info *)info->KindInfo;
+      if (token->Data.Property.Count != 0)
+      {
+	for (Uint32 index = 0; index < ArrayCount(CompilerConfigMemberTypeInfo); ++index) {
+	  const Compiler_Config_Member *const info = &CompilerConfigMemberTypeInfo[index];
+	  if (StrMatch(info->Name, token->Data.Property.Key)) {
+	    property_found = true;
 
-                                bool found = false;
-                                for (Uint32 index = 0; index < en->Count; ++index) {
-                                    if (StrMatch(en->Ids[index], token->Data.Property.Value)) {
-                                        Uint32 *in = (Uint32 *)((char *)config + info->Offset);
-                                        *in = index;
-                                        found = true;
-                                        break;
-                                    }
-                                }
+	    switch (info->Kind) {
+	    case Compiler_Config_Member_Enum: {
+	      Enum_Info *en = (Enum_Info *)info->KindInfo;
 
-                                if (!found) {
-                                    Out_Stream out;
-                                    Memory_Allocator allocator = MemoryArenaAllocator(scratch);
-                                    OutCreate(&out, allocator);
+	      bool found = false;
+	      for (Uint32 index = 0; index < en->Count; ++index) {
+		if (StrMatch(en->Ids[index], *token->Data.Property.Value)) {
+		  Uint32 *in = (Uint32 *)((char *)config + info->Offset);
+		  *in = index;
+		  found = true;
+		  break;
+		}
+	      }
 
-                                    Temporary_Memory temp = BeginTemporaryMemory(scratch);
+	      if (!found) {
+		Out_Stream out;
+		Memory_Allocator allocator = MemoryArenaAllocator(scratch);
+		OutCreate(&out, allocator);
 
-                                    for (Uint32 index = 0; index < en->Count; ++index) {
-                                        OutString(&out, en->Ids[index]);
-                                        OutBuffer(&out, ", ", 2);
-                                    }
+		Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
-                                    String accepted_values = OutBuildString(&out, &allocator);
+		for (Uint32 index = 0; index < en->Count; ++index) {
+		  OutString(&out, en->Ids[index]);
+		  OutBuffer(&out, ", ", 2);
+		}
 
-                                    // TODO: Print line and column number in the error
-                                    LogWarn("Invalid value for Property \"%s\" : %s. Acceptable values are: %s\n",
-                                        info->Name.Data, token->Data.Property.Value.Data, accepted_values);
+		String accepted_values = OutBuildString(&out, &allocator);
 
-                                    EndTemporaryMemory(&temp);
-                                }
-                            } break;
+		// TODO: Print line and column number in the error
+		LogWarn("Invalid value for Property \"%s\" : %s. Acceptable values are: %s\n",
+			info->Name.Data, token->Data.Property.Value->Data, accepted_values);
 
-                            case Compiler_Config_Member_Bool: {
-                                bool *in = (bool *)((char *)config + info->Offset);
+		EndTemporaryMemory(&temp);
+	      }
+	    } break;
 
-                                if (StrMatch(StringLiteral("1"), token->Data.Property.Value) ||
-                                    StrMatch(StringLiteral("True"), token->Data.Property.Value)) {
-                                    *in = true;
-                                }
-                                else if (StrMatch(StringLiteral("0"), token->Data.Property.Value) ||
-                                    StrMatch(StringLiteral("False"), token->Data.Property.Value)) {
-                                    *in = false;
-                                }
-                                else {
-                                    // TODO: Print line and column number in the error
-                                    String error = FmtStr(scratch, "Expected boolean: %s\n", prsr.Token.Data);
-                                    FatalError(error.Data);
-                                }
-                            } break;
+	    case Compiler_Config_Member_Bool: {
+	      bool *in = (bool *)((char *)config + info->Offset);
 
-                            case Compiler_Config_Member_String: {
-                                Out_Stream *in = (Out_Stream *)((char *)config + info->Offset);
-                                OutReset(in);
-                                OutString(in, token->Data.Property.Value);
-                            } break;
+	      if (StrMatch(StringLiteral("1"),*token->Data.Property.Value) ||
+		  StrMatch(StringLiteral("True"), *token->Data.Property.Value)) {
+		*in = true;
+	      }
+	      else if (StrMatch(StringLiteral("0"), *token->Data.Property.Value) ||
+		       StrMatch(StringLiteral("False"), *token->Data.Property.Value)) {
+		*in = false;
+	      }
+	      else {
+		// TODO: Print line and column number in the error
+		String error = FmtStr(scratch, "Expected boolean: %s\n", prsr.Token.Data);
+		FatalError(error.Data);
+	      }
+	    } break;
 
-                            case Compiler_Config_Member_String_Array: {
-                                String_List *in = (String_List *)((char *)config + info->Offset);
-                                ReadList(in, token->Data.Property.Value, -1, config->Arena);
-                            } break;
+	    case Compiler_Config_Member_String: {
+	      Out_Stream *in = (Out_Stream *)((char *)config + info->Offset);
+	      OutReset(in);
+	      OutString(in, *token->Data.Property.Value);
+	    } break;
 
-                            NoDefaultCase();
-                        }
+	    case Compiler_Config_Member_String_Array: {
+	      // String_List *in = (String_List *)((char *)config + info->Offset);
+	      // ReadList(in, *token->Data.Property.Value, -1, config->Arena);
+	      String_List *in = (String_List*) ((char *)config + info->Offset);
+	      for (int i = 0; i < prsr.Token.Data.Property.Count; ++i) {
+		StringListAdd(in,StrDuplicateArena(prsr.Token.Data.Property.Value[i],config->Arena),config->Arena);
+	      }
+	      if(prsr.Token.Data.Property.Count != 0)
+		free(prsr.Token.Data.Property.Value);
+	    } break;
 
-                        break;
-                    }
-                }
+	      NoDefaultCase();
+	    }
 
-                if (!property_found) {
-                    // TODO: Print line and column number in the error
-                    LogWarn("Invalid Property \"%s\". Ignored.\n", token->Data.Property.Key.Data);
-                }
-            } break;
+	    break;
+	  }
+	}
+      }
+      else
+	property_found = true;
+      
+      if (!property_found) {
+	// TODO: Print line and column number in the error
+	LogWarn("Invalid Property \"%s\". Ignored.\n", token->Data.Property.Key.Data);
+      }
+    } break;
 
-            case Muda_Token_Comment: {
-                // ignored
-            } break;
+    case Muda_Token_Comment: {
+      // ignored
+    } break;
 
-            case Muda_Token_Tag: {
-                Unimplemented();
-            } break;
-        }
+    case Muda_Token_Tag: {
+      Unimplemented();
+    } break;
     }
+  }
 
-    if (prsr.Token.Kind == Muda_Token_Error) {
-        String errmsg = FmtStr(scratch, "%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
-        FatalError(errmsg.Data);
-    }
+  if (prsr.Token.Kind == Muda_Token_Error) {
+    String errmsg = FmtStr(scratch, "%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
+    FatalError(errmsg.Data);
+  }
 }
 
 const char *GetCompilerName(Compiler_Kind kind) {
