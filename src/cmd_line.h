@@ -203,15 +203,15 @@ static bool OptSetup(const char *program, const char *arg[], int count, Build_Co
     String post_value = StringLiteral(
         ":OS.WINDOWS\n"
         "# Place values specific to windows here\n\n"
-        ": OS.LINUX\n"
+        ":OS.LINUX\n"
         "# Place values specific to linux here\n\n"
-        ": OS.MAC\n"
+        ":OS.MAC\n"
         "#Place values specific to mac here\n\n"
-        ": COMPILER.CL\n"
+        ":COMPILER.CL\n"
         "#Place values specific to MSVC compiler here\n\n"
         ": COMPILER.CLANG\n"
         "#Place values specific to CLANG compiler here\n\n"
-        ": COMPILER.GCC\n"
+        ":COMPILER.GCC\n"
         "#Place values specific to GC compiler here\n\n"
     );
 

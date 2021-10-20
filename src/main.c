@@ -1,4 +1,5 @@
-﻿#include "os.h"
+﻿
+#include "os.h"
 #include "zBase.h"
 #include "stream.h"
 #include "muda_parser.h"
@@ -25,7 +26,9 @@ void MudaParseStateInit(Muda_Parse_State *state) {
 void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Kind compiler) {
 	Memory_Arena *scratch = ThreadScratchpad();
     
-    Muda_Parser prsr = MudaParseInit(data);
+  Compiler_Config *config = CompilerConfigListAdd(config_list, StringLiteral("default"));
+
+  Muda_Parser prsr = MudaParseInit(data,config->Arena);
 	
     Uint32 version = 0;
     Uint32 major = 0, minor = 0, patch = 0;
@@ -61,10 +64,12 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
 	}
 	
     Muda_Parse_State state;
-    MudaParseStateInit(&state);
+
 	
     bool first_config_name = true;
-    Compiler_Config *config = CompilerConfigListAdd(config_list, StringLiteral("default"));
+
+
+  MudaParseStateInit(&state);
 	
     while (MudaParseNext(&prsr)) {
         switch (prsr.Token.Kind) {
@@ -114,6 +119,9 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
                 bool property_found = false;
 				
                 Muda_Token *token = &prsr.Token;
+
+      if (token->Data.Property.Count != 0)
+      {
                 for (Uint32 index = 0; index < ArrayCount(CompilerConfigMemberTypeInfo); ++index) {
                     const Compiler_Config_Member *const info = &CompilerConfigMemberTypeInfo[index];
                     if (StrMatch(info->Name, token->Data.Property.Key)) {
@@ -125,7 +133,7 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
 								
                                 bool found = false;
                                 for (Uint32 index = 0; index < en->Count; ++index) {
-                                    if (StrMatch(en->Ids[index], token->Data.Property.Value)) {
+		if (StrMatch(en->Ids[index], *token->Data.Property.Value)) {
                                         Uint32 *in = (Uint32 *)((char *)config + info->Offset);
                                         *in = index;
                                         found = true;
@@ -149,7 +157,7 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
 									
                                     // TODO: Print line and column number in the error
                                     LogWarn("Invalid value for Property \"%s\" : %s. Acceptable values are: %s\n",
-											info->Name.Data, token->Data.Property.Value.Data, accepted_values);
+			info->Name.Data, token->Data.Property.Value->Data, accepted_values);
 									
                                     EndTemporaryMemory(&temp);
                                 }
@@ -158,12 +166,12 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
                             case Compiler_Config_Member_Bool: {
                                 bool *in = (bool *)((char *)config + info->Offset);
 								
-                                if (StrMatch(StringLiteral("1"), token->Data.Property.Value) ||
-                                    StrMatch(StringLiteral("True"), token->Data.Property.Value)) {
+	      if (StrMatch(StringLiteral("1"),*token->Data.Property.Value) ||
+		  StrMatch(StringLiteral("True"), *token->Data.Property.Value)) {
                                     *in = true;
                                 }
-                                else if (StrMatch(StringLiteral("0"), token->Data.Property.Value) ||
-										 StrMatch(StringLiteral("False"), token->Data.Property.Value)) {
+	      else if (StrMatch(StringLiteral("0"), *token->Data.Property.Value) ||
+		       StrMatch(StringLiteral("False"), *token->Data.Property.Value)) {
                                     *in = false;
                                 }
                                 else {
@@ -176,12 +184,19 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
                             case Compiler_Config_Member_String: {
                                 Out_Stream *in = (Out_Stream *)((char *)config + info->Offset);
                                 OutReset(in);
-                                OutString(in, token->Data.Property.Value);
+	      OutString(in, *token->Data.Property.Value);
                             } break;
 							
                             case Compiler_Config_Member_String_Array: {
-                                String_List *in = (String_List *)((char *)config + info->Offset);
-                                ReadList(in, token->Data.Property.Value, -1, config->Arena);
+	      // String_List *in = (String_List *)((char *)config + info->Offset);
+	      // ReadList(in, *token->Data.Property.Value, -1, config->Arena);
+	      String_List *in = (String_List*) ((char *)config + info->Offset);
+	      for (int i = 0; i < prsr.Token.Data.Property.Count; ++i) {
+		StringListAdd(in,prsr.Token.Data.Property.Value[i],config->Arena);
+	      }
+	      
+	      /* if(prsr.Token.Data.Property.Count != 0) */
+	      /* 	free(prsr.Token.Data.Property.Value); */
                             } break;
 							
                             NoDefaultCase();
@@ -190,6 +205,9 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
                         break;
                     }
                 }
+      }
+      else
+	property_found = true;
 				
                 if (!property_found) {
                     // TODO: Print line and column number in the error
@@ -352,13 +370,13 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 				
 				ForList(String_List_Node, &compiler_config->IncludeDirectories) {
 					ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-						OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+		  OutFormatted(&out, "-I\"%.*s\" ", it->Data[index].Length,it->Data[index].Data);
 					}
 				}
 				
 				ForList(String_List_Node, &compiler_config->Sources) {
 					ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-						OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+		  OutFormatted(&out, "\"%.*s\" ", it->Data[index].Length,it->Data[index].Data);
 					}
 				}
 #if PLATFORM_OS_WINDOWS == 1
@@ -765,9 +783,6 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
     if (config_path.Length) {
         LogInfo("Found muda configuration file: \"%s\"\n", config_path.Data);
 		
-        Memory_Arena *scratch = ThreadScratchpad();
-        Temporary_Memory temp = BeginTemporaryMemory(scratch);
-		
         File_Handle fp = OsFileOpen(config_path, File_Mode_Read);
         if (fp.PlatformFileHandle) {
             Ptrsize size = OsFileGetSize(fp);
@@ -779,7 +794,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
                 return;
             }
 			
-            Uint8 *buffer = PushSize(scratch, size + 1);
+            Uint8 *buffer = PushSize(configs->Arena, size + 1);
             if (OsFileRead(fp, buffer, size) && size > 0) {
                 buffer[size] = 0;
                 LogInfo("Parsing muda file\n");
@@ -798,8 +813,6 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
         else {
             LogError("Could not open the configuration file %s!\n", config_path.Data);
         }
-		
-        EndTemporaryMemory(&temp);
     }
 	
     if (build_config->ConfigurationCount == 0) {
