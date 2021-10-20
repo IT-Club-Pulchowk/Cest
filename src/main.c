@@ -26,13 +26,13 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
 	Memory_Arena *scratch = ThreadScratchpad();
     
     Muda_Parser prsr = MudaParseInit(data);
-
+	
     Uint32 version = 0;
     Uint32 major = 0, minor = 0, patch = 0;
-
+	
     while (MudaParseNext(&prsr))
         if (prsr.Token.Kind != Muda_Token_Comment) break;
-
+	
     if (prsr.Token.Kind == Muda_Token_Tag && StrMatchCaseInsensitive(prsr.Token.Data.Tag.Title, StringLiteral("version"))) {
         if (prsr.Token.Data.Tag.Value.Data) {
             if (sscanf(prsr.Token.Data.Tag.Value.Data, "%d.%d.%d", &major, &minor, &patch) != 3)
@@ -43,29 +43,29 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
     }
     else 
         FatalError("Error: Version tag missing at top of file\n");
-
+	
 	version = MudaMakeVersion(major, minor, patch);
-
+	
 	if (version < MUDA_BACKWARDS_COMPATIBLE_VERSION || version > MUDA_CURRENT_VERSION) {
 		String error = FmtStr(scratch, "Version %u.%u.%u not supported. \n"
-			"Minimum version supported: %u.%u.%u\n"
-			"Current version: %u.%u.%u\n\n",
-			major, minor, patch,
-			MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR,
-			MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR,
-			MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH,
-			MUDA_VERSION_MAJOR,
-			MUDA_VERSION_MINOR,
-			MUDA_VERSION_PATCH);
+							  "Minimum version supported: %u.%u.%u\n"
+							  "Current version: %u.%u.%u\n\n",
+							  major, minor, patch,
+							  MUDA_BACKWARDS_COMPATIBLE_VERSION_MAJOR,
+							  MUDA_BACKWARDS_COMPATIBLE_VERSION_MINOR,
+							  MUDA_BACKWARDS_COMPATIBLE_VERSION_PATCH,
+							  MUDA_VERSION_MAJOR,
+							  MUDA_VERSION_MINOR,
+							  MUDA_VERSION_PATCH);
 		FatalError(error.Data);
 	}
-
+	
     Muda_Parse_State state;
     MudaParseStateInit(&state);
-
+	
     bool first_config_name = true;
     Compiler_Config *config = CompilerConfigListAdd(config_list, StringLiteral("default"));
-
+	
     while (MudaParseNext(&prsr)) {
         switch (prsr.Token.Kind) {
             case Muda_Token_Config: {
@@ -77,7 +77,7 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
                     config = CompilerConfigListFindOrAdd(config_list, prsr.Token.Data.Config);
                 }
             } break;
-
+			
             case Muda_Token_Section: {
                 if (StrMatchCaseInsensitive(StringLiteral("OS.ALL"), prsr.Token.Data.Section))
                     state.OS = Muda_Parsing_OS_None;
@@ -101,28 +101,28 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
                     FatalError(error.Data);
                 }
             } break;
-
+			
             case Muda_Token_Property: {
                 first_config_name = false;
-
+				
                 bool reject_os = !(state.OS == Muda_Parsing_OS_None || (PLATFORM_OS_WINDOWS && state.OS == Muda_Parsing_OS_Windows) ||
-                    (PLATFORM_OS_LINUX && state.OS == Muda_Parsing_OS_Linux) ||
-                    (PLATFORM_OS_MAC && state.OS == Muda_Parsing_OS_Mac));
+								   (PLATFORM_OS_LINUX && state.OS == Muda_Parsing_OS_Linux) ||
+								   (PLATFORM_OS_MAC && state.OS == Muda_Parsing_OS_Mac));
                 
                 if (reject_os || (state.Compiler != 0 && compiler != state.Compiler)) break;
-
+				
                 bool property_found = false;
-
+				
                 Muda_Token *token = &prsr.Token;
                 for (Uint32 index = 0; index < ArrayCount(CompilerConfigMemberTypeInfo); ++index) {
                     const Compiler_Config_Member *const info = &CompilerConfigMemberTypeInfo[index];
                     if (StrMatch(info->Name, token->Data.Property.Key)) {
                         property_found = true;
-
+						
                         switch (info->Kind) {
                             case Compiler_Config_Member_Enum: {
                                 Enum_Info *en = (Enum_Info *)info->KindInfo;
-
+								
                                 bool found = false;
                                 for (Uint32 index = 0; index < en->Count; ++index) {
                                     if (StrMatch(en->Ids[index], token->Data.Property.Value)) {
@@ -132,38 +132,38 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
                                         break;
                                     }
                                 }
-
+								
                                 if (!found) {
                                     Out_Stream out;
                                     Memory_Allocator allocator = MemoryArenaAllocator(scratch);
                                     OutCreate(&out, allocator);
-
+									
                                     Temporary_Memory temp = BeginTemporaryMemory(scratch);
-
+									
                                     for (Uint32 index = 0; index < en->Count; ++index) {
                                         OutString(&out, en->Ids[index]);
                                         OutBuffer(&out, ", ", 2);
                                     }
-
+									
                                     String accepted_values = OutBuildString(&out, &allocator);
-
+									
                                     // TODO: Print line and column number in the error
                                     LogWarn("Invalid value for Property \"%s\" : %s. Acceptable values are: %s\n",
-                                        info->Name.Data, token->Data.Property.Value.Data, accepted_values);
-
+											info->Name.Data, token->Data.Property.Value.Data, accepted_values);
+									
                                     EndTemporaryMemory(&temp);
                                 }
                             } break;
-
+							
                             case Compiler_Config_Member_Bool: {
                                 bool *in = (bool *)((char *)config + info->Offset);
-
+								
                                 if (StrMatch(StringLiteral("1"), token->Data.Property.Value) ||
                                     StrMatch(StringLiteral("True"), token->Data.Property.Value)) {
                                     *in = true;
                                 }
                                 else if (StrMatch(StringLiteral("0"), token->Data.Property.Value) ||
-                                    StrMatch(StringLiteral("False"), token->Data.Property.Value)) {
+										 StrMatch(StringLiteral("False"), token->Data.Property.Value)) {
                                     *in = false;
                                 }
                                 else {
@@ -172,41 +172,41 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
                                     FatalError(error.Data);
                                 }
                             } break;
-
+							
                             case Compiler_Config_Member_String: {
                                 Out_Stream *in = (Out_Stream *)((char *)config + info->Offset);
                                 OutReset(in);
                                 OutString(in, token->Data.Property.Value);
                             } break;
-
+							
                             case Compiler_Config_Member_String_Array: {
                                 String_List *in = (String_List *)((char *)config + info->Offset);
                                 ReadList(in, token->Data.Property.Value, -1, config->Arena);
                             } break;
-
+							
                             NoDefaultCase();
                         }
-
+						
                         break;
                     }
                 }
-
+				
                 if (!property_found) {
                     // TODO: Print line and column number in the error
                     LogWarn("Invalid Property \"%s\". Ignored.\n", token->Data.Property.Key.Data);
                 }
             } break;
-
+			
             case Muda_Token_Comment: {
                 // ignored
             } break;
-
+			
             case Muda_Token_Tag: {
                 Unimplemented();
             } break;
         }
     }
-
+	
     if (prsr.Token.Kind == Muda_Token_Error) {
         String errmsg = FmtStr(scratch, "%s at Line %d, Column %d\n", prsr.Token.Data.Error.Desc, prsr.Token.Data.Error.Line, prsr.Token.Data.Error.Column);
         FatalError(errmsg.Data);
@@ -233,7 +233,7 @@ typedef struct Directory_Iteration_Context {
 static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, void *user_context) {
     if ((info->Atribute & File_Attribute_Directory) && !(info->Atribute & File_Attribute_Hidden)) {
         Directory_Iteration_Context *context = (Directory_Iteration_Context *)user_context;
-
+		
         String_List *ignore = context->Ignore;
         ForList(String_List_Node, ignore) {
             ForListNode(ignore, MAX_STRING_NODE_DATA_COUNT) {
@@ -248,7 +248,7 @@ static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, voi
 #endif
             }
         }
-
+		
         StringListAdd(context->List, StrDuplicateArena(info->Path, context->Arena), context->Arena);
     }
     return Directory_Iteration_Continue;
@@ -259,9 +259,9 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
 
 void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler) {
     Memory_Arena *scratch = ThreadScratchpad();
-
+	
     Temporary_Memory temp = BeginTemporaryMemory(scratch);
-
+	
     if (compiler_config->Prebuild.Size) {
         LogInfo("==> Executing Prebuild command\n");
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
@@ -273,26 +273,26 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         EndTemporaryMemory(&temp);
         LogInfo("Finished executing Prebuild command\n");
     }
-
+	
     bool execute_postbuild = true;
     Muda_Plugin_Config plugin_config;
     memset(&plugin_config, 0, sizeof(plugin_config));
-
+	
     if (compiler_config->Kind == Compile_Project) {
         LogInfo("Beginning compilation\n");
-
+		
         Out_Stream out;
         OutCreate(&out, MemoryArenaAllocator(compiler_config->Arena));
-
+		
         Out_Stream lib;
         OutCreate(&lib, MemoryArenaAllocator(compiler_config->Arena));
-
+		
         Out_Stream res;
         OutCreate(&res, MemoryArenaAllocator(compiler_config->Arena));
-
+		
         String build_dir = OutBuildStringSerial(&compiler_config->BuildDirectory, scratch);
         String build = OutBuildStringSerial(&compiler_config->Build, scratch);
-
+		
         Uint32 result = OsCheckIfPathExists(build_dir);
         if (result == Path_Does_Not_Exist) {
             if (!OsCreateDirectoryRecursively(build_dir)) {
@@ -304,7 +304,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
             LogError("%s: Path exist but is a file! Aborted.\n", build_dir.Data);
             return;
         }
-
+		
         if (compiler == Compiler_Bit_CL) {
             // For CL, we output intermediate files to "BuildDirectory/int"
             String intermediate;
@@ -312,7 +312,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 intermediate = FmtStr(scratch, "%sint", build_dir.Data);
             else
                 intermediate = FmtStr(scratch, "%s/int", build_dir.Data);
-
+			
             result = OsCheckIfPathExists(intermediate);
             if (result == Path_Does_Not_Exist) {
                 if (!OsCreateDirectoryRecursively(intermediate)) {
@@ -325,131 +325,294 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 return;
             }
         }
-
+		
         // Turn on Optimization if it is forced via command line
         if (build_config->ForceOptimization) {
             LogInfo("Optimization turned on forcefully\n");
             compiler_config->Optimization = true;
         }
-
+		
         switch (compiler) {
-        case Compiler_Bit_CL: {
-            OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
-            OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-Od");
-
-            ForList(String_List_Node, &compiler_config->Defines) {
-                ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "-D%s ", it->Data[index].Data);
-                }
-            }
-
-            ForList(String_List_Node, &compiler_config->IncludeDirectories) {
-                ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
-                }
-            }
-
-            ForList(String_List_Node, &compiler_config->Sources) {
-                ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
-                }
-            }
-
+			case Compiler_Bit_CL: {
+				OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
+				OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-Od");
+				
+				ForList(String_List_Node, &compiler_config->Defines) {
+					ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "-D%s ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->IncludeDirectories) {
+					ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->Sources) {
+					ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+					}
+				}
+				
 #if PLATFORM_OS_WINDOWS == 1
-            if (compiler_config->ResourceFile.Size) {
-                String resource_file = OutBuildStringSerial(&compiler_config->ResourceFile, scratch);
-                OutFormatted(&res, "rc -fo \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data, resource_file.Data);
-                OutFormatted(&out, "\"%s/%s.res\" ", build_dir.Data, build.Data);
-            }
+				if (compiler_config->ResourceFile.Size) {
+					String resource_file = OutBuildStringSerial(&compiler_config->ResourceFile, scratch);
+					OutFormatted(&res, "rc -fo \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data, resource_file.Data);
+					OutFormatted(&out, "\"%s/%s.res\" ", build_dir.Data, build.Data);
+				}
 #endif
-
-            ForList(String_List_Node, &compiler_config->Flags) {
-                ForListNode(&compiler_config->Flags, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "%s ", it->Data[index].Data);
-                }
-            }
-
-            OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
-
-            if (compiler_config->Application != Application_Static_Library) {
-                OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
-
-                if (compiler_config->Application == Application_Dynamic_Library)
-                    OutFormatted(&out, "-LD ");
-
-                OutFormatted(&out, "-link ");
-                OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", build_dir.Data, build.Data);
-
-                if (compiler_config->Application != Application_Static_Library)
-                    OutFormatted(&out, "-out:\"%s/%s.%s\" ", build_dir.Data, build.Data,
-                        compiler_config->Application == Application_Executable ? "exe" : "dll");
-
-                if (compiler_config->Application == Application_Dynamic_Library)
-                    OutFormatted(&out, "-IMPLIB:\"%s/%s.lib\" ", build_dir.Data, build.Data);
-
-                ForList(String_List_Node, &compiler_config->LinkerFlags) {
-                    ForListNode(&compiler_config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
-                        OutFormatted(&out, "%s ", it->Data[index].Data);
-                    }
-                }
-            }
-            else {
-                OutFormatted(&out, "-c ");
-                OutFormatted(&out, "-Fo\"%s/int/%s.obj\" ", build_dir.Data, build.Data);
-
-                OutFormatted(&lib, "lib -nologo \"%s/int/%s.obj\" ", build_dir.Data, build.Data);
-                OutFormatted(&lib, "-out:\"%s/%s.lib\" ", build_dir.Data, build.Data);
-            }
-
-            Out_Stream *target = ((compiler_config->Application != Application_Static_Library) ? &out : &lib);
-
-            ForList(String_List_Node, &compiler_config->LibraryDirectories) {
-                ForListNode(&compiler_config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(target, "-LIBPATH:\"%s\" ", it->Data[index].Data);
-                }
-            }
-
-            ForList(String_List_Node, &compiler_config->Libraries) {
-                ForListNode(&compiler_config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(target, "\"%s.lib\" ", it->Data[index].Data);
-                }
-            }
-
-            if (PLATFORM_OS_WINDOWS) {
-                OutFormatted(target, "-SUBSYSTEM:%s ", compiler_config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
-            }
-        } break;
-
-        case Compiler_Bit_CLANG: {
-            Unimplemented();
-        } break;
-
-        case Compiler_Bit_GCC: {
-            Unimplemented();
-        } break;
+				
+				ForList(String_List_Node, &compiler_config->Flags) {
+					ForListNode(&compiler_config->Flags, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "%s ", it->Data[index].Data);
+					}
+				}
+				
+				OutFormatted(&out, "-Fd\"%s/\" ", build_dir.Data);
+				
+				if (compiler_config->Application != Application_Static_Library) {
+					OutFormatted(&out, "-Fo\"%s/int/\" ", build_dir.Data);
+					
+					if (compiler_config->Application == Application_Dynamic_Library)
+						OutFormatted(&out, "-LD ");
+					
+					OutFormatted(&out, "-link ");
+					OutFormatted(&out, "-pdb:\"%s/%s.pdb\" ", build_dir.Data, build.Data);
+					
+					if (compiler_config->Application != Application_Static_Library)
+						OutFormatted(&out, "-out:\"%s/%s.%s\" ", build_dir.Data, build.Data,
+									 compiler_config->Application == Application_Executable ? "exe" : "dll");
+					
+					if (compiler_config->Application == Application_Dynamic_Library)
+						OutFormatted(&out, "-IMPLIB:\"%s/%s.lib\" ", build_dir.Data, build.Data);
+					
+					ForList(String_List_Node, &compiler_config->LinkerFlags) {
+						ForListNode(&compiler_config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
+							OutFormatted(&out, "%s ", it->Data[index].Data);
+						}
+					}
+				}
+				else {
+					OutFormatted(&out, "-c ");
+					OutFormatted(&out, "-Fo\"%s/int/%s.obj\" ", build_dir.Data, build.Data);
+					
+					OutFormatted(&lib, "lib -nologo \"%s/int/%s.obj\" ", build_dir.Data, build.Data);
+					OutFormatted(&lib, "-out:\"%s/%s.lib\" ", build_dir.Data, build.Data);
+				}
+				
+				Out_Stream *target = ((compiler_config->Application != Application_Static_Library) ? &out : &lib);
+				
+				ForList(String_List_Node, &compiler_config->LibraryDirectories) {
+					ForListNode(&compiler_config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(target, "-LIBPATH:\"%s\" ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->Libraries) {
+					ForListNode(&compiler_config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(target, "\"%s.lib\" ", it->Data[index].Data);
+					}
+				}
+				
+				if (PLATFORM_OS_WINDOWS) {
+					OutFormatted(target, "-SUBSYSTEM:%s ", compiler_config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
+				}
+			} break;
+			
+			case Compiler_Bit_CLANG: {
+				if(compiler_config->Language == 1) //Clang for C
+					OutFormatted(&out, "clang ");
+				if(compiler_config->Language == 0) //Clang for C++
+					OutFormatted(&out, "clang++ ");
+				OutFormatted(&out, "-Wall -gcodeview ");
+				OutFormatted(&out, "%s ", compiler_config->Optimization ? "--optimize" : "--debug");
+				
+				ForList(String_List_Node, &compiler_config->Defines) {
+					ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "-D%s ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->IncludeDirectories) {
+					ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->Sources) {
+					ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+					}
+				}
+				
+#if PLATFORM_OS_WINDOWS == 1
+				if (compiler_config->ResourceFile.Size) {
+					String resource_file = OutBuildStringSerial(&compiler_config->ResourceFile, scratch);
+					OutFormatted(&res, "llvm-rc -FO \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data, resource_file.Data);
+					OutFormatted(&out, "\"%s/%s.res\" ", build_dir.Data, build.Data);
+				}
+#endif
+				
+				ForList(String_List_Node, &compiler_config->Flags) {
+					ForListNode(&compiler_config->Flags, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "%s ", it->Data[index].Data);
+					}
+				}
+				
+				if (compiler_config->Application != Application_Static_Library) {
+					
+					if (compiler_config->Application == Application_Dynamic_Library)
+						OutFormatted(&out, "--shared ");
+					
+					
+					if (compiler_config->Application != Application_Static_Library)
+						OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
+									 compiler_config->Application == Application_Executable ? "exe" : "dll");
+					
+					ForList(String_List_Node, &compiler_config->LinkerFlags) {
+						ForListNode(&compiler_config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
+							OutFormatted(&out, "%s ", it->Data[index].Data);
+						}
+					}
+				}
+				else {
+					OutFormatted(&out, "-c ");
+					
+					if(PLATFORM_OS_WINDOWS)
+						OutFormatted(&lib, "-o \"%s/%s.lib\" ", build_dir.Data, build.Data);
+					else
+						OutFormatted(&lib, "-o \"%s/%s.a\" ", build_dir.Data, build.Data);
+				}
+				
+				Out_Stream *target = ((compiler_config->Application != Application_Static_Library) ? &out : &lib);
+				
+				ForList(String_List_Node, &compiler_config->LibraryDirectories) {
+					ForListNode(&compiler_config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(target, "-L\"%s\" ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->Libraries) {
+					ForListNode(&compiler_config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
+						if(PLATFORM_OS_WINDOWS)
+							OutFormatted(target, "\"%s.lib\" ", it->Data[index].Data);
+						else
+							OutFormatted(target, "\"%s.a\" ", it->Data[index].Data);
+					}
+				}
+				
+				if (PLATFORM_OS_WINDOWS) {
+					OutFormatted(target, "-Xlinker -subsystem:%s ", compiler_config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
+				}
+				
+				
+			} break;
+			
+			case Compiler_Bit_GCC: {
+				if(compiler_config->Language == 1) //gcc for C
+					OutFormatted(&out, "g ");
+				if(compiler_config->Language == 0) //g++ for C++
+					OutFormatted(&out, "g++ ");
+				OutFormatted(&out, "-Wall ");
+				OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-O");
+				
+				ForList(String_List_Node, &compiler_config->Defines) {
+					ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "-D%s ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->IncludeDirectories) {
+					ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->Sources) {
+					ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+					}
+				}
+				
+#if PLATFORM_OS_WINDOWS == 1
+				if (compiler_config->ResourceFile.Size) {
+					String resource_file = OutBuildStringSerial(&compiler_config->ResourceFile, scratch);
+					OutFormatted(&res, "windres -i \"%s\" \"%s/%s.o\" ", resource_file.Data, build_dir.Data, build.Data);
+					OutFormatted(&out, "\"%s/%s.o\" ", build_dir.Data, build.Data);
+				}
+#endif
+				
+				ForList(String_List_Node, &compiler_config->Flags) {
+					ForListNode(&compiler_config->Flags, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "%s ", it->Data[index].Data);
+					}
+				}
+				
+				if (compiler_config->Application != Application_Static_Library) {
+					
+					if (compiler_config->Application == Application_Dynamic_Library)
+						OutFormatted(&out, "--shared ");
+					
+					
+					if (compiler_config->Application != Application_Static_Library)
+						OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
+									 compiler_config->Application == Application_Executable ? "exe" : "dll");
+					
+					ForList(String_List_Node, &compiler_config->LinkerFlags) {
+						ForListNode(&compiler_config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
+							OutFormatted(&out, "%s ", it->Data[index].Data);
+						}
+					}
+				}
+				else {
+					OutFormatted(&out, "-c ");
+					OutFormatted(&lib, "-o \"%s/%s.a\" ", build_dir.Data, build.Data);
+				}
+				
+				Out_Stream *target = ((compiler_config->Application != Application_Static_Library) ? &out : &lib);
+				
+				ForList(String_List_Node, &compiler_config->LibraryDirectories) {
+					ForListNode(&compiler_config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(target, "-L\"%s\" ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->Libraries) {
+					ForListNode(&compiler_config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(target, "\"%s.a\" ", it->Data[index].Data);
+					}
+				}
+				
+				if (PLATFORM_OS_WINDOWS) {
+					OutFormatted(target, "-w -Wl,-subsystem,%s ", compiler_config->Subsystem == Subsystem_Console ? "console" : "windows");
+				}
+				
+				
+			} break;
         }
-
+		
         String cmd_line = OutBuildStringSerial(&out, compiler_config->Arena);
-
+		
         plugin_config.Name = compiler_config->Name.Data;
         plugin_config.Build = build.Data;
         plugin_config.BuildDir = build_dir.Data;
         plugin_config.MudaDir = ".";
         plugin_config.Succeeded = false;
-
+		
         build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Prebuild, &plugin_config);
-
+		
         execute_postbuild = false;
-
+		
         bool resource_compilation_passed = true;
         if (res.Size) {
             LogInfo("Executing Resource compilation\n");
             String resource_cmd_line = OutBuildStringSerial(&res, scratch);
-
+			
             if (build_config->DisplayCommandLine) {
                 LogInfo("Resource Command Line: %s\n", resource_cmd_line.Data);
             }
-
+			
             if (OsExecuteCommandLine(resource_cmd_line)) {
                 LogInfo("Resource Compilation succeeded\n");
             }
@@ -458,12 +621,12 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 resource_compilation_passed = false;
             }
         }
-
+		
         if (resource_compilation_passed) {
             if (build_config->DisplayCommandLine) {
                 LogInfo("Compiler Command Line: %s\n", cmd_line.Data);
             }
-
+			
             LogInfo("Executing compilation\n");
             if (OsExecuteCommandLine(cmd_line)) {
                 LogInfo("Compilation succeeded\n\n");
@@ -471,7 +634,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                     if (build_config->DisplayCommandLine) {
                         LogInfo("Linker Command Line: %s\n", cmd_line.Data);
                     }
-
+					
                     LogInfo("Creating static library\n");
                     cmd_line = OutBuildStringSerial(&lib, compiler_config->Arena);
                     if (OsExecuteCommandLine(cmd_line)) {
@@ -493,19 +656,19 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
     }
     else {
         Assert(compiler_config->Kind == Compile_Solution);
-
+		
         LogInfo("==> Found Solution Muda Build\n");
-
+		
         compiler_config->Kind = Compile_Project;
-
+		
         Memory_Arena *dir_scratch = ThreadScratchpadI(1);
-
+		
         String_List directory_list;
         String_List *filtered_list = &directory_list;
-
+		
         if (StringListIsEmpty(&compiler_config->ProjectDirectories)) {
             StringListInit(&directory_list);
-
+			
             Directory_Iteration_Context directory_iteration;
             directory_iteration.Arena = dir_scratch;
             directory_iteration.List = &directory_list;
@@ -515,7 +678,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         else {
             filtered_list = &compiler_config->ProjectDirectories;
         }
-
+		
         Memory_Arena *arena = compiler_config->Arena;
         ForList(String_List_Node, filtered_list) {
             ForListNode(filtered_list, MAX_STRING_NODE_DATA_COUNT) {
@@ -534,10 +697,10 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 }
             }
         }
-
+		
         MemoryArenaReset(dir_scratch);
     }
-
+	
     if (execute_postbuild && compiler_config->Postbuild.Size) {
         LogInfo("==> Executing Postbuild command\n");
         String prebuild = OutBuildStringSerial(&compiler_config->Postbuild, scratch);
@@ -547,23 +710,23 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         }
         LogInfo("Finished executing Postbuild command\n");
     }
-
+	
     if (compiler_config->Kind == Compile_Project) {
         plugin_config.Succeeded = execute_postbuild;
         build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Postbuild, &plugin_config);
     }
-
+	
 	EndTemporaryMemory(&temp);
 }
 
 void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config) {
     Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
-
+	
     Compiler_Config_List *configs = (Compiler_Config_List *)PushSize(arena, sizeof(Compiler_Config_List));
     CompilerConfigListInit(configs, arena);
-
+	
     String config_path = { 0,0 };
-
+	
     const String LocalMudaFile = StringLiteral("build.muda");
     if (OsCheckIfPathExists(LocalMudaFile) == Path_Exist_File) {
         config_path = LocalMudaFile;
@@ -577,24 +740,24 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
             config_path = muda_user_path;
         }
     }
-
+	
     if (config_path.Length) {
         LogInfo("Found muda configuration file: \"%s\"\n", config_path.Data);
-
+		
         Memory_Arena *scratch = ThreadScratchpad();
         Temporary_Memory temp = BeginTemporaryMemory(scratch);
-
+		
         File_Handle fp = OsFileOpen(config_path, File_Mode_Read);
         if (fp.PlatformFileHandle) {
             Ptrsize size = OsFileGetSize(fp);
             const Ptrsize MAX_ALLOWED_MUDA_FILE_SIZE = MegaBytes(32);
-
+			
             if (size > MAX_ALLOWED_MUDA_FILE_SIZE) {
                 float max_size = (float)MAX_ALLOWED_MUDA_FILE_SIZE / (1024 * 1024);
                 LogError("File %s too large. Max memory: %.3fMB! Aborted.\n", config_path.Data, max_size);
                 return;
             }
-
+			
             Uint8 *buffer = PushSize(scratch, size + 1);
             if (OsFileRead(fp, buffer, size) && size > 0) {
                 buffer[size] = 0;
@@ -608,16 +771,16 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
             else {
                 LogError("Could not read the configuration file %s!\n", config_path.Data);
             }
-
+			
             OsFileClose(fp);
         }
         else {
             LogError("Could not open the configuration file %s!\n", config_path.Data);
         }
-
+		
         EndTemporaryMemory(&temp);
     }
-
+	
     if (build_config->ConfigurationCount == 0) {
         ForList(Compiler_Config_Node, configs) {
             ForListNode(configs, ArrayCount(configs->Head.Config)) {
@@ -632,7 +795,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
         for (Uint32 index = 0; index < build_config->ConfigurationCount; ++index) {
             Compiler_Config *config = NULL;
             String required_config = build_config->Configurations[index];
-
+			
             ForList(Compiler_Config_Node, configs) {
                 ForListNode(configs, ArrayCount(configs->Head.Config)) {
                     if (StrMatch(it->Config[index].Name, required_config)) {
@@ -641,7 +804,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
                     }
                 }
             }
-
+			
             if (config) {
                 LogInfo("==> Building Configuration: %s \n", config->Name.Data);
                 PushDefaultCompilerConfig(config, config->Kind == Compile_Project);
@@ -652,20 +815,20 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
             }
         }
     }
-
+	
     EndTemporaryMemory(&arena_temp);
 }
 
 int main(int argc, char *argv[]) {
     InitThreadContext(NullMemoryAllocator(), MegaBytes(512), (Log_Agent){ .Procedure = LogProcedure }, FatalErrorProcedure);
-
+	
     OsSetupConsole();
-
+	
     Build_Config build_config;
     BuildConfigInit(&build_config);
     if (HandleCommandLineArguments(argc, argv, &build_config))
         return 0;
-
+	
     Compiler_Kind compiler = OsDetectCompiler();
     if (compiler == 0) {
         LogError("Failed to detect compiler! Installation of compiler is required...\n");
@@ -675,10 +838,10 @@ int main(int argc, char *argv[]) {
         OsConsoleWrite("[GCC] https://gcc.gnu.org/install/download.html \n");
         return 1;
     }
-
+	
     if (build_config.DisableLogs)
         ThreadContext.LogAgent.Procedure = LogProcedureDisabled;
-
+	
     if (build_config.LogFilePath) {
         File_Handle handle = OsFileOpen(StringMake(build_config.LogFilePath, strlen(build_config.LogFilePath)), File_Mode_Write);
         if (handle.PlatformFileHandle) {
@@ -689,7 +852,7 @@ int main(int argc, char *argv[]) {
             LogError("Could not open file: \"%s\" for logging. Logging to file disabled.\n");
         }
     }
-
+	
     void *plugin = OsLibraryLoad(MudaPluginPath);
     if (plugin) {
         build_config.PluginHook = (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
@@ -701,7 +864,7 @@ int main(int argc, char *argv[]) {
             LogWarn("Plugin dectected by could not be loaded\n");
         }
     }
-
+	
     if (build_config.ForceCompiler) {
         if (compiler & build_config.ForceCompiler) {
             compiler = build_config.ForceCompiler;
@@ -710,10 +873,10 @@ int main(int argc, char *argv[]) {
         else {
             const char *requested_compiler = GetCompilerName(build_config.ForceCompiler);
             LogInfo("Requested compiler: %s but %s could not be detected\n",
-                requested_compiler, requested_compiler);
+					requested_compiler, requested_compiler);
         }
     }
-
+	
     // Set one compiler from all available compilers
     // This priorities one compiler over the other
     if (compiler & Compiler_Bit_CL) {
@@ -728,17 +891,17 @@ int main(int argc, char *argv[]) {
         compiler = Compiler_Bit_GCC;
         LogInfo("Compiler GCC Detected.\n");
     }
-
+	
     Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
-
+	
     SearchExecuteMudaBuild(&arena, &build_config, compiler, NULL);
-
+	
     build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Destroy, NULL);
-
+	
     if (plugin) {
         OsLibraryFree(plugin);
     }
-
+	
     if (ThreadContext.LogAgent.Data) {
         File_Handle handle;
         handle.PlatformFileHandle = ThreadContext.LogAgent.Data;
