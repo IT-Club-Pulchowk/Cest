@@ -620,9 +620,6 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
     if (config_path.Length) {
         LogInfo("Found muda configuration file: \"%s\"\n", config_path.Data);
 
-        Memory_Arena *scratch = ThreadScratchpad();
-        Temporary_Memory temp = BeginTemporaryMemory(scratch);
-
         File_Handle fp = OsFileOpen(config_path, File_Mode_Read);
         if (fp.PlatformFileHandle) {
             Ptrsize size = OsFileGetSize(fp);
@@ -634,7 +631,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
                 return;
             }
 
-            Uint8 *buffer = PushSize(scratch, size + 1);
+            Uint8 *buffer = PushSize(configs->Arena, size + 1);
             if (OsFileRead(fp, buffer, size) && size > 0) {
                 buffer[size] = 0;
                 LogInfo("Parsing muda file\n");
@@ -653,8 +650,6 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
         else {
             LogError("Could not open the configuration file %s!\n", config_path.Data);
         }
-
-        EndTemporaryMemory(&temp);
     }
 
     if (build_config->ConfigurationCount == 0) {

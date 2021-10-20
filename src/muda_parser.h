@@ -37,7 +37,7 @@ typedef struct Muda_Token {
 		struct {
 			String  Key;
 			String *Value;
-		        int     Count;
+		        Int64    Count;
 		} Property;
 	  
 		struct {
@@ -57,7 +57,7 @@ typedef struct Muda_Parser {
 	uint8_t *Ptr;
 	uint8_t *Pos;
 
-        int line;
+        uint32_t line;
         uint8_t* line_ptr;
 	Muda_Token Token;
 } Muda_Parser;
@@ -133,10 +133,10 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   // A sophiscated error handling here
   // 
   // Count total number of valid values
-  int count_values = 0;
+  int64_t count_values = 0;
   while(!isSpecial(*id.Data) || (*id.Data == '\n'))
   {
-    int inc; 
+    int64_t inc; 
     if (*id.Data == '\n') {
       p->line_ptr = id.Data + 1;
       p->line++;
@@ -154,7 +154,7 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   {
     p->Token.Kind = Muda_Token_Error;
     p->Token.Data.Error.Line = p->line;
-    p->Token.Data.Error.Column = id.Data - p->line_ptr;
+    p->Token.Data.Error.Column = (uint32_t)(id.Data - p->line_ptr);
     MudaParserReportError(p,"Expected ;");
     return false; 
   }
@@ -171,11 +171,11 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   
   id = GetNextToken(save+1,p);
 
-  int values = 0; 
+  int64_t values = 0;
 
   while(!isSpecial(*id.Data) || (*id.Data == '\n'))
   {
-    int inc; 
+    int64_t inc; 
     if (*id.Data == '\n') {
       // Do nothing
       inc = 1; 
@@ -328,7 +328,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
       else if (*peek.Data == '\n')
       {
 	p->Token.Data.Error.Line   = p->line;
-	p->Token.Data.Error.Column = peek.Data - p->line_ptr; 
+	p->Token.Data.Error.Column = (uint32_t)(peek.Data - p->line_ptr); 
 	MudaParserReportError(p,"Expected ] here ... ");
 	p->Token.Kind = Muda_Token_Error;
 	// LogWarn("Expected ] here Line : %d. Column %d.\n Discontinuing further parsing ",p->line,peek.Data - p->line_ptr);
@@ -421,7 +421,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
   p->Token.Kind = Muda_Token_Error;
   p->Pos = token.Data;
   p->Token.Data.Error.Line = p->line;
-  p->Token.Data.Error.Column = token.Data - p->line_ptr;
+  p->Token.Data.Error.Column = (uint32_t)(token.Data - p->line_ptr);
   MudaParserReportError(p, "Bad character, unrecognized");
   return false; 
 }
