@@ -337,8 +337,12 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
         switch (compiler) {
         case Compiler_Bit_CL: {
-            OutFormatted(&out, "cl -nologo -Zi -EHsc -W3 ");
+            OutFormatted(&out, "cl -nologo -EHsc -W3 ");
             OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-Od");
+
+            if (compiler_config->DebugSymbol) {
+                OutFormatted(&out, "-Zi ");
+            }
 
             ForList(String_List_Node, &compiler_config->Defines) {
                 ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {

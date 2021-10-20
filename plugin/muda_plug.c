@@ -62,6 +62,10 @@ void MudaEventHook(struct Thread_Context *Thread, Muda_Plugin_Interface *Interfa
 					fprintf(out, "\tTotal Time:%f ms\n", (double)(Info.Time.Kernel + Info.Time.User + Info.Time.Exit) / 1000.0);
 					fprintf(out, "===================================\n");
 				}
+
+				//
+				// TODO: Verify the program correctness
+				//
 			}
 
 			//

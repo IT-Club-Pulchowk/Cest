@@ -79,6 +79,7 @@ typedef struct Compiler_Config {
 	Uint32 Application; // Application_Kind 
 
 	bool Optimization;
+	bool DebugSymbol;
 
 	Out_Stream  Build;
 	Out_Stream  BuildDirectory;
@@ -155,6 +156,9 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 	{ StringExpand("Optimization"), Compiler_Config_Member_Bool, offsetof(Compiler_Config, Optimization),
 	"Use optimization while compiling or not (true/false)" },
 
+	{ StringExpand("DebugSymbol"), Compiler_Config_Member_Bool, offsetof(Compiler_Config, DebugSymbol),
+	"Generate debug symbols while compiling or not (true/false)" },
+
 	{ StringExpand("Build"), Compiler_Config_Member_String, offsetof(Compiler_Config, Build),
 	"Name of the output binary." },
 
@@ -204,7 +208,7 @@ static const Compiler_Config_Member CompilerConfigMemberTypeInfo[] = {
 static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberTypeInfo)] = {
 	/*Kind*/ false, /*Language*/ false, /*Application*/ false,
 
-	/*Optimization*/ false,
+	/*Optimization*/ false, /*DebugSymbol*/ false,
 
 	/*Build*/ true, /*BuildDirectory*/ true, /*Sources*/ true,
 	/*Flags*/ false,
@@ -354,6 +358,7 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 	config->Application = Application_Executable;
 
 	config->Optimization = false;
+	config->DebugSymbol = true;
 
 	OutCreate(&config->Build, allocator);
 	OutCreate(&config->BuildDirectory, allocator);
