@@ -5,9 +5,7 @@
 
 typedef struct ProcessLaunchInfo {
 	struct {
-		uint64_t Kernel;
-		uint64_t User;
-		uint64_t Exit;
+		double Millisecs;
 		uint64_t Cycles;
 	} Time;
 
@@ -59,7 +57,7 @@ void MudaEventHook(struct Thread_Context *Thread, Muda_Plugin_Interface *Interfa
 					fprintf(out, "\tPeak Page Memory:%f KB\n", (double)Info.Memory.PageFileUsage / 1024.0);
 					fprintf(out, "Time:\n");
 					fprintf(out, "\tCPU Cycles:%f K\n", (double)Info.Time.Cycles / 1000.0);
-					fprintf(out, "\tTotal Time:%f ms\n", (double)(Info.Time.Kernel + Info.Time.User + Info.Time.Exit) / 1000.0);
+					fprintf(out, "\tTotal Time:%f ms\n", Info.Time.Millisecs);
 					fprintf(out, "===================================\n");
 				}
 
@@ -138,9 +136,8 @@ static void OsExecuteCommandLine(struct Thread_Context *Thread, Muda_Plugin_Inte
 
 		GetProcessTimes(ProcessInfo.hProcess, &CreationTime, &ExitTime, &KernelTime, &UserTime);
 
-		InfoOut->Time.Kernel = ((LARGE_INTEGER *)&KernelTime)->QuadPart;
-		InfoOut->Time.User = ((LARGE_INTEGER *)&UserTime)->QuadPart;
-		InfoOut->Time.Exit = ((LARGE_INTEGER *)&ExitTime)->QuadPart;
+		InfoOut->Time.Millisecs = (((LARGE_INTEGER *)&ExitTime)->QuadPart - 
+			((LARGE_INTEGER *)&CreationTime)->QuadPart) / 10000.0;
 
 		InfoOut->Time.Cycles = ProcessClockCycles;
 
