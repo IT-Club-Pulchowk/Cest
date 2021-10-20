@@ -25,8 +25,10 @@ void MudaParseStateInit(Muda_Parse_State *state) {
 
 void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Kind compiler) {
   Memory_Arena *scratch = ThreadScratchpad();
-    
-  Muda_Parser prsr = MudaParseInit(data);
+
+  Compiler_Config *config = CompilerConfigListAdd(config_list, StringLiteral("default"));
+
+  Muda_Parser prsr = MudaParseInit(data,config->Arena);
 
   Uint32 version = 0;
   Uint32 major = 0, minor = 0, patch = 0;
@@ -62,11 +64,13 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
   }
 
   Muda_Parse_State state;
-  MudaParseStateInit(&state);
+
 
   bool first_config_name = true;
-  Compiler_Config *config = CompilerConfigListAdd(config_list, StringLiteral("default"));
 
+
+  MudaParseStateInit(&state);
+  
   while (MudaParseNext(&prsr)) {
     switch (prsr.Token.Kind) {
     case Muda_Token_Config: {
@@ -188,10 +192,11 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8* data, Compiler_Ki
 	      // ReadList(in, *token->Data.Property.Value, -1, config->Arena);
 	      String_List *in = (String_List*) ((char *)config + info->Offset);
 	      for (int i = 0; i < prsr.Token.Data.Property.Count; ++i) {
-		StringListAdd(in,StrDuplicateArena(prsr.Token.Data.Property.Value[i],config->Arena),config->Arena);
+		StringListAdd(in,prsr.Token.Data.Property.Value[i],config->Arena);
 	      }
-	      if(prsr.Token.Data.Property.Count != 0)
-		free(prsr.Token.Data.Property.Value);
+	      
+	      /* if(prsr.Token.Data.Property.Count != 0) */
+	      /* 	free(prsr.Token.Data.Property.Value); */
 	    } break;
 
 	      NoDefaultCase();
@@ -365,13 +370,13 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
             ForList(String_List_Node, &compiler_config->IncludeDirectories) {
                 ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+		  OutFormatted(&out, "-I\"%.*s\" ", it->Data[index].Length,it->Data[index].Data);
                 }
             }
 
             ForList(String_List_Node, &compiler_config->Sources) {
                 ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+		  OutFormatted(&out, "\"%.*s\" ", it->Data[index].Length,it->Data[index].Data);
                 }
             }
 
