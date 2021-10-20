@@ -57,6 +57,7 @@ typedef struct Muda_Parser {
 	uint8_t *Pos;
 
         uint32_t line;
+        uint32_t column;
         uint8_t* line_ptr;
 	Muda_Token Token;
 
@@ -91,14 +92,38 @@ static String GetNextToken(uint8_t* cur,Muda_Parser* p)
 {
   IgnoreSpaces(cur);
   uint8_t* hold = cur;
+
   if (isSpecial(*cur))
+  {
+    p->Pos = cur + 1; 
     return (String){.Data = cur, .Length = cur - hold};
+  }
 
   // else return strings
-  while(!isSpecial(*cur) && *cur) ++cur;
-  return (String){.Data = hold, .Length = cur-hold};
 
-  // should we be handling quoted strings differently ? ???? 
+  if(*cur == '\"')
+  {
+    ++cur;
+    while( (!isSpecial(*cur) || *cur == '\r') && (*cur != '\"')) // Apparently carriage return is allowed inside string
+    {
+      cur++;
+    }
+    if(*cur != '\"') // Error .. but no way to report (without changing returnt type) for now ? Wait there's a way .. use longjmp or inter-function goto :D :D 
+    {
+      Unimplemented();
+    }
+    
+    p->Pos = cur+1;
+    return (String){.Data = hold + 1, .Length = cur - hold - 1};;
+    // value to be written without quotes 
+  }
+  
+  while(!isSpecial(*cur) && *cur) ++cur;
+  p->Pos = cur;
+  
+  return (String){.Data = hold, .Length = cur-hold};
+  
+  // should we be handling quoted strings differently ? ???? -> handled 
 }
 
 bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
@@ -112,13 +137,13 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   p->Token.Data.Property.Key.Data = id.Data;
   p->Token.Data.Property.Key.Length = id.Length;
 
-  id = GetNextToken(id.Data + id.Length + 1, p);
+  id = GetNextToken(p->Pos, p);
 
   Assert(*id.Data == ':');
 
   uint8_t* save = id.Data;
   
-  id = GetNextToken(id.Data + 1, p);
+  id = GetNextToken(p->Pos, p);
   // New line error detection : TODO 
   if(id.Length == 0 && *id.Data == ';')
   {
@@ -141,14 +166,12 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
     if (*id.Data == '\n') {
       p->line_ptr = id.Data + 1;
       p->line++;
-      inc = 1; 
     }
     else
     {
       count_values++;
-      inc = id.Length;
     }
-    id = GetNextToken(id.Data+inc,p);
+    id = GetNextToken(p->Pos,p);
   }
   
   if(*id.Data != ';')
@@ -180,15 +203,13 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
     int64_t inc; 
     if (*id.Data == '\n') {
       // Do nothing
-      inc = 1; 
     }
     else 
     {
       p->Token.Data.Property.Value[values++] = id;
       Assert(values<=count_values);
-      inc = id.Length;
     }
-    id = GetNextToken(id.Data+inc,p);
+    id = GetNextToken(p->Pos,p);
     // LogWarn("Parsing iteratively");
   }
 
@@ -262,6 +283,8 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   /*   } */
   //  return true;
   //  }
+  Assert(p->Token.Data.Property.Value != NULL);
+  p->column = (uint32_t)(p->Token.Data.Property.Value->Data - p->line_ptr);
   return true; 
   
 }
@@ -291,6 +314,8 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
   if (*token.Data == '\0')
   {
     p->Pos = token.Data;
+    // Column information 
+    p->column = token.Data - p->line_ptr;
     return false;
   }
   
@@ -301,7 +326,8 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     if (*token.Data == ']')
     {
       LogWarn("Empty [Config] Section");
-      p->Pos = token.Data + 1; 
+      p->Pos = token.Data + 1;
+      p->column = token.Data - p->line_ptr;
       return true;
       // Or it could be reported as Error?? 
       /*
@@ -326,7 +352,8 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
 	p->Token.Data.Config.Data = token.Data;
 	p->Token.Data.Config.Length = token.Length;
 	//      p->Pos = token.Data + token.Length + 1;
-	p->Pos = peek.Data + 1;
+	p->Pos = p->Pos;
+	p->column = (uint32_t)(peek.Data - p->line_ptr);
 	return true;
       }
       else if (*peek.Data == '\n')
@@ -356,6 +383,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
       p->line_ptr = peek.Data+1;
     }
     p->Pos = peek.Data + 1;
+    p->column = (uint32_t)(peek.Data - p->line_ptr);
     return true; 
   }
 
@@ -366,6 +394,9 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     String peek = GetNextToken(token.Data+1,p);
     if (peek.Length == 0) // special characters
     {
+      p->Token.Kind = Muda_Token_Error;
+      p->Token.Data.Error.Column = (uint32_t)(peek.Data - p->line_ptr);
+      p->Token.Data.Error.Line = p->line;
       MudaParserReportError(p,"Unexpected symbol in @version thingy");
       return false; 
     }
@@ -376,9 +407,12 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     p->Token.Data.Tag.Title.Length = peek.Length;
 
     //  Find the value now
-    peek = GetNextToken(peek.Data + peek.Length + 1, p);
+    peek = GetNextToken(p->Pos, p);
     if (peek.Length == 0) // Again special characters
     {
+      p->Token.Kind = Muda_Token_Error;
+      p->Token.Data.Error.Line = p->line;
+      p->Token.Data.Error.Column = (uint32_t)(peek.Data - p->line_ptr);
       if (*peek.Data == '\n')
       {
 	// p->Token.Data.Tag.Valid.Data = NULL;
@@ -393,7 +427,8 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     // else it is the value of the tag
     p->Token.Data.Tag.Value.Data = peek.Data;
     p->Token.Data.Tag.Value.Length = peek.Length;
-    p->Pos = peek.Data + peek.Length; 
+    p->column = (uint32_t)(peek.Data - p->line_ptr);
+    p->Pos = p->Pos; 
     return true; 
   }
 
@@ -406,6 +441,9 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     {
       // Special symbols
       p->Token.Kind = Muda_Token_Error;
+      p->Token.Data.Error.Line = p->line;
+      p->Token.Data.Error.Column = (uint32_t)(peek.Data - p->line_ptr);
+      p->column = p->Token.Data.Error.Column;
       p->Pos = peek.Data;
       MudaParserReportError(p, "Empty section name");
       return false; 
@@ -413,7 +451,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     p->Token.Kind = Muda_Token_Section;
     p->Token.Data.Section.Data = peek.Data;
     p->Token.Data.Section.Length = peek.Length;
-    p->Pos = peek.Data + peek.Length;
+    p->column = (uint32_t)(peek.Data - p->line_ptr);
     return true; 
   }
 
