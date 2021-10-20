@@ -229,7 +229,7 @@ static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberT
 // Base setup
 //
 
-INLINE_PROCEDURE void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
+void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
 	OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
 	TriggerBreakpoint();
 }
