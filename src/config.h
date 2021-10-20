@@ -38,9 +38,9 @@ static const String LanguageKindId[] = {
 };
 
 typedef enum Application_Kind {
-	Application_Executable,
-	Application_Static_Library,
-	Application_Dynamic_Library
+	Application_Executable = 0,
+	Application_Static_Library = 1,
+	Application_Dynamic_Library = 2
 } Application_Kind;
 
 static const String ApplicationKindId[] = {
@@ -227,10 +227,6 @@ static const bool CompilerConfigMemberTakeInput[ArrayCount(CompilerConfigMemberT
 INLINE_PROCEDURE void AssertHandle(const char *reason, const char *file, int line, const char *proc) {
 	OsConsoleOut(OsGetStdOutputHandle(), "%s (%s:%d) - Procedure: %s\n", reason, file, line, proc);
 	TriggerBreakpoint();
-}
-
-INLINE_PROCEDURE void DeprecateHandle(const char *reason, const char *file, int line, const char *proc) {
-	OsConsoleOut(OsGetStdOutputHandle(), "Deprecated procedure \"%s\" used at \"%s\":%d. %s\n", proc, file, line, reason);
 }
 
 INLINE_PROCEDURE void LogProcedure(void *agent, Log_Kind kind, const char *fmt, va_list list) {

@@ -9,7 +9,7 @@ BuildDirectory     : ./bin;
 Sources            : src/build.c;
 Flags              : ;
 
-Defines            : ASSERTION_HANDLED DEPRECATION_HANDLED;
+Defines            : ASSERTION_HANDLED;
 
 IncludeDirectories : ;
 Libraries          : ;
@@ -39,7 +39,7 @@ Sources            : plugin/muda_plug.c;
 # Sources            : src/build.c;
 # Flags              : ;
 # 
-# Defines            : ASSERTION_HANDLED DEPRECATION_HANDLED;
+# Defines            : ASSERTION_HANDLED;
 # 
 # IncludeDirectories : ;
 # Libraries          : ;

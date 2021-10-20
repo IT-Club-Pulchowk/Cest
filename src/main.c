@@ -254,10 +254,10 @@ static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, voi
     return Directory_Iteration_Continue;
 }
 
-void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler);
-void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config);
+void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler, const char *parent);
+void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent);
 
-void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler) {
+void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler, const char *parent) {
     Memory_Arena *scratch = ThreadScratchpad();
 
     Temporary_Memory temp = BeginTemporaryMemory(scratch);
@@ -432,10 +432,30 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         String cmd_line = OutBuildStringSerial(&out, compiler_config->Arena);
 
         plugin_config.Name = compiler_config->Name.Data;
+        plugin_config.Parent = parent;
         plugin_config.Build = build.Data;
         plugin_config.BuildDir = build_dir.Data;
         plugin_config.MudaDir = ".";
         plugin_config.Succeeded = false;
+        plugin_config.BuildKind = compiler_config->Application;
+
+#if PLATFORM_OS_WINDOWS == 1
+        if (compiler_config->Application == Application_Executable)
+            plugin_config.BuildExtension = "exe";
+        else if (compiler_config->Application == Application_Dynamic_Library)
+            plugin_config.BuildExtension = "dll";
+        else
+            plugin_config.BuildExtension = "lib";
+#elif PLATFORM_OS_LINUX
+        if (compiler_config->Application == Application_Executable)
+            plugin_config.BuildExtension = "out";
+        else if (compiler_config->Application == Application_Dynamic_Library)
+            plugin_config.BuildExtension = "so";
+        else
+            plugin_config.BuildExtension = "a";
+#else
+#error "Unimplemented"
+#endif
 
         build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Prebuild, &plugin_config);
 
@@ -522,7 +542,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 LogInfo("==> Executing Muda Build in \"%s\" \n", it->Data[index].Data);
                 if (OsSetWorkingDirectory(it->Data[index])) {
                     Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
-                    SearchExecuteMudaBuild(arena, build_config, compiler, compiler_config);
+                    SearchExecuteMudaBuild(arena, build_config, compiler, compiler_config, it->Data[index].Data);
                     EndTemporaryMemory(&arena_temp);
                     if (!OsSetWorkingDirectory(StringLiteral(".."))) {
                         LogError("Could not set the original directory as the working directory! Aborted.\n");
@@ -556,7 +576,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 	EndTemporaryMemory(&temp);
 }
 
-void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config) {
+void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent) {
     Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
 
     Compiler_Config_List *configs = (Compiler_Config_List *)PushSize(arena, sizeof(Compiler_Config_List));
@@ -624,7 +644,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
                 Compiler_Config *config = &it->Config[index];
                 LogInfo("==> Building Configuration: %s \n", config->Name.Data);
                 PushDefaultCompilerConfig(config, config->Kind == Compile_Project);
-                ExecuteMudaBuild(config, build_config, compiler);
+                ExecuteMudaBuild(config, build_config, compiler, parent);
             }
         }
     }
@@ -645,7 +665,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
             if (config) {
                 LogInfo("==> Building Configuration: %s \n", config->Name.Data);
                 PushDefaultCompilerConfig(config, config->Kind == Compile_Project);
-                ExecuteMudaBuild(config, build_config, compiler);
+                ExecuteMudaBuild(config, build_config, compiler, parent);
             }
             else {
                 LogError("Configuration \"%s\" not found. Ignored.\n", required_config.Data);
@@ -731,7 +751,7 @@ int main(int argc, char *argv[]) {
 
     Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
 
-    SearchExecuteMudaBuild(&arena, &build_config, compiler, NULL);
+    SearchExecuteMudaBuild(&arena, &build_config, compiler, NULL, NULL);
 
     build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Destroy, NULL);
 

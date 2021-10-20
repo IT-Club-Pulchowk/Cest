@@ -33,7 +33,7 @@ if %ERRORLEVEL% neq 0 goto SkipMSVC
 where rc >nul 2>nul
 if %ERRORLEVEL% neq 0 goto SkipMSVC
 echo Building with Msvc
-call cl -nologo -W3 -DASSERTION_HANDLED -DDEPRECATION_HANDLED -D_CRT_SECURE_NO_WARNINGS %SourceFiles% %CompilerFlags% -EHsc -Fe%OutputBinary%
+call cl -nologo -W3 -DASSERTION_HANDLED -D_CRT_SECURE_NO_WARNINGS %SourceFiles% %CompilerFlags% -EHsc -Fe%OutputBinary%
 echo -------------------------------------
 goto Finished
 :SkipMSVC
@@ -46,7 +46,7 @@ IF %ERRORLEVEL% NEQ 0 goto SkipCLANG
 where llvm-rc >nul 2>nul
 IF %ERRORLEVEL% NEQ 0 goto SkipCLANG
 echo Building with CLANG
-call clang -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -D_CRT_SECURE_NO_WARNINGS %SourceFiles% %CompilerFlags% -o %OutputBinary% -lShlwapi.lib -lUserenv.lib -lAdvapi32.lib
+call clang -DASSERTION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -D_CRT_SECURE_NO_WARNINGS %SourceFiles% %CompilerFlags% -o %OutputBinary% -lShlwapi.lib -lUserenv.lib -lAdvapi32.lib
 echo -------------------------------------
 goto Finished
 :SkipCLANG
@@ -59,7 +59,7 @@ IF %ERRORLEVEL% NEQ 0 goto SkipGCC
 where windres >nul 2>nul
 IF %ERRORLEVEL% NEQ 0 goto SkipGCC
 echo Building with GCC
-call gcc -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion %SourceFiles% %CompilerFlags% -o %OutputBinary%  -lShlwapi -lUserenv -lAdvapi32
+call gcc -DASSERTION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion %SourceFiles% %CompilerFlags% -o %OutputBinary%  -lShlwapi -lUserenv -lAdvapi32
 echo -------------------------------------
 goto Finished
 :SkipGCC
