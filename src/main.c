@@ -232,6 +232,9 @@ typedef struct Directory_Iteration_Context {
 
 static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, void *user_context) {
     if ((info->Atribute & File_Attribute_Directory) && !(info->Atribute & File_Attribute_Hidden)) {
+        if (StrMatch(info->Name, StringLiteral(".muda")))
+            return Directory_Iteration_Continue;
+
         Directory_Iteration_Context *context = (Directory_Iteration_Context *)user_context;
 
         String_List *ignore = context->Ignore;
@@ -432,10 +435,9 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         String cmd_line = OutBuildStringSerial(&out, compiler_config->Arena);
 
         plugin_config.Name = compiler_config->Name.Data;
-        plugin_config.Parent = parent;
         plugin_config.Build = build.Data;
         plugin_config.BuildDir = build_dir.Data;
-        plugin_config.MudaDir = ".";
+        plugin_config.MudaDir = (parent ? parent : ".");
         plugin_config.Succeeded = false;
         plugin_config.BuildKind = compiler_config->Application;
 
@@ -710,15 +712,18 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    void *plugin = OsLibraryLoad(MudaPluginPath);
-    if (plugin) {
-        build_config.PluginHook = (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
-        if (build_config.PluginHook) {
-            build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Detection, NULL);
-            LogInfo("Plugin detected. Name: %s\n", build_config.Interface.PluginName);
-        }
-        else {
-            LogWarn("Plugin dectected by could not be loaded\n");
+    void *plugin = NULL;
+    if (build_config.EnablePlugins) {
+        plugin = OsLibraryLoad(MudaPluginPath);
+        if (plugin) {
+            build_config.PluginHook = (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
+            if (build_config.PluginHook) {
+                build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Detection, NULL);
+                LogInfo("Plugin detected. Name: %s\n", build_config.Interface.PluginName);
+            }
+            else {
+                LogWarn("Plugin dectected by could not be loaded\n");
+            }
         }
     }
 
@@ -755,14 +760,14 @@ int main(int argc, char *argv[]) {
 
     build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Destroy, NULL);
 
-    if (plugin) {
-        OsLibraryFree(plugin);
-    }
-
     if (ThreadContext.LogAgent.Data) {
         File_Handle handle;
         handle.PlatformFileHandle = ThreadContext.LogAgent.Data;
         OsFileClose(handle);
+    }
+
+    if (plugin) {
+        OsLibraryFree(plugin);
     }
     
 	return 0;

@@ -22,6 +22,7 @@ static bool OptCmdline(const char *program, const char *arg[], int count, Build_
 static bool OptNoLog(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptConfig(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptLog(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
+static bool OptNoPlug(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 static bool OptHelp(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option);
 
 static const Muda_Option Options[] = {
@@ -34,6 +35,7 @@ static const Muda_Option Options[] = {
     { StringExpand("nolog"), "Disables logging in the terminal", "", OptNoLog, 0 },
     { StringExpand("config"), "Specify default or configurations to use from the muda file.", "[configuration/s]", OptConfig, -255 },
     { StringExpand("log"), "Log to the given file", "<file>", OptLog, 1 },
+    { StringExpand("noplug"), "Plugin are not loaded", "", OptNoPlug, 0 },
     { StringExpand("help"), "Muda description and list all the command", "[command/s]", OptHelp, -255 },
 };
 
@@ -287,6 +289,11 @@ static bool OptLog(const char *program, const char *arg[], int count, Build_Conf
         return false;
     }
     config->LogFilePath = arg[0];
+    return false;
+}
+
+static bool OptNoPlug(const char *program, const char *arg[], int count, Build_Config *config, Muda_Option *option) {
+    config->EnablePlugins = false;
     return false;
 }
 

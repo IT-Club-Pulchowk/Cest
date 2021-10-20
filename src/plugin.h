@@ -90,7 +90,6 @@ typedef enum Muda_Plugin_Event_Kind {
 } Muda_Plugin_Event_Kind;
 
 typedef struct Muda_Plugin_Config {
-	const char *Parent;
 	const char *Name;
 	const char *Build;
 	const char *BuildExtension;

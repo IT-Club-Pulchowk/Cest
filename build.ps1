@@ -20,7 +20,7 @@ if (Get-Command "cl.exe" -ErrorAction SilentlyContinue) {
 
     if ($optimize) {
         Write-Output "Optimize build enabled."
-        $CompilerFlags = "-O2 -Zi"
+        $CompilerFlags = "-O2"
     }
 
     cl -nologo -W3 -DASSERTION_HANDLED -D_CRT_SECURE_NO_WARNINGS $SourceFiles.Split(" ") $CompilerFlags.Split(" ") -EHsc -Fe"$OutputBinary"
@@ -32,7 +32,7 @@ if (Get-Command "cl.exe" -ErrorAction SilentlyContinue) {
 
     if ($optimize) {
         Write-Output "Optimize build enabled."
-        $CompilerFlags = "-O2 -gcodeview"
+        $CompilerFlags = "-O2"
     }
 
     clang -DASSERTION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -D_CRT_SECURE_NO_WARNINGS $SourceFiles.Split(" ") $CompilerFlags.Split(" ") -o "$OutputBinary"

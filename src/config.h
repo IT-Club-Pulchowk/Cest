@@ -66,6 +66,7 @@ typedef struct Build_Config {
 
 	const char *LogFilePath;
 
+	bool EnablePlugins;
 	Muda_Plugin_Interface Interface;
 	Muda_Event_Hook_Procedure PluginHook;
 } Build_Config;
@@ -334,6 +335,7 @@ INLINE_PROCEDURE void BuildConfigInit(Build_Config *build_config) {
 	build_config->Interface.LogError = MudaPluginInterface_LogError;
 	build_config->Interface.FatalError = MudaPluginInterface_FatalError;
 
+	build_config->EnablePlugins = true;
 	build_config->Interface.PluginName = "-unnamed-";
 	build_config->Interface.UserContext = NULL;
 
