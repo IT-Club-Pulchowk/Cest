@@ -427,7 +427,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 			} break;
 			
 			case Compiler_Bit_CLANG: {
-                OutFormatted(&out, "%s -Wall ", compiler_config->Language ? "clang" : "clang++");
+                OutFormatted(&out, "%s -Wall ", compiler_config->Language ? "clang++" : "clang");
                 
                 if (compiler_config->DebugSymbol) {
                     OutFormatted(&out, "-g -gcodeview ");
@@ -517,7 +517,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 			} break;
 			
 			case Compiler_Bit_GCC: {
-				OutFormatted(&out, "%s -Wall ", compiler_config->Language ? "gcc" : "g++");
+				OutFormatted(&out, "%s -Wall ", compiler_config->Language ? "g++" : "gcc");
 				OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-O");
 				
 				ForList(String_List_Node, &compiler_config->Defines) {
