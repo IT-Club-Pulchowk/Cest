@@ -1,4 +1,5 @@
 
+
 #pragma once
 #include "zBase.h"
 
@@ -7,9 +8,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <ctype.h>
-
-// For now
-#include <stdlib.h>
 
 #define MudaParserReportError(p, ...) snprintf(p->Token.Data.Error.Desc, sizeof(p->Token.Data.Error.Desc), __VA_ARGS__)
 
@@ -54,12 +52,15 @@ typedef struct Muda_Token {
 } Muda_Token;
 
 typedef struct Muda_Parser {
+        
 	uint8_t *Ptr;
 	uint8_t *Pos;
 
         uint32_t line;
         uint8_t* line_ptr;
 	Muda_Token Token;
+
+        Memory_Arena* Arena;
 } Muda_Parser;
 
 #define IgnoreSpaces(ptr) while(*ptr && isspace(*ptr) && *ptr != '\n') ptr++; // Don't consume newline character .. important for error detection and line information
@@ -75,12 +76,13 @@ bool isSpecial(uint8_t ch)
 }
 
 
-INLINE_PROCEDURE Muda_Parser MudaParseInit(uint8_t *data) {
+INLINE_PROCEDURE Muda_Parser MudaParseInit(uint8_t *data, Memory_Arena* arena) {
         Muda_Parser parser = {0};
 	parser.Ptr = data;
 	parser.Pos = parser.Ptr;
 	parser.line = 1;
-	parser.line_ptr = data; 
+	parser.line_ptr = data;
+	parser.Arena = arena;
 	memset(&parser.Token, 0, sizeof(parser.Token));
 	return parser;
 }
@@ -106,7 +108,6 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   
   String id = GetNextToken(cur,p);
 
-  // First read the key value idiot -> me
   p->Token.Kind = Muda_Token_Property;
   p->Token.Data.Property.Key.Data = id.Data;
   p->Token.Data.Property.Key.Length = id.Length;
@@ -165,8 +166,9 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   if (!count_values)
      return true; 
 
-  //Todo(Tilak) :->  Replace it with temporary memory
-  p->Token.Data.Property.Value = (String*) malloc(sizeof(String)*count_values);
+  //Use allocator here
+  p->Token.Data.Property.Value = (String*)PushSize(p->Arena,sizeof(String)*count_values);
+  // p->Token.Data.Property.Value = (String*) malloc(sizeof(String)*count_values);
 
   
   id = GetNextToken(save+1,p);
@@ -189,6 +191,8 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
     id = GetNextToken(id.Data+inc,p);
     // LogWarn("Parsing iteratively");
   }
+
+  // For passing as a single buffer
   
   /* if (id.Length != 0) */
   /* { */
