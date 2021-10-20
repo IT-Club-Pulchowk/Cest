@@ -234,7 +234,7 @@ static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, voi
     if ((info->Atribute & File_Attribute_Directory) && !(info->Atribute & File_Attribute_Hidden)) {
         if (StrMatch(info->Name, StringLiteral(".muda")))
             return Directory_Iteration_Continue;
-
+		
         Directory_Iteration_Context *context = (Directory_Iteration_Context *)user_context;
 		
         String_List *ignore = context->Ignore;
@@ -336,31 +336,31 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         }
 		
         switch (compiler) {
-        case Compiler_Bit_CL: {
-            OutFormatted(&out, "cl -nologo -EHsc -W3 ");
-            OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-Od");
-
-            if (compiler_config->DebugSymbol) {
-                OutFormatted(&out, "-Zi ");
-            }
-
-            ForList(String_List_Node, &compiler_config->Defines) {
-                ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "-D%s ", it->Data[index].Data);
-                }
-            }
-
-            ForList(String_List_Node, &compiler_config->IncludeDirectories) {
-                ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
-                }
-            }
-
-            ForList(String_List_Node, &compiler_config->Sources) {
-                ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-                    OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
-                }
-            }
+			case Compiler_Bit_CL: {
+				OutFormatted(&out, "cl -nologo -EHsc -W3 ");
+				OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-Od");
+				
+				if (compiler_config->DebugSymbol) {
+					OutFormatted(&out, "-Zi ");
+				}
+				
+				ForList(String_List_Node, &compiler_config->Defines) {
+					ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "-D%s ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->IncludeDirectories) {
+					ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+					}
+				}
+				
+				ForList(String_List_Node, &compiler_config->Sources) {
+					ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
+						OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+					}
+				}
 #if PLATFORM_OS_WINDOWS == 1
 				if (compiler_config->ResourceFile.Size) {
 					String resource_file = OutBuildStringSerial(&compiler_config->ResourceFile, scratch);
@@ -432,7 +432,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 if (compiler_config->DebugSymbol) {
                     OutFormatted(&out, "-g -gcodeview ");
                 }
-
+				
 				OutFormatted(&out, "%s ", compiler_config->Optimization ? "--optimize" : "--debug");
 				
 				ForList(String_List_Node, &compiler_config->Defines) {
@@ -502,10 +502,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 				
 				ForList(String_List_Node, &compiler_config->Libraries) {
 					ForListNode(&compiler_config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
-						if(PLATFORM_OS_WINDOWS)
-							OutFormatted(target, "\"%s.lib\" ", it->Data[index].Data);
-						else
-							OutFormatted(target, "\"%s.a\" ", it->Data[index].Data);
+						OutFormatted(target, "\"-l%s\" ", it->Data[index].Data);
 					}
 				}
 				
@@ -583,7 +580,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 				
 				ForList(String_List_Node, &compiler_config->Libraries) {
 					ForListNode(&compiler_config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
-						OutFormatted(target, "\"%s.a\" ", it->Data[index].Data);
+						OutFormatted(target, "\"-l%s\" ", it->Data[index].Data);
 					}
 				}
 				
@@ -603,7 +600,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         plugin_config.MudaDir = (parent ? parent : ".");
         plugin_config.Succeeded = false;
         plugin_config.BuildKind = compiler_config->Application;
-
+		
 #if PLATFORM_OS_WINDOWS == 1
         if (compiler_config->Application == Application_Executable)
             plugin_config.BuildExtension = "exe";
@@ -621,7 +618,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 #else
 #error "Unimplemented"
 #endif
-
+		
         build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Prebuild, &plugin_config);
 		
         execute_postbuild = false;
@@ -874,7 +871,7 @@ int main(int argc, char *argv[]) {
             LogError("Could not open file: \"%s\" for logging. Logging to file disabled.\n");
         }
     }
-
+	
     void *plugin = NULL;
     if (build_config.EnablePlugins) {
         plugin = OsLibraryLoad(MudaPluginPath);
@@ -918,17 +915,17 @@ int main(int argc, char *argv[]) {
     }
 	
     Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
-
+	
     SearchExecuteMudaBuild(&arena, &build_config, compiler, NULL, NULL);
-
+	
     build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Destroy, NULL);
-
+	
     if (ThreadContext.LogAgent.Data) {
         File_Handle handle;
         handle.PlatformFileHandle = ThreadContext.LogAgent.Data;
         OsFileClose(handle);
     }
-
+	
     if (plugin) {
         OsLibraryFree(plugin);
     }
