@@ -66,7 +66,7 @@ INLINE_PROCEDURE void GetLineNoAndColumn(uint8_t *cur, Muda_Parser *p) {
 	cpy = cur;
 	p->Token.Data.Error.Line = 1;
 	while (cpy > p->Ptr + 1) {
-		p->Token.Data.Error.Line += (*cpy == '\n' || *cpy == '\r');
+		p->Token.Data.Error.Line += (*cpy == '\n');
 		cpy--;
 	}
 }
