@@ -144,12 +144,16 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   uint8_t* save = id.Data;
   
   id = GetNextToken(p->Pos, p);
-  // New line error detection : TODO 
+ 
+  // Null terminate the key string
+  p->Token.Data.Property.Key.Data[p->Token.Data.Property.Key.Length] = '\0';
+  
   if(id.Length == 0 && *id.Data == ';')
   {
     // Null property .. Property with no body
     p->Token.Data.Property.Value = NULL;
     p->Token.Data.Property.Count = 0;
+
     p->Pos = id.Data + 1;
     return true;
   }
@@ -159,6 +163,7 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   // A sophiscated error handling here
   // 
   // Count total number of valid values
+  
   int64_t count_values = 0;
   while(!isSpecial(*id.Data) || (*id.Data == '\n'))
   {
@@ -183,6 +188,7 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   }
 
   p->Token.Data.Property.Count = count_values;
+  
   p->Pos = id.Data + 1; 
 
   if (!count_values)
@@ -197,17 +203,46 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
 
   int64_t values = 0;
 
-  while(!isSpecial(*id.Data) || (*id.Data == '\n'))
+  bool next_newline = false;
+
+  while( !isSpecial(*id.Data) || (*id.Data == '\n' || next_newline))
   {
-    if (*id.Data == '\n') {
+    if (*id.Data == '\n' || next_newline) {
       // Do nothing
     }
     else 
     {
-      p->Token.Data.Property.Value[values++] = id;
+      p->Token.Data.Property.Value[values] = id;
+      // What if next character is new line and we tried to replace it with null?
+      if (p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] == '\n')
+      {
+	p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] = '\0';
+	next_newline = true; 
+      }
+      else
+      {
+	next_newline = false;
+      }
+
+      if (p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] == ';')
+      {
+	p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] = '\0';
+	p->Pos++;
+	break; 
+      }
+
+      if (!next_newline)
+      {
+        p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] = '\0';
+	p->Pos++;
+      }
+      values++;
       Assert(values<=count_values);
     }
-    id = GetNextToken(p->Pos,p);
+    if (!next_newline)
+      id = GetNextToken(p->Pos,p);
+    else
+      id = GetNextToken(p->Pos+1,p);
     // LogWarn("Parsing iteratively");
   }
 
@@ -349,6 +384,8 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
 	p->Token.Kind = Muda_Token_Config;
 	p->Token.Data.Config.Data = token.Data;
 	p->Token.Data.Config.Length = token.Length;
+	
+	*peek.Data = '\0'; // ---> Null termination 
 	//      p->Pos = token.Data + token.Length + 1;
 	p->Pos = p->Pos;
 	p->column = (uint32_t)(peek.Data - p->line_ptr);
@@ -380,6 +417,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
       p->line++;
       p->line_ptr = peek.Data+1;
     }
+    *peek.Data = '\0';
     p->Pos = peek.Data + 1;
     p->column = (uint32_t)(peek.Data - p->line_ptr);
     return true; 
@@ -426,7 +464,14 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     p->Token.Data.Tag.Value.Data = peek.Data;
     p->Token.Data.Tag.Value.Length = peek.Length;
     p->column = (uint32_t)(peek.Data - p->line_ptr);
-    p->Pos = p->Pos; 
+    p->Pos = p->Pos;
+    if (peek.Data[peek.Length] == '\n')
+    {
+      p->line_ptr = peek.Data + peek.Length + 1;
+      p->line++;
+    }
+    peek.Data[peek.Length] = '\0';
+    p->Pos++;
     return true; 
   }
 
@@ -450,6 +495,14 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     p->Token.Data.Section.Data = peek.Data;
     p->Token.Data.Section.Length = peek.Length;
     p->column = (uint32_t)(peek.Data - p->line_ptr);
+
+    if (peek.Data[peek.Length] == '\n')
+    {
+      p->line_ptr = peek.Data + peek.Length + 1;
+      p->line++;
+    }
+    peek.Data[peek.Length] = '\0';
+    p->Pos++;
     return true; 
   }
 
