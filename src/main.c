@@ -360,19 +360,19 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
 			ForList(String_List_Node, &compiler_config->Defines) {
 				ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "-D%.*s ",it->Data[index].Length, it->Data[index].Data);
+				  OutFormatted(&out, "-D%s ", it->Data[index].Data);
 				}
 			}
 
 			ForList(String_List_Node, &compiler_config->IncludeDirectories) {
 				ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(&out, "-I\"%.*s\" ", it->Data[index].Length, it->Data[index].Data);
+					OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
 				}
 			}
 
 			ForList(String_List_Node, &compiler_config->Sources) {
 				ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(&out, "\"%.*s\" ", it->Data[index].Length, it->Data[index].Data);
+					OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
 				}
 			}
 #if PLATFORM_OS_WINDOWS == 1
@@ -451,19 +451,19 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
 			ForList(String_List_Node, &compiler_config->Defines) {
 				ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "-D%.*s ",it->Data[index].Length, it->Data[index].Data);
+				  OutFormatted(&out, "-D%s ", it->Data[index].Data);
 				}
 			}
 
 			ForList(String_List_Node, &compiler_config->IncludeDirectories) {
 				ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "-I\"%.*s\" ", it->Data[index].Length,it->Data[index].Data);
+				  OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
 				}
 			}
 
 			ForList(String_List_Node, &compiler_config->Sources) {
 				ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "\"%.*s\" ",it->Data[index].Length, it->Data[index].Data);
+				  OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
 				}
 			}
 
@@ -536,19 +536,19 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
 			ForList(String_List_Node, &compiler_config->Defines) {
 				ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "-D%.*s ", it->Data[index].Length,it->Data[index].Data);
+				  OutFormatted(&out, "-D%s ", it->Data[index].Data);
 				}
 			}
 
 			ForList(String_List_Node, &compiler_config->IncludeDirectories) {
 				ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "-I\"%.*s\" ",it->Data[index].Length, it->Data[index].Data);
+				  OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
 				}
 			}
 
 			ForList(String_List_Node, &compiler_config->Sources) {
 				ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "\"%.*s\" ",it->Data[index].Length, it->Data[index].Data);
+				  OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
 				}
 			}
 
