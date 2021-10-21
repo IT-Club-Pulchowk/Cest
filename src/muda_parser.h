@@ -411,14 +411,13 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     p->Token.Kind = Muda_Token_Comment;
     String peek = GetNextToken(token.Data+1,p);
     while(*peek.Data != '\n' && *peek.Data != '\0')
-      peek = GetNextToken(peek.Data+1,p);
+      peek = GetNextToken(p->Pos,p);
     if (*peek.Data == '\n')
     {
       p->line++;
       p->line_ptr = peek.Data+1;
     }
-    *peek.Data = '\0';
-    p->Pos = peek.Data + 1;
+    peek.Data[peek.Length] = '\0';
     p->column = (uint32_t)(peek.Data - p->line_ptr);
     return true; 
   }
