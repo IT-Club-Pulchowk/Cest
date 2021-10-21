@@ -110,11 +110,17 @@ static String GetNextToken(uint8_t* cur,Muda_Parser* p)
     }
     if(*cur != '\"') // Error .. but no way to report (without changing returnt type) for now ? Wait there's a way .. use longjmp or inter-function goto :D :D 
     {
+      if (p->Token.Kind == Muda_Token_Comment)
+      {
+        // ignore and return 
+        p->Pos = cur+1; 
+        return (String){.Data = hold+1, .Length = cur-hold-1};
+      }
       Unimplemented();
     }
     
     p->Pos = cur+1;
-    return (String){.Data = hold + 1, .Length = cur - hold - 1};;
+    return (String){.Data = hold + 1, .Length = cur - hold - 1};
     // value to be written without quotes 
   }
   
