@@ -162,7 +162,6 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
   int64_t count_values = 0;
   while(!isSpecial(*id.Data) || (*id.Data == '\n'))
   {
-    int64_t inc; 
     if (*id.Data == '\n') {
       p->line_ptr = id.Data + 1;
       p->line++;
@@ -200,7 +199,6 @@ bool MudaParseKeyValue(uint8_t* cur, Muda_Parser* p)
 
   while(!isSpecial(*id.Data) || (*id.Data == '\n'))
   {
-    int64_t inc; 
     if (*id.Data == '\n') {
       // Do nothing
     }
@@ -315,7 +313,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
   {
     p->Pos = token.Data;
     // Column information 
-    p->column = token.Data - p->line_ptr;
+    p->column = (uint32_t)(token.Data - p->line_ptr);
     return false;
   }
   
@@ -327,7 +325,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     {
       LogWarn("Empty [Config] Section");
       p->Pos = token.Data + 1;
-      p->column = token.Data - p->line_ptr;
+      p->column = (uint32_t)(token.Data - p->line_ptr);
       return true;
       // Or it could be reported as Error?? 
       /*
