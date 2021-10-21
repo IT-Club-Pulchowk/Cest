@@ -379,7 +379,7 @@ typedef struct String {
 } String;
 #define StringLiteral(lit) (const String) { (Int64)(sizeof(lit) - 1), lit }
 #define StringExpand(lit) { (Int64)(sizeof(lit) - 1), lit }
-#define StringMake(ch, len) (const String) { (Int64)(len), (Uint8 *)ch }
+#define StringMake(ch, len) (const String) { (Int64)(len), (Uint8 *)(ch) }
 
 #if defined(__cplusplus)
 
