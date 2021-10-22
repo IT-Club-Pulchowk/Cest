@@ -115,7 +115,7 @@ bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *con
 }
 
 bool OsSetWorkingDirectory(String path) {
-    Unimplemented();
+    return chdir(path.Data) == 0;
 }
 
 Compiler_Kind OsDetectCompiler() {
@@ -276,15 +276,13 @@ String OsConsoleRead(char *buffer, Uint32 size) {
 
 
 void *OsLibraryLoad(const char *path) {
-    Unimplemented();
-    return NULL;
+    return dlopen(path, RTLD_LAZY);
 }
 
 void OsLibraryFree(void *handle) {
-    Unimplemented();
+    dlclose(handle);
 }
 
 void *OsGetProcedureAddress(void *handle, const char *proc_name) {
-    Unimplemented();
-    return NULL;
+    return dlsym(handle, proc_name);
 }

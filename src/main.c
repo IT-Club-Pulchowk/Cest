@@ -216,7 +216,7 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
 		} break;
 
 		case Muda_Token_Tag: {
-			Unimplemented();
+			LogWarn("Line: %u, Column: %u :: Tag not supported. Ignored.\n", prsr.line, prsr.column);
 		} break;
 		}
 	}
