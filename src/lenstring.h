@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #define ForList(Node_Type, List) for (Node_Type *it = &((List)->Head); it && (List)->Used; it = it->Next)
 #define ForListNode(List, MaxCount)                                                                                    \

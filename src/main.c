@@ -327,13 +327,13 @@ static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, voi
     return Directory_Iteration_Continue;
 }
 
-void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler,
-                      const char *parent);
-void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler,
-                            Compiler_Config *alternative_config, const char *parent);
+void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config,
+                      const Compiler_Kind available_compilers, const Compiler_Kind compiler, const char *parent);
+void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind available_compilers,
+                            const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent);
 
-void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler,
-                      const char *parent)
+void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config,
+                      const Compiler_Kind available_compilers, const Compiler_Kind compiler, const char *parent)
 {
     Memory_Arena    *scratch = ThreadScratchpad();
 
@@ -658,12 +658,22 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
             if (PLATFORM_OS_WINDOWS)
             {
-                // OutFormatted(target, "-Xlinker -subsystem:%s ", compiler_config->Subsystem == Subsystem_Console ?
-                // "CONSOLE" : "WINDOWS");
-                // <------ This one depends upon the linker used by Clang .. It could be link.exe (lld.exe) (from msvc)
-                // or ld.exe (from gcc) ------> So flag depends
-                OutFormatted(target, "\"-Wl,--subsystem,%s\" ",
-                             compiler_config->Subsystem == Subsystem_Console ? "console" : "windows");
+                if (available_compilers & Compiler_Bit_CL)
+                {
+                    OutFormatted(target, "-fuse-ld=link ");
+                    OutFormatted(target, "-Xlinker -subsystem:%s ",
+                                 compiler_config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
+                }
+                else
+                {
+                    if (available_compilers & Compiler_Bit_GCC)
+                        OutFormatted(target, "-fuse-ld=ld ");
+                    else
+                        OutFormatted(target, "-fuse-ld=lld ");
+
+                    OutFormatted(target, "\"-Wl,--subsystem,%s\" ",
+                                 compiler_config->Subsystem == Subsystem_Console ? "console" : "windows");
+                }                
             }
         }
         break;
@@ -926,7 +936,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                     if (OsSetWorkingDirectory(values[str_index]))
                     {
                         Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
-                        SearchExecuteMudaBuild(arena, build_config, compiler, compiler_config, values[str_index].Data);
+                        SearchExecuteMudaBuild(arena, build_config, available_compilers, compiler, compiler_config, values[str_index].Data);
                         EndTemporaryMemory(&arena_temp);
                         if (!OsSetWorkingDirectory(StringLiteral("..")))
                         {
@@ -968,8 +978,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
     EndTemporaryMemory(&temp);
 }
 
-void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler,
-                            Compiler_Config *alternative_config, const char *parent)
+void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind available_compilers,
+                            const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent)
 {
     Temporary_Memory      arena_temp = BeginTemporaryMemory(arena);
 
@@ -1047,7 +1057,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
                 Compiler_Config *config = &it->Config[index];
                 LogInfo("==> Building Configuration: %s \n", config->Name.Data);
                 PushDefaultCompilerConfig(config, config->Kind == Compile_Project);
-                ExecuteMudaBuild(config, build_config, compiler, parent);
+                ExecuteMudaBuild(config, build_config, available_compilers, compiler, parent);
             }
         }
     }
@@ -1074,7 +1084,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
             {
                 LogInfo("==> Building Configuration: %s \n", config->Name.Data);
                 PushDefaultCompilerConfig(config, config->Kind == Compile_Project);
-                ExecuteMudaBuild(config, build_config, compiler, parent);
+                ExecuteMudaBuild(config, build_config, available_compilers, compiler, parent);
             }
             else
             {
@@ -1147,6 +1157,8 @@ int main(int argc, char *argv[])
         }
     }
 
+    Compiler_Kind available_compilers = compiler;
+
     if (build_config.ForceCompiler)
     {
         if (compiler & build_config.ForceCompiler)
@@ -1181,7 +1193,7 @@ int main(int argc, char *argv[])
 
     Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
 
-    SearchExecuteMudaBuild(&arena, &build_config, compiler, NULL, NULL);
+    SearchExecuteMudaBuild(&arena, &build_config, available_compilers, compiler, NULL, NULL);
 
     build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Destroy, NULL);
 
