@@ -151,3 +151,8 @@ static void OsExecuteCommandLine(struct Thread_Context *Thread, Muda_Plugin_Inte
 }
 
 #endif
+#if (PLATFORM_OS_LINUX == 1)
+static void OsExecuteCommandLine(struct Thread_Context *Thread, Muda_Plugin_Interface *Interface, const char *CommandLine, ProcessLaunchInfo *InfoOut) {
+    Unimplemented();
+}
+#endif
