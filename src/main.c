@@ -434,7 +434,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "-D%s ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "-D%s ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -444,7 +444,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "-I\"%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "-I\"%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -454,7 +454,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "\"%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "\"%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -473,7 +473,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "%s ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -502,7 +502,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                     {
                         Int64 str_count = it->Data[index].Count;
                         for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                            OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
+                            OutFormatted(&out, "%s ", it->Data[index].Values[str_index].Data);
                     }
                 }
             }
@@ -523,7 +523,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(target, "-LIBPATH:\"%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(target, "-LIBPATH:\"%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -533,7 +533,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(target, "\"%s.lib\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(target, "\"%s.lib\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -561,7 +561,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "-D%s ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "-D%s ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -571,7 +571,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "-I\"%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "-I\"%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -581,7 +581,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "\"%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "\"%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -600,7 +600,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "%s ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -620,7 +620,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                     {
                         Int64 str_count = it->Data[index].Count;
                         for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                            OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
+                            OutFormatted(&out, "%s ", it->Data[index].Values[str_index].Data);
                     }
                 }
             }
@@ -642,7 +642,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(target, "-L\"%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(target, "-L\"%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -652,27 +652,26 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(target, "\"-l%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(target, "\"-l%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
             if (PLATFORM_OS_WINDOWS)
             {
-                if (available_compilers & Compiler_Bit_CL)
+                if (available_compilers & Compiler_Bit_GCC)
                 {
-                    OutFormatted(target, "-fuse-ld=link ");
-                    OutFormatted(target, "-Xlinker -subsystem:%s ",
-                                 compiler_config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
+                    OutFormatted(target, "-fuse-ld=ld ");
+                    OutFormatted(target, "\"-Wl,--subsystem,%s\" ",
+                                 compiler_config->Subsystem == Subsystem_Console ? "console" : "windows");
                 }
                 else
                 {
-                    if (available_compilers & Compiler_Bit_GCC)
-                        OutFormatted(target, "-fuse-ld=ld ");
+                    if (available_compilers & Compiler_Bit_CL)
+                        OutFormatted(target, "-fuse-ld=link ");
                     else
                         OutFormatted(target, "-fuse-ld=lld ");
-
-                    OutFormatted(target, "\"-Wl,--subsystem,%s\" ",
-                                 compiler_config->Subsystem == Subsystem_Console ? "console" : "windows");
+                    OutFormatted(target, "-Xlinker -subsystem:%s ",
+                                 compiler_config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
                 }                
             }
         }
@@ -688,7 +687,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "-D%s ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "-D%s ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -698,7 +697,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "-I\"%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "-I\"%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -708,7 +707,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "\"%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "\"%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -727,7 +726,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
+                        OutFormatted(&out, "%s ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -747,7 +746,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                     {
                         Int64 str_count = it->Data[index].Count;
                         for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                            OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
+                            OutFormatted(&out, "%s ", it->Data[index].Values[str_index].Data);
                     }
                 }
             }
@@ -765,7 +764,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(target, "-L\"%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(target, "-L\"%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 
@@ -775,7 +774,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(target, "\"-l%s\" ", it->Data[index].Values[str_index]);
+                        OutFormatted(target, "\"-l%s\" ", it->Data[index].Values[str_index].Data);
                 }
             }
 

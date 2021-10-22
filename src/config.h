@@ -649,7 +649,7 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        writer(context, "%s ", it->Data[index].Values[str_index]);
+                        writer(context, "%s ", it->Data[index].Values[str_index].Data);
                 }
             }
 
