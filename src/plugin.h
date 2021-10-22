@@ -62,9 +62,17 @@
 #endif
 
 #if PLATFORM_OS_WINDOWS == 1
-#define MUDA_PLUGIN_INTERFACE __declspec(dllexport)
+#ifdef __cplusplus
+#define MUDA_PLUGIN_INTERFACE __declspec(dllexport) extern "C"
 #else
-#define MUDA_PLUGIN_INTERFACE
+#define MUDA_PLUGIN_INTERFACE __declspec(dllexport)
+#endif
+#else
+#ifdef(__cplusplus)
+#define MUDA_PLUGIN_INTERFACE extern "C"
+#else
+#define MUDA_PLUGIN_INTERFACE 
+#endif
 #endif
 
 #if defined(__GNUC__)
@@ -168,6 +176,10 @@ typedef struct Temporary_Memory
     size_t               Position;
 } Temporary_Memory;
 
+#define MUDA_PLUGIN_VERSION_MAJOR 1
+#define MUDA_PLUGIN_VERSION_MINOR 8
+#define MUDA_PLUGIN_VERSION_PATCH 0
+
 #else
 #define MUDA_PLUGIN_INTERFACE
 #endif
@@ -176,9 +188,47 @@ typedef struct Temporary_Memory
 #define BUILD_KIND_STATIC_LIBRARY 1
 #define BUILD_KIND_DYNAMIC_LIBRARY 2
 
+typedef enum Muda_Parsing_OS
+{
+    Muda_Parsing_OS_All,
+    Muda_Parsing_OS_Windows,
+    Muda_Parsing_OS_Linux,
+    Muda_Parsing_OS_Mac,
+} Muda_Parsing_OS;
+
+typedef enum Muda_Parsing_COMPILER
+{
+    Muda_Parsing_COMPILER_ALL,
+    Muda_Parsing_COMPILER_CL,
+    Muda_Parsing_COMPILER_CLANG,
+    Muda_Parsing_COMPILER_GCC,
+} Muda_Parsing_COMPILER;
+
+typedef struct Muda_Parse_Section
+{
+    Muda_Parsing_OS       OS;
+    Muda_Parsing_COMPILER Compiler;
+} Muda_Parse_Section;
+
+// ALERT: This must be synced with String
+typedef struct Muda_String
+{
+    int64_t Length;
+    char   *Data;
+} Muda_String;
+
+typedef struct Muda_Parser_Token
+{
+    Muda_Parse_Section Section;
+    Muda_String        Key;
+    Muda_String       *Values;
+    uint32_t           ValueCount;
+} Muda_Parser_Token;
+
 typedef enum Muda_Plugin_Event_Kind
 {
     Muda_Plugin_Event_Kind_Detection,
+    Muda_Plugin_Event_Kind_Parse,
     Muda_Plugin_Event_Kind_Prebuild,
     Muda_Plugin_Event_Kind_Postbuild,
     Muda_Plugin_Event_Kind_Destroy
@@ -199,8 +249,9 @@ typedef struct Muda_Plugin_Event
     Muda_Plugin_Event_Kind Kind;
 
     union {
-        Muda_Plugin_Config Prebuild; 
+        Muda_Plugin_Config Prebuild;
         Muda_Plugin_Config Postbuild;
+        Muda_Parser_Token  Parse;
     } Data;
 } Muda_Plugin_Event;
 
@@ -229,7 +280,14 @@ typedef struct Muda_Plugin_Interface
 #define Muda_Event_Hook_Defn(name) int32_t name (struct Thread_Context *Thread, Muda_Plugin_Interface *Interface, Muda_Plugin_Event *Event)
 typedef Muda_Event_Hook_Defn((*Muda_Event_Hook_Procedure));
 
-#define MudaHandleEvent() MUDA_PLUGIN_INTERFACE Muda_Event_Hook_Defn(External_MudaEventHook)
+#define MudaHandleEvent()                                                                                              \
+    MUDA_PLUGIN_INTERFACE void MudaAcceptVersion(uint32_t *major, uint32_t *minor, uint32_t *patch)         \
+    {                                                                                                                  \
+        *major = MUDA_PLUGIN_VERSION_MAJOR;                                                                            \
+        *minor = MUDA_PLUGIN_VERSION_MINOR;                                                                            \
+        *patch = MUDA_PLUGIN_VERSION_PATCH;                                                                            \
+    }                                                                                                                  \
+    MUDA_PLUGIN_INTERFACE Muda_Event_Hook_Defn(External_MudaEventHook)
 
 #ifndef MUDA_PLUGIN_IMPORT_INCLUDE
 
@@ -250,8 +308,8 @@ typedef Muda_Event_Hook_Defn((*Muda_Event_Hook_Procedure));
 #define MudaEndTemporaryMemory(temp) Interface->EndTemporaryMemory(temp)
 #define MudaSetUserContext(context) Interface->UserContext = context
 #define MudaGetUserContext(context) Interface->UserContext
-#define MudaVersion m_Interface->Version
 #define MudaGetEventKind() Event->Kind
 #define MudaGetPrebuildData() &Event->Data.Prebuild
 #define MudaGetPostbuildData() &Event->Data.Postbuild
+
 #endif

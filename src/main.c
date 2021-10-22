@@ -6,27 +6,13 @@
 #include "stream.h"
 #include "zBase.h"
 
-typedef enum Muda_Parsing_OS
+void MudaParseSectionInit(Muda_Parse_Section *section)
 {
-    Muda_Parsing_OS_None,
-    Muda_Parsing_OS_Windows,
-    Muda_Parsing_OS_Linux,
-    Muda_Parsing_OS_Mac,
-} Muda_Parsing_OS;
-
-typedef struct Muda_Parse_State
-{
-    Muda_Parsing_OS OS;
-    Compiler_Kind   Compiler;
-} Muda_Parse_State;
-
-void MudaParseStateInit(Muda_Parse_State *state)
-{
-    state->OS       = Muda_Parsing_OS_None;
-    state->Compiler = 0;
+    section->OS       = Muda_Parsing_OS_All;
+    section->Compiler = Muda_Parsing_COMPILER_ALL;
 }
 
-void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Kind compiler)
+void DeserializeMuda(Build_Config *build_config, Compiler_Config_List *config_list, Uint8 *data, Compiler_Kind compiler)
 {
     Memory_Arena    *scratch = ThreadScratchpad();
 
@@ -36,6 +22,14 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
 
     Uint32           version = 0;
     Uint32           major = 0, minor = 0, patch = 0;
+
+    Muda_Parsing_COMPILER selected_compiler;
+    if (compiler == Compiler_Bit_CL)
+        selected_compiler = Muda_Parsing_COMPILER_CL;
+    else if (compiler == Compiler_Bit_CLANG)
+        selected_compiler = Muda_Parsing_COMPILER_CLANG;
+    else
+        selected_compiler = Muda_Parsing_COMPILER_GCC;
 
     while (MudaParseNext(&prsr))
         if (prsr.Token.Kind != Muda_Token_Comment)
@@ -69,11 +63,10 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
         FatalError(error.Data);
     }
 
-    Muda_Parse_State state;
+    Muda_Parse_Section section;
+    MudaParseSectionInit(&section);
 
-    bool             first_config_name = true;
-
-    MudaParseStateInit(&state);
+    bool first_config_name = true;
 
     while (MudaParseNext(&prsr))
     {
@@ -93,24 +86,22 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
         break;
 
         case Muda_Token_Section: {
-            // FIXME: The strings returned by MudaParseNext return '\r' with the strings
-            // and these check fails
             if (StrMatchCaseInsensitive(StringLiteral("OS.ALL"), prsr.Token.Data.Section))
-                state.OS = Muda_Parsing_OS_None;
+                section.OS = Muda_Parsing_OS_All;
             else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
-                state.OS = Muda_Parsing_OS_Windows;
+                section.OS = Muda_Parsing_OS_Windows;
             else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX"), prsr.Token.Data.Section))
-                state.OS = Muda_Parsing_OS_Linux;
+                section.OS = Muda_Parsing_OS_Linux;
             else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC"), prsr.Token.Data.Section))
-                state.OS = Muda_Parsing_OS_Mac;
+                section.OS = Muda_Parsing_OS_Mac;
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.ALL"), prsr.Token.Data.Section))
-                state.Compiler = 0;
+                section.Compiler = Muda_Parsing_COMPILER_ALL;
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CL"), prsr.Token.Data.Section))
-                state.Compiler = Compiler_Bit_CL;
+                section.Compiler = Muda_Parsing_COMPILER_CL;
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CLANG"), prsr.Token.Data.Section))
-                state.Compiler = Compiler_Bit_CLANG;
+                section.Compiler = Muda_Parsing_COMPILER_CLANG;
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.GCC"), prsr.Token.Data.Section))
-                state.Compiler = Compiler_Bit_GCC;
+                section.Compiler = Muda_Parsing_COMPILER_GCC;
             else
             {
                 String error = FmtStr(scratch, "Line: %u, Column: %u :: Unknown Section: %s\n", prsr.line, prsr.column,
@@ -124,11 +115,11 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
             first_config_name = false;
 
             bool reject_os =
-                !(state.OS == Muda_Parsing_OS_None || (PLATFORM_OS_WINDOWS && state.OS == Muda_Parsing_OS_Windows) ||
-                  (PLATFORM_OS_LINUX && state.OS == Muda_Parsing_OS_Linux) ||
-                  (PLATFORM_OS_MAC && state.OS == Muda_Parsing_OS_Mac));
+                !(section.OS == Muda_Parsing_OS_All || (PLATFORM_OS_WINDOWS && section.OS == Muda_Parsing_OS_Windows) ||
+                  (PLATFORM_OS_LINUX && section.OS == Muda_Parsing_OS_Linux) ||
+                  (PLATFORM_OS_MAC && section.OS == Muda_Parsing_OS_Mac));
 
-            if (reject_os || (state.Compiler != 0 && compiler != state.Compiler))
+            if (reject_os || (section.Compiler != Muda_Parsing_COMPILER_ALL && selected_compiler != section.Compiler))
                 break;
 
             bool        property_found = false;
@@ -244,8 +235,19 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
 
             if (!property_found)
             {
-                LogWarn("Line: %u, Column: %u :: Invalid Property \"%s\". Ignored.\n", prsr.line, prsr.column,
-                        token->Data.Property.Key.Data);
+                Muda_Plugin_Event pevent;
+                pevent.Kind                  = Muda_Plugin_Event_Kind_Parse;
+                pevent.Data.Parse.Section    = section;
+                pevent.Data.Parse.Key.Data   = token->Data.Property.Key.Data;
+                pevent.Data.Parse.Key.Length = token->Data.Property.Key.Length;
+                pevent.Data.Parse.Values     = (Muda_String *)token->Data.Property.Value;
+                pevent.Data.Parse.ValueCount = (uint32_t)token->Data.Property.Count;
+
+                if (build_config->PluginHook(&ThreadContext, &build_config->Interface, &pevent) != 0)
+                {
+                    LogWarn("Line: %u, Column: %u :: Invalid Property \"%s\". Ignored.\n", prsr.line, prsr.column,
+                            token->Data.Property.Key.Data);
+                }
             }
         }
         break;
@@ -256,7 +258,8 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
         break;
 
         case Muda_Token_Tag: {
-            LogWarn("Line: %u, Column: %u :: Tag not supported. Ignored.\n", prsr.line, prsr.column);
+            LogWarn("Line: %u, Column: %u :: Tag %s not supported. Ignored.\n", prsr.line, prsr.column,
+                    prsr.Token.Data.Tag.Title.Data);
         }
         break;
         }
@@ -350,9 +353,9 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         LogInfo("Finished executing Prebuild command\n");
     }
 
-    bool               execute_postbuild = true;
+    bool              execute_postbuild = true;
 
-    Muda_Plugin_Event  pevent;
+    Muda_Plugin_Event pevent;
     memset(&pevent, 0, sizeof(pevent));
 
     if (compiler_config->Kind == Compile_Project)
@@ -673,7 +676,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                         OutFormatted(target, "-fuse-ld=lld ");
                     OutFormatted(target, "-Xlinker -subsystem:%s ",
                                  compiler_config->Subsystem == Subsystem_Console ? "CONSOLE" : "WINDOWS");
-                }                
+                }
             }
         }
         break;
@@ -788,7 +791,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         break;
         }
 
-        String cmd_line         = OutBuildStringSerial(&out, compiler_config->Arena);
+        String cmd_line                = OutBuildStringSerial(&out, compiler_config->Arena);
 
         pevent.Data.Prebuild.Name      = compiler_config->Name.Data;
         pevent.Data.Prebuild.Build     = build.Data;
@@ -910,7 +913,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
             ForList(String_List_Node, &directory_list)
             {
-                StringArrayListAdd(filtered_list, it->Data, it->Next ? MAX_STRING_NODE_DATA_COUNT : directory_list.Used, dir_scratch);
+                StringArrayListAdd(filtered_list, it->Data, it->Next ? MAX_STRING_NODE_DATA_COUNT : directory_list.Used,
+                                   dir_scratch);
             }
         }
         else
@@ -933,7 +937,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                     if (OsSetWorkingDirectory(values[str_index]))
                     {
                         Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
-                        SearchExecuteMudaBuild(arena, build_config, available_compilers, compiler, compiler_config, values[str_index].Data);
+                        SearchExecuteMudaBuild(arena, build_config, available_compilers, compiler, compiler_config,
+                                               values[str_index].Data);
                         EndTemporaryMemory(&arena_temp);
                         if (!OsSetWorkingDirectory(StringLiteral("..")))
                         {
@@ -967,7 +972,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
     if (compiler_config->Kind == Compile_Project)
     {
-        pevent.Kind = Muda_Plugin_Event_Kind_Postbuild;
+        pevent.Kind                    = Muda_Plugin_Event_Kind_Postbuild;
         pevent.Data.Prebuild.Succeeded = execute_postbuild;
         build_config->PluginHook(&ThreadContext, &build_config->Interface, &pevent);
     }
@@ -1025,7 +1030,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
             {
                 buffer[size] = 0;
                 LogInfo("Parsing muda file\n");
-                DeserializeMuda(configs, buffer, compiler);
+                DeserializeMuda(build_config, configs, buffer, compiler);
                 LogInfo("Finished parsing muda file\n");
             }
             else if (size == 0)
@@ -1140,25 +1145,53 @@ int main(int argc, char *argv[])
         plugin = OsLibraryLoad(MudaPluginPath);
         if (plugin)
         {
-            build_config.PluginHook = (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
-            if (build_config.PluginHook)
+            typedef void (*PluginVersionProc)(uint32_t *major, uint32_t *minor, uint32_t *patch);
+            PluginVersionProc check_version = (PluginVersionProc)OsGetProcedureAddress(plugin, "MudaAcceptVersion");
+
+            if (check_version)
             {
-                Muda_Plugin_Event pevent;
-                memset(&pevent, 0, sizeof(pevent));
-                pevent.Kind = Muda_Plugin_Event_Kind_Detection;
-                if (build_config.PluginHook(&ThreadContext, &build_config.Interface, &pevent) == 0)
+                uint32_t major, minor, patch;
+                check_version(&major, &minor, &patch);
+
+                uint32_t supported_major   = MUDA_PLUGIN_BACK_COMPATIBLE_VERSION_MAJOR;
+                uint32_t supported_minor   = MUDA_PLUGIN_BACK_COMPATIBLE_VERSION_MINOR;
+                uint32_t supported_patch   = MUDA_PLUGIN_BACK_COMPATIBLE_VERSION_PATCH;
+
+                uint32_t plugin_version    = MudaMakeVersion(major, minor, patch);
+                uint32_t supported_version = MudaMakeVersion(supported_major, supported_minor, supported_patch);
+                uint32_t current_version   = MUDA_CURRENT_VERSION;
+
+                if (plugin_version <= current_version && plugin_version >= supported_version)
                 {
-                    LogInfo("Plugin detected. Name: %s\n", build_config.Interface.PluginName);
+                    build_config.PluginHook =
+                        (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
+                    if (build_config.PluginHook)
+                    {
+                        Muda_Plugin_Event pevent;
+                        memset(&pevent, 0, sizeof(pevent));
+                        pevent.Kind = Muda_Plugin_Event_Kind_Detection;
+                        if (build_config.PluginHook(&ThreadContext, &build_config.Interface, &pevent) == 0)
+                        {
+                            LogInfo("Plugin detected. Name: %s\n", build_config.Interface.PluginName);
+                        }
+                        else
+                        {
+                            LogInfo("Loading of Plugin failed.\n");
+                            build_config.PluginHook = NullMudaEventHook;
+                        }
+                    }
+                    else
+                    {
+                        LogWarn("Plugin dectected by could not be loaded\n");
+                    }
                 }
                 else
                 {
-                    LogInfo("Loading of Plugin failed.\n");
-                    build_config.PluginHook = NullMudaEventHook;
+                    LogWarn("Plugin dectected but not supported. Plugin version: %u.%u.%u. Min Supported version: "
+                            "%u.%u.%u. Current version: %u.%u.%u.",
+                            major, minor, patch, supported_major, supported_minor, supported_patch, MUDA_VERSION_MAJOR,
+                            MUDA_VERSION_MINOR, MUDA_VERSION_PATCH);
                 }
-            }
-            else
-            {
-                LogWarn("Plugin dectected by could not be loaded\n");
             }
         }
     }

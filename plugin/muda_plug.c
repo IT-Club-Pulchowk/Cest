@@ -35,6 +35,12 @@ MudaHandleEvent()
     if (Event->Kind == Muda_Plugin_Event_Kind_Prebuild || Event->Kind == Muda_Plugin_Event_Kind_Destroy)
         return 0;
 
+    if (Event->Kind == Muda_Plugin_Event_Kind_Parse)
+    {
+        // May be we are interested in some properties?
+        return 1; // we return 1 because we are not handling any unknown properties
+    }
+
     if (Event->Kind == Muda_Plugin_Event_Kind_Postbuild)
     {
         MudaLog("==> Collecting information...\n");

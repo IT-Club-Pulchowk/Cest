@@ -22,7 +22,7 @@
 [Plugin]
 Kind               : Project;
 Application        : DynamicLibrary;
-Optimization       : True;
+Optimization       : False;
 Build              : muda;
 BuildDirectory     : ./.muda;
 Sources            : plugin/muda_plug.c;
