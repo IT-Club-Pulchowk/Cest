@@ -59,12 +59,12 @@ typedef struct Muda_Token
 typedef struct Muda_Parser
 {
 
-    uint8_t *     Ptr;
-    uint8_t *     Pos;
+    uint8_t      *Ptr;
+    uint8_t      *Pos;
 
     uint32_t      line;
     uint32_t      column;
-    uint8_t *     line_ptr;
+    uint8_t      *line_ptr;
     Muda_Token    Token;
 
     Memory_Arena *Arena;

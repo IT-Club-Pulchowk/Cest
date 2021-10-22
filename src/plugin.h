@@ -64,7 +64,7 @@
 #if PLATFORM_OS_WINDOWS == 1
 #define MUDA_PLUGIN_INTERFACE __declspec(dllexport)
 #else
-#define MUDA_PLUGIN_INTERFACE 
+#define MUDA_PLUGIN_INTERFACE
 #endif
 
 #if defined(__GNUC__)
@@ -88,12 +88,13 @@
 #endif
 
 #if defined(HAVE_SIGNAL_H) && !defined(__WATCOMC__)
-#include <signal.h>  // raise()
+#include <signal.h> // raise()
 #endif
 
 #if defined(_MSC_VER)
 #define TriggerBreakpoint() __debugbreak()
-#elif ((!defined(__NACL__)) && ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__))))
+#elif ((!defined(__NACL__)) &&                                                                                         \
+       ((defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__))))
 #define TriggerBreakpoint() __asm__ __volatile__("int $3\n\t")
 #elif defined(__386__) && defined(__WATCOMC__)
 #define TriggerBreakpoint() _asm { int 0x03}
@@ -127,85 +128,94 @@ void AssertHandle(const char *reason, const char *file, int line, const char *pr
 
 #if defined(BUILD_DEBUG) || defined(BUILD_DEVELOPER)
 #define DebugTriggerbreakpoint TriggerBreakpoint
-#define Assert(x)                                                  \
-do {                                                           \
-if (!(x)) AssertHandle("Assert Failed", __FILE__, __LINE__, __PROCEDURE__); \
-} while (0)
+#define Assert(x)                                                                                                      \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if (!(x))                                                                                                      \
+            AssertHandle("Assert Failed", __FILE__, __LINE__, __PROCEDURE__);                                          \
+    } while (0)
 #else
 #define DebugTriggerbreakpoint()
-#define Assert(x) \
-do {          \
-0;        \
-} while (0)
+#define Assert(x)                                                                                                      \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        0;                                                                                                             \
+    } while (0)
 #endif
 
 #if defined(BUILD_DEBUG) || defined(BUILD_DEVELOPER)
 #define Unimplemented() AssertHandle("Unimplemented procedure", __FILE__, __LINE__, __PROCEDURE__);
-#define Unreachable()   AssertHandle("Unreachable code path", __FILE__, __LINE__, __PROCEDURE__);
-#define NoDefaultCase()      \
-default:                 \
-AssertHandle("No default case", __FILE__, __LINE__, __PROCEDURE__); \
-break
+#define Unreachable() AssertHandle("Unreachable code path", __FILE__, __LINE__, __PROCEDURE__);
+#define NoDefaultCase()                                                                                                \
+    default:                                                                                                           \
+        AssertHandle("No default case", __FILE__, __LINE__, __PROCEDURE__);                                            \
+        break
 #else
 #define Unimplemented() TriggerBreakpoint();
-#define Unreachable()   TriggerBreakpoint();
-#define NoDefaultCase()      \
-default:                 \
-TriggerBreakpoint(); \
-break
+#define Unreachable() TriggerBreakpoint();
+#define NoDefaultCase()                                                                                                \
+    default:                                                                                                           \
+        TriggerBreakpoint();                                                                                           \
+        break
 #endif
 
 struct Memory_Arena;
 struct Thread_Context;
 
-typedef struct Temporary_Memory {
-	struct Memory_Arena *Arena;
-	size_t Position;
+typedef struct Temporary_Memory
+{
+    struct Memory_Arena *Arena;
+    size_t               Position;
 } Temporary_Memory;
 
 #else
-#define MUDA_PLUGIN_INTERFACE 
+#define MUDA_PLUGIN_INTERFACE
 #endif
 
-#define BUILD_KIND_EXECUTABLE		0
-#define BUILD_KIND_STATIC_LIBRARY	1
-#define BUILD_KIND_DYNAMIC_LIBRARY	2
+#define BUILD_KIND_EXECUTABLE 0
+#define BUILD_KIND_STATIC_LIBRARY 1
+#define BUILD_KIND_DYNAMIC_LIBRARY 2
 
-typedef enum Muda_Plugin_Event_Kind {
-	Muda_Plugin_Event_Kind_Detection,
-	Muda_Plugin_Event_Kind_Prebuild,
-	Muda_Plugin_Event_Kind_Postbuild,
-	Muda_Plugin_Event_Kind_Destroy
+typedef enum Muda_Plugin_Event_Kind
+{
+    Muda_Plugin_Event_Kind_Detection,
+    Muda_Plugin_Event_Kind_Prebuild,
+    Muda_Plugin_Event_Kind_Postbuild,
+    Muda_Plugin_Event_Kind_Destroy
 } Muda_Plugin_Event_Kind;
 
-typedef struct Muda_Plugin_Config {
-	const char *Name;
-	const char *Build;
-	const char *BuildExtension;
-	const char *BuildDir;
-	const char *MudaDir;
-	uint32_t	BuildKind;
-	uint32_t	Succeeded;
+typedef struct Muda_Plugin_Config
+{
+    const char *Name;
+    const char *Build;
+    const char *BuildExtension;
+    const char *BuildDir;
+    const char *MudaDir;
+    uint32_t    BuildKind;
+    uint32_t    Succeeded;
 } Muda_Plugin_Config;
 
-typedef struct Muda_Plugin_Interface {
-	struct Memory_Arena *(*GetThreadScratchpad)(struct Thread_Context *);
-	void *(*PushSize)(struct Memory_Arena *, uint32_t);
-	void *(*PushSizeAligned)(struct Memory_Arena *, uint32_t, uint32_t);
-	Temporary_Memory(*BeginTemporaryMemory)(struct Memory_Arena *);
-	void (*EndTemporaryMemory)(Temporary_Memory *);
+typedef struct Muda_Plugin_Interface
+{
+    struct Memory_Arena *(*GetThreadScratchpad)(struct Thread_Context *);
+    void *(*PushSize)(struct Memory_Arena *, uint32_t);
+    void *(*PushSizeAligned)(struct Memory_Arena *, uint32_t, uint32_t);
+    Temporary_Memory (*BeginTemporaryMemory)(struct Memory_Arena *);
+    void (*EndTemporaryMemory)(Temporary_Memory *);
 
-	void (*LogInfo)(struct Thread_Context *, const char *fmt, ...);
-	void (*LogError)(struct Thread_Context *, const char *fmt, ...);
-	void (*LogWarn)(struct Thread_Context *, const char *fmt, ...);
-	void (*FatalError)(struct Thread_Context *, const char *msg);
+    void (*LogInfo)(struct Thread_Context *, const char *fmt, ...);
+    void (*LogError)(struct Thread_Context *, const char *fmt, ...);
+    void (*LogWarn)(struct Thread_Context *, const char *fmt, ...);
+    void (*FatalError)(struct Thread_Context *, const char *msg);
 
-	char *PluginName;
-	void *UserContext;
+    char *PluginName;
+    void *UserContext;
 
-	struct {
-		uint32_t Major, Minor, Patch;
-	} Version;
+    struct
+    {
+        uint32_t Major, Minor, Patch;
+    } Version;
 } Muda_Plugin_Interface;
 
-typedef void (*Muda_Event_Hook_Procedure)(struct Thread_Context *Thread, Muda_Plugin_Interface *Interface, Muda_Plugin_Event_Kind Event, const Muda_Plugin_Config *Config);
+typedef void (*Muda_Event_Hook_Procedure)(struct Thread_Context *Thread, Muda_Plugin_Interface *Interface,
+                                          Muda_Plugin_Event_Kind Event, const Muda_Plugin_Config *Config);
