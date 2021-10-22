@@ -6,6 +6,8 @@
 #include <sys/stat.h>
 #include <bits/statx.h>
 #include <dirent.h>
+#include <unistd.h>
+#include <dlfcn.h>
 #include <stdlib.h>
 #include <stdio_ext.h>
 
