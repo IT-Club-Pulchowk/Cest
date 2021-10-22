@@ -376,7 +376,7 @@ static bool HandleCommandLineArguments(int argc, char *argv[], Build_Config *con
 					}
 
                     if (parameter_count == option->ParameterCount || option->ParameterCount < 0) {
-                        handled = option->Proc(argv[0], argv + argi + 1, parameter_count, config, (Muda_Option *)option) || handled;
+                        handled = option->Proc(argv[0], (const char **)(argv + argi + 1), parameter_count, config, (Muda_Option *)option) || handled;
                         cmd_executed = true;
                     }
                     else {

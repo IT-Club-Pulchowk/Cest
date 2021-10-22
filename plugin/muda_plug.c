@@ -79,7 +79,7 @@ void MudaEventHook(struct Thread_Context *Thread, Muda_Plugin_Interface *Interfa
 	}
 }
 
-#ifdef PLATFORM_OS_WINDOWS
+#if (PLATFORM_OS_WINDOWS == 1)
 #include <Windows.h>
 #include <psapi.h>
 
@@ -150,4 +150,9 @@ static void OsExecuteCommandLine(struct Thread_Context *Thread, Muda_Plugin_Inte
 	Interface->EndTemporaryMemory(&temp);
 }
 
+#endif
+#if (PLATFORM_OS_LINUX == 1)
+static void OsExecuteCommandLine(struct Thread_Context *Thread, Muda_Plugin_Interface *Interface, const char *CommandLine, ProcessLaunchInfo *InfoOut) {
+    Unimplemented();
+}
 #endif
