@@ -815,6 +815,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 #error "Unimplemented"
 #endif
 
+        pevent.Kind = Muda_Plugin_Event_Kind_Prebuild;
         build_config->PluginHook(&ThreadContext, &build_config->Interface, &pevent);
 
         execute_postbuild                = false;
@@ -909,10 +910,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
             ForList(String_List_Node, &directory_list)
             {
-                ForListNode(&directory_list, MAX_STRING_NODE_DATA_COUNT)
-                {
-                    StringArrayListAdd(filtered_list, &it->Data[0], it_count, dir_scratch);
-                }
+                StringArrayListAdd(filtered_list, it->Data, it->Next ? MAX_STRING_NODE_DATA_COUNT : directory_list.Used, dir_scratch);
             }
         }
         else
@@ -969,6 +967,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
     if (compiler_config->Kind == Compile_Project)
     {
+        pevent.Kind = Muda_Plugin_Event_Kind_Postbuild;
         pevent.Data.Prebuild.Succeeded = execute_postbuild;
         build_config->PluginHook(&ThreadContext, &build_config->Interface, &pevent);
     }

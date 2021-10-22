@@ -32,7 +32,7 @@ MudaHandleEvent()
         return 0;
     }
 
-    if (Event->Kind == Muda_Plugin_Event_Kind_Postbuild || Event->Kind == Muda_Plugin_Event_Kind_Destroy)
+    if (Event->Kind == Muda_Plugin_Event_Kind_Prebuild || Event->Kind == Muda_Plugin_Event_Kind_Destroy)
         return 0;
 
     if (Event->Kind == Muda_Plugin_Event_Kind_Postbuild)
