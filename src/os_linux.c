@@ -2,10 +2,10 @@
 #include "os.h"
 #include "zBase.h"
 
-#include <bits/statx.h>
 #include <dirent.h>
 #include <dlfcn.h>
 #include <errno.h>
+#include <features.h>
 #include <stdio_ext.h>
 #include <stdlib.h>
 #include <sys/stat.h>

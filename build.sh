@@ -20,7 +20,7 @@ echo ------------------------------
 if command -v gcc &> /dev/null
 then
     pushd release
-    gcc -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -Wno-pointer-to-int-cast $GCCFLAGS $SOURCEFILES -o $OUTPUTFILE -ldl
+    gcc -D_GNU_SOURCE -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -Wno-pointer-to-int-cast $GCCFLAGS $SOURCEFILES -o $OUTPUTFILE -ldl
     popd
     exit
 else
@@ -34,7 +34,7 @@ echo ------------------------------
 if command -v clang &> /dev/null
 then
     pushd release
-    clang -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -Wno-void-pointer-to-int-cast $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE -ldl
+    clang -D_GNU_SOURCE -DASSERTION_HANDLED -DDEPRECATION_HANDLED -Wno-switch -Wno-pointer-sign -Wno-enum-conversion -Wno-void-pointer-to-int-cast $SOURCEFILES $COMPILERFLAGS -o $OUTPUTFILE -ldl
     popd
     exit
 else
