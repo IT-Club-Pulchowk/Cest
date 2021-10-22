@@ -79,7 +79,7 @@ void MudaEventHook(struct Thread_Context *Thread, Muda_Plugin_Interface *Interfa
 	}
 }
 
-#ifdef PLATFORM_OS_WINDOWS
+#if (PLATFORM_OS_WINDOWS == 1)
 #include <Windows.h>
 #include <psapi.h>
 

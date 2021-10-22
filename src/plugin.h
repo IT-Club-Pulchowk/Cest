@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdint.h>
 
 #if defined(__clang__) || defined(__ibmxl__)
