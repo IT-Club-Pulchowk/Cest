@@ -84,6 +84,8 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
 		} break;
 
 		case Muda_Token_Section: {
+			// FIXME: The strings returned by MudaParseNext return '\r' with the strings
+			// and these check fails
 			if (StrMatchCaseInsensitive(StringLiteral("OS.ALL"), prsr.Token.Data.Section))
 				state.OS = Muda_Parsing_OS_None;
 			else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
@@ -101,7 +103,7 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
 			else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.GCC"), prsr.Token.Data.Section))
 				state.Compiler = Compiler_Bit_GCC;
 			else {
-				String error = FmtStr(scratch, "Line: %u, Column: %u :: Unknown Section: %s\n", prsr.line, prsr.column, prsr.Token.Data);
+				String error = FmtStr(scratch, "Line: %u, Column: %u :: Unknown Section: %s\n", prsr.line, prsr.column, prsr.Token.Data.Section.Data);
 				FatalError(error.Data);
 			}
 		} break;
@@ -179,9 +181,14 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
 						} break;
 
 						case Compiler_Config_Member_String: {
-							Out_Stream *in = (Out_Stream *)((char *)config + info->Offset);
-							OutReset(in);
-							OutString(in, *token->Data.Property.Value);
+							if (token->Data.Property.Count == 1) {
+								String *in = (String *)((char *)config + info->Offset);
+								*in = token->Data.Property.Value[0];
+							}
+							else {
+								String error = FmtStr(scratch, "Line: %u, Column: %u :: %s property only accepts single value\n", prsr.line, prsr.column, info->Name.Data);
+								FatalError(error.Data);
+							}
 						} break;
 
 						case Compiler_Config_Member_String_Array: {
@@ -279,15 +286,12 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
 	Temporary_Memory temp = BeginTemporaryMemory(scratch);
 
-	if (compiler_config->Prebuild.Size) {
+	if (compiler_config->Prebuild.Length) {
 		LogInfo("==> Executing Prebuild command\n");
-		Temporary_Memory temp = BeginTemporaryMemory(scratch);
-		String prebuild = OutBuildStringSerial(&compiler_config->Prebuild, scratch);
-		if (!OsExecuteCommandLine(prebuild)) {
+		if (!OsExecuteCommandLine(compiler_config->Prebuild)) {
 			LogError("Prebuild execution failed. Aborted.\n\n");
 			return;
 		}
-		EndTemporaryMemory(&temp);
 		LogInfo("Finished executing Prebuild command\n");
 	}
 
@@ -307,8 +311,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 		Out_Stream res;
 		OutCreate(&res, MemoryArenaAllocator(compiler_config->Arena));
 
-		String build_dir = OutBuildStringSerial(&compiler_config->BuildDirectory, scratch);
-		String build = OutBuildStringSerial(&compiler_config->Build, scratch);
+		String build_dir = compiler_config->BuildDirectory;
+		String build = compiler_config->Build;
 
 		Uint32 result = OsCheckIfPathExists(build_dir);
 		if (result == Path_Does_Not_Exist) {
@@ -376,9 +380,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 				}
 			}
 #if PLATFORM_OS_WINDOWS == 1
-			if (compiler_config->ResourceFile.Size) {
-				String resource_file = OutBuildStringSerial(&compiler_config->ResourceFile, scratch);
-				OutFormatted(&res, "rc -fo \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data, resource_file.Data);
+			if (compiler_config->ResourceFile.Length) {
+				OutFormatted(&res, "rc -fo \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data, compiler_config->ResourceFile);
 				OutFormatted(&out, "\"%s/%s.res\" ", build_dir.Data, build.Data);
 			}
 #endif
@@ -468,9 +471,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 			}
 
 #if PLATFORM_OS_WINDOWS == 1
-			if (compiler_config->ResourceFile.Size) {
-				String resource_file = OutBuildStringSerial(&compiler_config->ResourceFile, scratch);
-				OutFormatted(&res, "llvm-rc -FO \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data, resource_file.Data);
+			if (compiler_config->ResourceFile.Length) {
+				OutFormatted(&res, "llvm-rc -FO \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data, compiler_config->ResourceFile);
 				OutFormatted(&out, "\"%s/%s.res\" ", build_dir.Data, build.Data);
 			}
 #endif
@@ -553,9 +555,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 			}
 
 #if PLATFORM_OS_WINDOWS == 1
-			if (compiler_config->ResourceFile.Size) {
-				String resource_file = OutBuildStringSerial(&compiler_config->ResourceFile, scratch);
-				OutFormatted(&res, "windres -i \"%s\" \"%s/%s.o\" ", resource_file.Data, build_dir.Data, build.Data);
+			if (compiler_config->ResourceFile.Length) {
+				OutFormatted(&res, "windres -i \"%s\" \"%s/%s.o\" ", compiler_config->ResourceFile, build_dir.Data, build.Data);
 				OutFormatted(&out, "\"%s/%s.o\" ", build_dir.Data, build.Data);
 			}
 #endif
@@ -739,10 +740,9 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 		compiler_config->Kind = Compile_Solution;
 	}
 
-	if (execute_postbuild && compiler_config->Postbuild.Size) {
+	if (execute_postbuild && compiler_config->Postbuild.Length) {
 		LogInfo("==> Executing Postbuild command\n");
-		String prebuild = OutBuildStringSerial(&compiler_config->Postbuild, scratch);
-		if (!OsExecuteCommandLine(prebuild)) {
+		if (!OsExecuteCommandLine(compiler_config->Postbuild)) {
 			LogError("Postbuild execution failed. \n\n");
 			return;
 		}

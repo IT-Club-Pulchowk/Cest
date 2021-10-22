@@ -81,14 +81,14 @@ typedef struct Compiler_Config {
 	bool Optimization;
 	bool DebugSymbol;
 	
-	Out_Stream  Build;
-	Out_Stream  BuildDirectory;
+	String  Build;
+	String  BuildDirectory;
 	String_List Sources;
 	String_List Flags;
 	String_List Defines;
 	String_List IncludeDirectories;
 	
-	Out_Stream ResourceFile;
+	String ResourceFile;
 	
 	Uint32		Subsystem; // Subsystem_Kind 
 	String_List Libraries;
@@ -98,8 +98,8 @@ typedef struct Compiler_Config {
 	String_List IgnoredDirectories;
 	String_List ProjectDirectories;
 	
-	Out_Stream Prebuild;
-	Out_Stream Postbuild;
+	String Prebuild;
+	String Postbuild;
 	
 	Memory_Arena *Arena;
 } Compiler_Config;
@@ -246,6 +246,12 @@ INLINE_PROCEDURE void LogProcedure(void *agent, Log_Kind kind, const char *fmt, 
 		OsConsoleSetColorYellow(fp);
 		OsConsoleOut(fp, "%-10s", "[Warning] ");
 	}
+
+	va_list list2;
+	if (agent) {
+		va_copy(list2, list);
+	}
+
 	OsConsoleOutV(fp, fmt, list);
 	OsConsoleResetColor(fp);
 	
@@ -259,7 +265,8 @@ INLINE_PROCEDURE void LogProcedure(void *agent, Log_Kind kind, const char *fmt, 
 			OsFileWriteF(handle, "%-10s", "[Error] ");
 		else if (kind == Log_Kind_Warn)
 			OsFileWriteF(handle, "%-10s", "[Warning] ");
-		OsFileWriteFV(handle, fmt, list);
+		OsFileWriteFV(handle, fmt, list2);
+		va_end(list2);
 	}
 }
 
@@ -350,7 +357,6 @@ INLINE_PROCEDURE void BuildConfigInit(Build_Config *build_config) {
 }
 
 INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *arena) {
-	Memory_Allocator allocator = MemoryArenaAllocator(arena);
 	config->Name = StringMake(NULL, 0);
 	config->Kind = Compile_Project;
 	config->Language = Language_C;
@@ -359,14 +365,17 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 	config->Optimization = false;
 	config->DebugSymbol = true;
 	
-	OutCreate(&config->Build, allocator);
-	OutCreate(&config->BuildDirectory, allocator);
+	const String EmptyString = { .Data = NULL, .Length = 0 };
+
+	config->Build = EmptyString;
+	config->BuildDirectory = EmptyString;
+
 	StringListInit(&config->Sources);
 	StringListInit(&config->Flags);
 	StringListInit(&config->Defines);
 	StringListInit(&config->IncludeDirectories);
-	
-	OutCreate(&config->ResourceFile, allocator);
+
+	config->ResourceFile = EmptyString;
 	
 	config->Subsystem = Subsystem_Console;
 	StringListInit(&config->Libraries);
@@ -376,8 +385,8 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 	StringListInit(&config->IgnoredDirectories);
 	StringListInit(&config->ProjectDirectories);
 	
-	OutCreate(&config->Prebuild, allocator);
-	OutCreate(&config->Postbuild, allocator);
+	config->Prebuild = EmptyString;
+	config->Postbuild = EmptyString;
 	
 	config->Arena = arena;
 }
@@ -452,18 +461,16 @@ INLINE_PROCEDURE void ReadList(String_List *dst, String data, Int64 max, Memory_
 }
 
 INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, bool write_log) {
-	if (config->Build.Size == 0) {
-		String def_build = StringLiteral("output");
-		OutString(&config->Build, def_build);
+	if (config->Build.Length == 0) {
+		config->Build = StringLiteral("output");
 		if (write_log)
-			LogInfo("Using Default Binary: %s\n", def_build.Data);
+			LogInfo("Using Default Binary: %s\n", config->Build.Data);
 	}
 	
-	if (config->BuildDirectory.Size == 0) {
-		String def_build_dir = StringLiteral("./bin");
-		OutString(&config->BuildDirectory, def_build_dir);
+	if (config->BuildDirectory.Length == 0) {
+		config->BuildDirectory = StringLiteral("./bin");
 		if (write_log)
-			LogInfo("Using Default Binary Directory: \"%s\"\n", def_build_dir.Data);
+			LogInfo("Using Default Binary Directory: \"%s\"\n", config->BuildDirectory.Data);
 	}
 	
 	if (StringListIsEmpty(&config->Sources)) {
@@ -518,10 +525,8 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
 			} break;
 			
 			case Compiler_Config_Member_String: {
-				Out_Stream *in = (Out_Stream *)((char *)conf + info->Offset);
-				
-				String value = OutBuildStringSerial(in, ThreadScratchpad());
-				writer(context, fmt, info->Name.Data, value.Data);
+				String *in = (String *)((char *)conf + info->Offset);
+				writer(context, fmt, info->Name.Data, in->Data);
 			} break;
 			
 			case Compiler_Config_Member_String_Array: {
