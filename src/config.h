@@ -7,7 +7,7 @@
 #define MUDA_PLUGIN_IMPORT_INCLUDE
 #include "plugin.h"
 
-const char *MudaPluginProcedureName = "MudaEventHook";
+const char *MudaPluginProcedureName = "External_MudaEventHook";
 #if PLATFORM_OS_WINDOWS == 1
 const char *MudaPluginPath = "./.muda/muda.dll";
 #elif PLATFORM_OS_LINUX
@@ -404,9 +404,9 @@ static void MudaPluginInterface_FatalError(Thread_Context *thread_context, const
     thread_context->FatalError(msg);
 }
 
-static void MUDA_PLUGIN_INTERFACE NullMudaEventHook(Thread_Context *thread_context, Muda_Plugin_Interface *interface,
-                                                    Muda_Plugin_Event_Kind event, const Muda_Plugin_Config *config)
+static Muda_Event_Hook_Defn(NullMudaEventHook)
 {
+    return 0;
 }
 
 INLINE_PROCEDURE void BuildConfigInit(Build_Config *build_config)

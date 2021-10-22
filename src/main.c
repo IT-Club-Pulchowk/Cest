@@ -351,8 +351,9 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
     }
 
     bool               execute_postbuild = true;
-    Muda_Plugin_Config plugin_config;
-    memset(&plugin_config, 0, sizeof(plugin_config));
+
+    Muda_Plugin_Event  pevent;
+    memset(&pevent, 0, sizeof(pevent));
 
     if (compiler_config->Kind == Compile_Project)
     {
@@ -789,33 +790,32 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
         String cmd_line         = OutBuildStringSerial(&out, compiler_config->Arena);
 
-        plugin_config.Name      = compiler_config->Name.Data;
-        plugin_config.Build     = build.Data;
-        plugin_config.BuildDir  = build_dir.Data;
-        plugin_config.MudaDir   = (parent ? parent : ".");
-        plugin_config.Succeeded = false;
-        plugin_config.BuildKind = compiler_config->Application;
+        pevent.Data.Prebuild.Name      = compiler_config->Name.Data;
+        pevent.Data.Prebuild.Build     = build.Data;
+        pevent.Data.Prebuild.BuildDir  = build_dir.Data;
+        pevent.Data.Prebuild.MudaDir   = (parent ? parent : ".");
+        pevent.Data.Prebuild.Succeeded = false;
+        pevent.Data.Prebuild.BuildKind = compiler_config->Application;
 
 #if PLATFORM_OS_WINDOWS == 1
         if (compiler_config->Application == Application_Executable)
-            plugin_config.BuildExtension = "exe";
+            pevent.Data.Prebuild.BuildExtension = "exe";
         else if (compiler_config->Application == Application_Dynamic_Library)
-            plugin_config.BuildExtension = "dll";
+            pevent.Data.Prebuild.BuildExtension = "dll";
         else
-            plugin_config.BuildExtension = "lib";
+            pevent.Data.Prebuild.BuildExtension = "lib";
 #elif PLATFORM_OS_LINUX
         if (compiler_config->Application == Application_Executable)
-            plugin_config.BuildExtension = "out";
+            pevent.Data.Prebuild.BuildExtension = "out";
         else if (compiler_config->Application == Application_Dynamic_Library)
-            plugin_config.BuildExtension = "so";
+            pevent.Data.Prebuild.BuildExtension = "so";
         else
-            plugin_config.BuildExtension = "a";
+            pevent.Data.Prebuild.BuildExtension = "a";
 #else
 #error "Unimplemented"
 #endif
 
-        build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Prebuild,
-                                 &plugin_config);
+        build_config->PluginHook(&ThreadContext, &build_config->Interface, &pevent);
 
         execute_postbuild                = false;
 
@@ -969,9 +969,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
     if (compiler_config->Kind == Compile_Project)
     {
-        plugin_config.Succeeded = execute_postbuild;
-        build_config->PluginHook(&ThreadContext, &build_config->Interface, Muda_Plugin_Event_Kind_Postbuild,
-                                 &plugin_config);
+        pevent.Data.Prebuild.Succeeded = execute_postbuild;
+        build_config->PluginHook(&ThreadContext, &build_config->Interface, &pevent);
     }
 
     EndTemporaryMemory(&temp);
@@ -1145,9 +1144,18 @@ int main(int argc, char *argv[])
             build_config.PluginHook = (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
             if (build_config.PluginHook)
             {
-                build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Detection,
-                                        NULL);
-                LogInfo("Plugin detected. Name: %s\n", build_config.Interface.PluginName);
+                Muda_Plugin_Event pevent;
+                memset(&pevent, 0, sizeof(pevent));
+                pevent.Kind = Muda_Plugin_Event_Kind_Detection;
+                if (build_config.PluginHook(&ThreadContext, &build_config.Interface, &pevent) == 0)
+                {
+                    LogInfo("Plugin detected. Name: %s\n", build_config.Interface.PluginName);
+                }
+                else
+                {
+                    LogInfo("Loading of Plugin failed.\n");
+                    build_config.PluginHook = NullMudaEventHook;
+                }
             }
             else
             {
@@ -1194,7 +1202,10 @@ int main(int argc, char *argv[])
 
     SearchExecuteMudaBuild(&arena, &build_config, available_compilers, compiler, NULL, NULL);
 
-    build_config.PluginHook(&ThreadContext, &build_config.Interface, Muda_Plugin_Event_Kind_Destroy, NULL);
+    Muda_Plugin_Event pevent;
+    memset(&pevent, 0, sizeof(pevent));
+    pevent.Kind = Muda_Plugin_Event_Kind_Destroy;
+    build_config.PluginHook(&ThreadContext, &build_config.Interface, &pevent);
 
     if (ThreadContext.LogAgent.Data)
     {

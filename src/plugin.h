@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef MUDA_PLUGIN_IMPORT_INCLUDE
 #if defined(__clang__) || defined(__ibmxl__)
 #define COMPILER_CLANG 1
 #elif defined(_MSC_VER)
@@ -60,7 +61,6 @@
 #define PLATFORM_OS_WINDOWS 0
 #endif
 
-#ifndef MUDA_PLUGIN_IMPORT_INCLUDE
 #if PLATFORM_OS_WINDOWS == 1
 #define MUDA_PLUGIN_INTERFACE __declspec(dllexport)
 #else
@@ -184,8 +184,7 @@ typedef enum Muda_Plugin_Event_Kind
     Muda_Plugin_Event_Kind_Destroy
 } Muda_Plugin_Event_Kind;
 
-typedef struct Muda_Plugin_Config
-{
+typedef struct Muda_Plugin_Config {
     const char *Name;
     const char *Build;
     const char *BuildExtension;
@@ -194,6 +193,16 @@ typedef struct Muda_Plugin_Config
     uint32_t    BuildKind;
     uint32_t    Succeeded;
 } Muda_Plugin_Config;
+
+typedef struct Muda_Plugin_Event
+{
+    Muda_Plugin_Event_Kind Kind;
+
+    union {
+        Muda_Plugin_Config Prebuild; 
+        Muda_Plugin_Config Postbuild;
+    } Data;
+} Muda_Plugin_Event;
 
 typedef struct Muda_Plugin_Interface
 {
@@ -217,5 +226,32 @@ typedef struct Muda_Plugin_Interface
     } Version;
 } Muda_Plugin_Interface;
 
-typedef void (*Muda_Event_Hook_Procedure)(struct Thread_Context *Thread, Muda_Plugin_Interface *Interface,
-                                          Muda_Plugin_Event_Kind Event, const Muda_Plugin_Config *Config);
+#define Muda_Event_Hook_Defn(name) int32_t name (struct Thread_Context *Thread, Muda_Plugin_Interface *Interface, Muda_Plugin_Event *Event)
+typedef Muda_Event_Hook_Defn((*Muda_Event_Hook_Procedure));
+
+#define MudaHandleEvent() MUDA_PLUGIN_INTERFACE Muda_Event_Hook_Defn(External_MudaEventHook)
+
+#ifndef MUDA_PLUGIN_IMPORT_INCLUDE
+
+//
+// Helpers
+//
+
+#define MudaPluginName(name) Interface->PluginName = name
+#define MudaLog(fmt, ...) Interface->LogInfo(Thread, fmt, __VA_ARGS__)
+#define MudaWarn(fmt, ...) Interface->LogWarn(Thread, fmt, __VA_ARGS__)
+#define MudaError(fmt, ...) Interface->LogError(Thread, fmt, __VA_ARGS__)
+#define MudaFatalError(msg) Interface->FatalError(Thread, msg)
+#define MudaGetThreadScratch Interface->GetThreadScratchpad(Thread)
+#define MudaPushSize(sz) Interface->PushSize(sz)
+#define MudaPushType(type) Interface->PushSize(sizeof(sz))
+#define MudaPushSizeAligned(sz, align) Interface->PushSizeAligned(sz, align)
+#define MudaBeginTemporaryMemory(arena) Interface->BeginTemporaryMemory(arena)
+#define MudaEndTemporaryMemory(temp) Interface->EndTemporaryMemory(temp)
+#define MudaSetUserContext(context) Interface->UserContext = context
+#define MudaGetUserContext(context) Interface->UserContext
+#define MudaVersion m_Interface->Version
+#define MudaGetEventKind() Event->Kind
+#define MudaGetPrebuildData() &Event->Data.Prebuild
+#define MudaGetPostbuildData() &Event->Data.Postbuild
+#endif
