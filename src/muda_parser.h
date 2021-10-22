@@ -66,7 +66,7 @@ typedef struct Muda_Parser {
 
 #define IgnoreSpaces(ptr) while(*ptr && isspace(*ptr) && *ptr != '\n') ptr++; // Don't consume newline character .. important for error detection and line information
 
-static uint8_t special_symbols[] = {';','[',']',':','@',' ','\n', '#', '\0'};
+static uint8_t special_symbols[] = {';','[',']',':','@',' ','\n', '#', '\0', '\r'};
 
 bool isSpecial(uint8_t ch)
 {
@@ -104,7 +104,7 @@ static String GetNextToken(uint8_t* cur,Muda_Parser* p)
   if(*cur == '\"')
   {
     ++cur;
-    while( (!isSpecial(*cur) || *cur == '\r') && (*cur != '\"')) // Apparently carriage return is allowed inside string
+    while( (!isSpecial(*cur)) && (*cur != '\"')) // Apparently carriage return is allowed inside string
     {
       cur++;
     }
@@ -343,7 +343,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
 
   String token = GetNextToken(cur,p);
 
-  while(*token.Data == '\n' && token.Length == 0)
+  while( (*token.Data == '\r' || *token.Data == '\n') && token.Length == 0)
   {
     p->line++;
     p->line_ptr = token.Data + 1;
@@ -397,7 +397,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
 	p->column = (uint32_t)(peek.Data - p->line_ptr);
 	return true;
       }
-      else if (*peek.Data == '\n')
+      else if (*peek.Data == '\n' || *peek.Data == '\r')
       {
 	p->Token.Data.Error.Line   = p->line;
 	p->Token.Data.Error.Column = (uint32_t)(peek.Data - p->line_ptr); 
@@ -454,7 +454,7 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
       p->Token.Kind = Muda_Token_Error;
       p->Token.Data.Error.Line = p->line;
       p->Token.Data.Error.Column = (uint32_t)(peek.Data - p->line_ptr);
-      if (*peek.Data == '\n')
+      if (*peek.Data == '\n' && (*peek.Data == '\r' && peek.Data[1] == '\n'))
       {
 	// p->Token.Data.Tag.Valid.Data = NULL;
 	// p->Token.Data.Tag.Valid.Length = 0;
@@ -505,6 +505,21 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser* p)
     {
       p->line_ptr = peek.Data + peek.Length + 1;
       p->line++;
+    }
+    else if (isSpecial(peek.Data[peek.Length]))
+    {
+      if (peek.Data[peek.Length] == '\r' || peek.Data[peek.Length] == ' ')
+      {
+      }
+      else
+      {
+	 p->Token.Kind = Muda_Token_Error;
+	 p->Pos = peek.Data + peek.Length;
+	 p->Token.Data.Error.Line = p->line;
+	 p->Token.Data.Error.Column = (uint32_t)(peek.Data + peek.Length - p->line_ptr);
+	 MudaParserReportError(p, "Unexpected %c ",peek.Data[peek.Length]);
+	 return false; 
+      }
     }
     peek.Data[peek.Length] = '\0';
     p->Pos++;
