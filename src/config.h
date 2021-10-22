@@ -71,6 +71,46 @@ typedef struct Build_Config {
 	Muda_Event_Hook_Procedure PluginHook;
 } Build_Config;
 
+typedef struct String_Array_List_Node {
+	struct {
+		String *Values;
+		Int64   Count;
+	} Data[MAX_STRING_NODE_DATA_COUNT];
+	struct String_Array_List_Node *Next;
+} String_Array_List_Node;
+
+typedef struct String_Array_List {
+	String_Array_List_Node Head;
+	String_Array_List_Node *Tail;
+	Uint32 Used;
+} String_Array_List;
+
+// :Copy pasted from StringListIsEmpty
+INLINE_PROCEDURE bool StringArrayListIsEmpty(String_Array_List *list) {
+	return list->Head.Next == NULL && list->Used == 0;
+}
+
+// :Copy pasted from StringListAdd
+INLINE_PROCEDURE void StringArrayListAdd(String_Array_List *dst, String *strings, Int64 count, Memory_Arena *arena) {
+	if (dst->Used == MAX_STRING_NODE_DATA_COUNT) {
+		dst->Used = 0;
+		dst->Tail->Next = PushSize(arena, sizeof(String_Array_List_Node));
+		dst->Tail = dst->Tail->Next;
+		dst->Tail->Next = NULL;
+	}
+	dst->Tail->Data[dst->Used].Values = strings;
+	dst->Tail->Data[dst->Used].Count = count;
+	dst->Used++;
+}
+
+// :Copy pasted from StringListClear
+#define StringArrayListInit StringArrayListClear
+INLINE_PROCEDURE void StringArrayListClear(String_Array_List *lst) {
+	lst->Used = 0;
+	lst->Head.Next = NULL;
+	lst->Tail = &lst->Head;
+}
+
 typedef struct Compiler_Config {
 	String Name;
 	
@@ -83,20 +123,20 @@ typedef struct Compiler_Config {
 	
 	String  Build;
 	String  BuildDirectory;
-	String_List Sources;
-	String_List Flags;
-	String_List Defines;
-	String_List IncludeDirectories;
+	String_Array_List Sources;
+	String_Array_List Flags;
+	String_Array_List Defines;
+	String_Array_List IncludeDirectories;
 	
 	String ResourceFile;
 	
 	Uint32		Subsystem; // Subsystem_Kind 
-	String_List Libraries;
-	String_List LibraryDirectories;
-	String_List LinkerFlags;
+	String_Array_List Libraries;
+	String_Array_List LibraryDirectories;
+	String_Array_List LinkerFlags;
 	
-	String_List IgnoredDirectories;
-	String_List ProjectDirectories;
+	String_Array_List IgnoredDirectories;
+	String_Array_List ProjectDirectories;
 	
 	String Prebuild;
 	String Postbuild;
@@ -370,20 +410,20 @@ INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *
 	config->Build = EmptyString;
 	config->BuildDirectory = EmptyString;
 
-	StringListInit(&config->Sources);
-	StringListInit(&config->Flags);
-	StringListInit(&config->Defines);
-	StringListInit(&config->IncludeDirectories);
+	StringArrayListInit(&config->Sources);
+	StringArrayListInit(&config->Flags);
+	StringArrayListInit(&config->Defines);
+	StringArrayListInit(&config->IncludeDirectories);
 
 	config->ResourceFile = EmptyString;
 	
 	config->Subsystem = Subsystem_Console;
-	StringListInit(&config->Libraries);
-	StringListInit(&config->LibraryDirectories);
-	StringListInit(&config->LinkerFlags);
+	StringArrayListInit(&config->Libraries);
+	StringArrayListInit(&config->LibraryDirectories);
+	StringArrayListInit(&config->LinkerFlags);
 	
-	StringListInit(&config->IgnoredDirectories);
-	StringListInit(&config->ProjectDirectories);
+	StringArrayListInit(&config->IgnoredDirectories);
+	StringArrayListInit(&config->ProjectDirectories);
 	
 	config->Prebuild = EmptyString;
 	config->Postbuild = EmptyString;
@@ -473,9 +513,9 @@ INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, bool wr
 			LogInfo("Using Default Binary Directory: \"%s\"\n", config->BuildDirectory.Data);
 	}
 	
-	if (StringListIsEmpty(&config->Sources)) {
+	if (StringArrayListIsEmpty(&config->Sources)) {
 		String def_source = StringLiteral("*.c");
-		StringListAdd(&config->Sources, StrDuplicateArena(def_source, config->Arena), config->Arena);
+		StringArrayListAdd(&config->Sources, &def_source, 1, config->Arena);
 		if (write_log)
 			LogInfo("Using Default Sources: %s\n", def_source.Data);
 	}
@@ -530,12 +570,14 @@ INLINE_PROCEDURE void WriteCompilerConfig(Compiler_Config *conf, bool comments, 
 			} break;
 			
 			case Compiler_Config_Member_String_Array: {
-				String_List *in = (String_List *)((char *)conf + info->Offset);
+				String_Array_List *in = (String_Array_List *)((char *)conf + info->Offset);
 				writer(context, fmt_no_val, info->Name.Data);
 				
-				ForList(String_List_Node, in) {
+				ForList(String_Array_List_Node, in) {
 					ForListNode(in, MAX_STRING_NODE_DATA_COUNT) {
-						writer(context, "%s ", it->Data[index].Data);
+						Int64 str_count = it->Data[index].Count;
+						for (Int64 str_index = 0; str_index < str_count; ++str_index)
+							writer(context, "%s ", it->Data[index].Values[str_index]);
 					}
 				}
 				

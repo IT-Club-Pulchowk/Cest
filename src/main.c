@@ -192,15 +192,8 @@ void DeserializeMuda(Compiler_Config_List *config_list, Uint8 *data, Compiler_Ki
 						} break;
 
 						case Compiler_Config_Member_String_Array: {
-							// String_List *in = (String_List *)((char *)config + info->Offset);
-							// ReadList(in, *token->Data.Property.Value, -1, config->Arena);
-							String_List *in = (String_List *)((char *)config + info->Offset);
-							for (int i = 0; i < prsr.Token.Data.Property.Count; ++i) {
-								StringListAdd(in, prsr.Token.Data.Property.Value[i], config->Arena);
-							}
-
-							/* if(prsr.Token.Data.Property.Count != 0) */
-							/* 	free(prsr.Token.Data.Property.Value); */
+							String_Array_List *in = (String_Array_List *)((char *)config + info->Offset);
+							StringArrayListAdd(in, prsr.Token.Data.Property.Value, prsr.Token.Data.Property.Count, config->Arena);
 						} break;
 
 							NoDefaultCase();
@@ -248,7 +241,7 @@ const char *GetCompilerName(Compiler_Kind kind) {
 typedef struct Directory_Iteration_Context {
 	Memory_Arena *Arena;
 	String_List *List;
-	String_List *Ignore;
+	String_Array_List *Ignore;
 } Directory_Iteration_Context;
 
 static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, void *user_context) {
@@ -258,25 +251,31 @@ static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, voi
 
 		Directory_Iteration_Context *context = (Directory_Iteration_Context *)user_context;
 
-		String_List *ignore = context->Ignore;
-		ForList(String_List_Node, ignore) {
+		String_Array_List *ignore = context->Ignore;
+		ForList(String_Array_List_Node, ignore) {
 			ForListNode(ignore, MAX_STRING_NODE_DATA_COUNT) {
 				String dir_path = info->Path;
 				String dir_name = SubStr(dir_path, 2, dir_path.Length - 2);
+
+				Int64 str_count = it->Data[index].Count;
+				for (Int64 str_index = 0; str_index < str_count; ++str_index) {
 #if PLATFORM_OS_WINDOWS == 1
-				if (StrMatchCaseInsensitive(dir_name, it->Data[index]) || StrMatchCaseInsensitive(dir_path, it->Data[index]))
-					return Directory_Iteration_Continue;
+					if (StrMatchCaseInsensitive(dir_name, it->Data[index].Values[str_index]) || 
+						StrMatchCaseInsensitive(dir_path, it->Data[index].Values[str_index]))
+						return Directory_Iteration_Continue;
 #else
-				if (StrMatch(dir_name, it->Data[index]) || StrMatch(dir_path, it->Data[index]))
-					return Directory_Iteration_Continue;
+					if (StrMatch(dir_name, it->Data[index].Values[str_index]) || 
+						StrMatch(dir_path, it->Data[index].Values[str_index]))
+						return Directory_Iteration_Continue;
 #endif
+				}
 			}
 		}
 
 		StringListAdd(context->List, StrDuplicateArena(info->Path, context->Arena), context->Arena);
-			}
+	}
 	return Directory_Iteration_Continue;
-		}
+}
 
 void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config, const Compiler_Kind compiler, const char *parent);
 void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent);
@@ -362,23 +361,30 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 				OutFormatted(&out, "-Zi ");
 			}
 
-			ForList(String_List_Node, &compiler_config->Defines) {
+			ForList(String_Array_List_Node, &compiler_config->Defines) {
 				ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "-D%s ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "-D%s ", it->Data[index].Values[str_index]);
 				}
 			}
 
-			ForList(String_List_Node, &compiler_config->IncludeDirectories) {
+			ForList(String_Array_List_Node, &compiler_config->IncludeDirectories) {
 				ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "-I\"%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
-			ForList(String_List_Node, &compiler_config->Sources) {
+			ForList(String_Array_List_Node, &compiler_config->Sources) {
 				ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "\"%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
+
 #if PLATFORM_OS_WINDOWS == 1
 			if (compiler_config->ResourceFile.Length) {
 				OutFormatted(&res, "rc -fo \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data, compiler_config->ResourceFile);
@@ -386,9 +392,11 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 			}
 #endif
 
-			ForList(String_List_Node, &compiler_config->Flags) {
+			ForList(String_Array_List_Node, &compiler_config->Flags) {
 				ForListNode(&compiler_config->Flags, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(&out, "%s ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
 				}
 			}
 
@@ -410,9 +418,11 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 				if (compiler_config->Application == Application_Dynamic_Library)
 					OutFormatted(&out, "-IMPLIB:\"%s/%s.lib\" ", build_dir.Data, build.Data);
 
-				ForList(String_List_Node, &compiler_config->LinkerFlags) {
+				ForList(String_Array_List_Node, &compiler_config->LinkerFlags) {
 					ForListNode(&compiler_config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
-						OutFormatted(&out, "%s ", it->Data[index].Data);
+						Int64 str_count = it->Data[index].Count;
+						for (Int64 str_index = 0; str_index < str_count; ++str_index)
+							OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
 					}
 				}
 			}
@@ -426,15 +436,19 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
 			Out_Stream *target = ((compiler_config->Application != Application_Static_Library) ? &out : &lib);
 
-			ForList(String_List_Node, &compiler_config->LibraryDirectories) {
+			ForList(String_Array_List_Node, &compiler_config->LibraryDirectories) {
 				ForListNode(&compiler_config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(target, "-LIBPATH:\"%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(target, "-LIBPATH:\"%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
-			ForList(String_List_Node, &compiler_config->Libraries) {
+			ForList(String_Array_List_Node, &compiler_config->Libraries) {
 				ForListNode(&compiler_config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(target, "\"%s.lib\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(target, "\"%s.lib\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
@@ -452,21 +466,27 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
 			OutFormatted(&out, "%s ", compiler_config->Optimization ? "--optimize" : "--debug");
 
-			ForList(String_List_Node, &compiler_config->Defines) {
+			ForList(String_Array_List_Node, &compiler_config->Defines) {
 				ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "-D%s ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "-D%s ", it->Data[index].Values[str_index]);
 				}
 			}
 
-			ForList(String_List_Node, &compiler_config->IncludeDirectories) {
+			ForList(String_Array_List_Node, &compiler_config->IncludeDirectories) {
 				ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "-I\"%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
-			ForList(String_List_Node, &compiler_config->Sources) {
+			ForList(String_Array_List_Node, &compiler_config->Sources) {
 				ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "\"%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
@@ -477,9 +497,11 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 			}
 #endif
 
-			ForList(String_List_Node, &compiler_config->Flags) {
+			ForList(String_Array_List_Node, &compiler_config->Flags) {
 				ForListNode(&compiler_config->Flags, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(&out, "%s ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
 				}
 			}
 
@@ -493,9 +515,11 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 					OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
 						compiler_config->Application == Application_Executable ? "exe" : "dll");
 
-				ForList(String_List_Node, &compiler_config->LinkerFlags) {
+				ForList(String_Array_List_Node, &compiler_config->LinkerFlags) {
 					ForListNode(&compiler_config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
-						OutFormatted(&out, "%s ", it->Data[index].Data);
+						Int64 str_count = it->Data[index].Count;
+						for (Int64 str_index = 0; str_index < str_count; ++str_index)
+							OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
 					}
 				}
 			}
@@ -510,15 +534,19 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
 			Out_Stream *target = ((compiler_config->Application != Application_Static_Library) ? &out : &lib);
 
-			ForList(String_List_Node, &compiler_config->LibraryDirectories) {
+			ForList(String_Array_List_Node, &compiler_config->LibraryDirectories) {
 				ForListNode(&compiler_config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(target, "-L\"%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(target, "-L\"%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
-			ForList(String_List_Node, &compiler_config->Libraries) {
+			ForList(String_Array_List_Node, &compiler_config->Libraries) {
 				ForListNode(&compiler_config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(target, "\"-l%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(target, "\"-l%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
@@ -536,21 +564,27 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 			OutFormatted(&out, "%s -Wall ", compiler_config->Language ? "g++" : "gcc");
 			OutFormatted(&out, "%s ", compiler_config->Optimization ? "-O2" : "-O");
 
-			ForList(String_List_Node, &compiler_config->Defines) {
+			ForList(String_Array_List_Node, &compiler_config->Defines) {
 				ForListNode(&compiler_config->Defines, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "-D%s ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "-D%s ", it->Data[index].Values[str_index]);
 				}
 			}
 
-			ForList(String_List_Node, &compiler_config->IncludeDirectories) {
+			ForList(String_Array_List_Node, &compiler_config->IncludeDirectories) {
 				ForListNode(&compiler_config->IncludeDirectories, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "-I\"%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "-I\"%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
-			ForList(String_List_Node, &compiler_config->Sources) {
+			ForList(String_Array_List_Node, &compiler_config->Sources) {
 				ForListNode(&compiler_config->Sources, MAX_STRING_NODE_DATA_COUNT) {
-				  OutFormatted(&out, "\"%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "\"%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
@@ -561,9 +595,11 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 			}
 #endif
 
-			ForList(String_List_Node, &compiler_config->Flags) {
+			ForList(String_Array_List_Node, &compiler_config->Flags) {
 				ForListNode(&compiler_config->Flags, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(&out, "%s ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
 				}
 			}
 
@@ -577,9 +613,11 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 					OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
 						compiler_config->Application == Application_Executable ? "exe" : "dll");
 
-				ForList(String_List_Node, &compiler_config->LinkerFlags) {
+				ForList(String_Array_List_Node, &compiler_config->LinkerFlags) {
 					ForListNode(&compiler_config->LinkerFlags, MAX_STRING_NODE_DATA_COUNT) {
-						OutFormatted(&out, "%s ", it->Data[index].Data);
+						Int64 str_count = it->Data[index].Count;
+						for (Int64 str_index = 0; str_index < str_count; ++str_index)
+							OutFormatted(&out, "%s ", it->Data[index].Values[str_index]);
 					}
 				}
 			}
@@ -590,15 +628,19 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
 			Out_Stream *target = ((compiler_config->Application != Application_Static_Library) ? &out : &lib);
 
-			ForList(String_List_Node, &compiler_config->LibraryDirectories) {
+			ForList(String_Array_List_Node, &compiler_config->LibraryDirectories) {
 				ForListNode(&compiler_config->LibraryDirectories, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(target, "-L\"%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(target, "-L\"%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
-			ForList(String_List_Node, &compiler_config->Libraries) {
+			ForList(String_Array_List_Node, &compiler_config->Libraries) {
 				ForListNode(&compiler_config->Libraries, MAX_STRING_NODE_DATA_COUNT) {
-					OutFormatted(target, "\"-l%s\" ", it->Data[index].Data);
+					Int64 str_count = it->Data[index].Count;
+					for (Int64 str_index = 0; str_index < str_count; ++str_index)
+						OutFormatted(target, "\"-l%s\" ", it->Data[index].Values[str_index]);
 				}
 			}
 
@@ -701,36 +743,50 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 		Memory_Arena *dir_scratch = ThreadScratchpadI(1);
 
 		String_List directory_list;
-		String_List *filtered_list = &directory_list;
+		StringListInit(&directory_list);
+		String_Array_List directory_array_list;
+		StringArrayListInit(&directory_array_list);
 
-		if (StringListIsEmpty(&compiler_config->ProjectDirectories)) {
-			StringListInit(&directory_list);
+		String_Array_List *filtered_list = &directory_array_list;
 
+		if (StringArrayListIsEmpty(&compiler_config->ProjectDirectories)) {
 			Directory_Iteration_Context directory_iteration;
 			directory_iteration.Arena = dir_scratch;
 			directory_iteration.List = &directory_list;
 			directory_iteration.Ignore = &compiler_config->IgnoredDirectories;
 			OsIterateDirectroy(".", DirectoryIteratorAddToList, &directory_iteration);
+
+			ForList(String_List_Node, &directory_list) {
+				ForListNode(&directory_list, MAX_STRING_NODE_DATA_COUNT) {
+					StringArrayListAdd(filtered_list, &it->Data[0], it_count, dir_scratch);
+				}
+			}
 		}
 		else {
 			filtered_list = &compiler_config->ProjectDirectories;
 		}
 
 		Memory_Arena *arena = compiler_config->Arena;
-		ForList(String_List_Node, filtered_list) {
+		ForList(String_Array_List_Node, filtered_list) {
 			ForListNode(filtered_list, MAX_STRING_NODE_DATA_COUNT) {
-				LogInfo("==> Executing Muda Build in \"%s\" \n", it->Data[index].Data);
-				if (OsSetWorkingDirectory(it->Data[index])) {
-					Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
-					SearchExecuteMudaBuild(arena, build_config, compiler, compiler_config, it->Data[index].Data);
-					EndTemporaryMemory(&arena_temp);
-					if (!OsSetWorkingDirectory(StringLiteral(".."))) {
-						LogError("Could not set the original directory as the working directory! Aborted.\n");
-						return;
+				Int64 str_count = it->Data[index].Count;
+				for (Int64 str_index = 0; str_index < str_count; ++str_index) {
+					String *values = it->Data[index].Values;
+
+					LogInfo("==> Executing Muda Build in \"%s\" \n", values[str_index].Data);
+
+					if (OsSetWorkingDirectory(values[str_index])) {
+						Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
+						SearchExecuteMudaBuild(arena, build_config, compiler, compiler_config, values[str_index].Data);
+						EndTemporaryMemory(&arena_temp);
+						if (!OsSetWorkingDirectory(StringLiteral(".."))) {
+							LogError("Could not set the original directory as the working directory! Aborted.\n");
+							return;
+						}
 					}
-				}
-				else {
-					LogError("Could not set \"%s\" as working directory, skipped.", it->Data[index].Data);
+					else {
+						LogError("Could not set \"%s\" as working directory, skipped.", values[str_index].Data);
+					}
 				}
 			}
 		}
