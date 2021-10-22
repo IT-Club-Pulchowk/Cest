@@ -112,7 +112,8 @@ static String GetNextToken(uint8_t *cur, Muda_Parser *p)
     if (*cur == '\"')
     {
         ++cur;
-        while ((!isSpecial(*cur)) && (*cur != '\"'))
+	// This need to be modifed .. we need to look forward to see if finishing quote exists 
+        while (*cur != '\"' && *cur != '\n' && *cur != '\r') // This stupid CR thing
         {
             cur++;
         }
@@ -169,7 +170,6 @@ bool MudaParseKeyValue(uint8_t *cur, Muda_Parser *p)
         // Null property .. Property with no body
         p->Token.Data.Property.Value = NULL;
         p->Token.Data.Property.Count = 0;
-
         p->Pos                       = id.Data + 1;
         return true;
     }
@@ -179,7 +179,7 @@ bool MudaParseKeyValue(uint8_t *cur, Muda_Parser *p)
     // A sophiscated error handling here
 
     int64_t count_values = 0;
-    while (!isSpecial(*id.Data) || (*id.Data == '\n'))
+    while (!isSpecial(*id.Data) || *id.Data == '\n')
     {
         if (*id.Data == '\n')
         {
@@ -187,9 +187,7 @@ bool MudaParseKeyValue(uint8_t *cur, Muda_Parser *p)
             p->line++;
         }
         else
-        {
             count_values++;
-        }
         id = GetNextToken(p->Pos, p);
     }
 
@@ -214,53 +212,95 @@ bool MudaParseKeyValue(uint8_t *cur, Muda_Parser *p)
     // p->Token.Data.Property.Value = (String*) malloc(sizeof(String)*count_values);
 
     id                   = GetNextToken(save + 1, p);
-
     int64_t values       = 0;
-
     bool    next_newline = false;
 
-    while (!isSpecial(*id.Data) || (*id.Data == '\n' || next_newline))
+    /* while (!isSpecial(*id.Data) || (*id.Data == '\n' || *id.Data == '\r' || next_newline)) */
+    /* { */
+    /*     if (*id.Data == '\n' || *id.Data == '\r' || next_newline) */
+    /*     { */
+    /*         // Do nothing */
+    /*     } */
+    /*     else */
+    /*     { */
+    /*         p->Token.Data.Property.Value[values] = id; */
+    /*         // What if next character is new line and we tried to replace it with null? */
+    /*         if (p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] == '\n') */
+    /*         { */
+    /*             p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] = '\0'; */
+    /*             next_newline                                                                           = true; */
+    /*         } */
+    /*         else */
+    /*         { */
+    /* 	        next_newline = false; */
+    /*         } */
+
+    /*         if (p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] == ';') */
+    /*         { */
+    /*             p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] = '\0'; */
+    /*             p->Pos = p->Token.Data.Property.Value[values].Data + p->Token.Data.Property.Value[values].Length+1; */
+    /*             break; */
+    /*         } */
+
+    /*         if (!next_newline) */
+    /*         { */
+    /*             p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] = '\0'; */
+    /*             p->Pos++; */
+    /*         } */
+	    
+    /*         values++; */
+    /*         Assert(values <= count_values); */
+    /*     } */
+    /*     if (!next_newline) */
+    /*         id = GetNextToken(p->Pos, p); */
+    /*     else */
+    /*         id = GetNextToken(p->Pos + 1, p); */
+    /*     // LogWarn("Parsing iteratively"); */
+    /* } */
+
+    // Rewrite
+    while(!isSpecial(*id.Data) || *id.Data == '\n' || next_newline)
     {
-        if (*id.Data == '\n' || next_newline)
-        {
-            // Do nothing
-        }
-        else
-        {
-            p->Token.Data.Property.Value[values] = id;
-            // What if next character is new line and we tried to replace it with null?
-            if (p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] == '\n')
-            {
-                p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] = '\0';
-                next_newline                                                                           = true;
-            }
-            else
-            {
-                next_newline = false;
-            }
+      // If next character is new line continue else break on special character
 
-            if (p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] == ';')
-            {
-                p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] = '\0';
-                p->Pos++;
-                break;
-            }
+      if (*id.Data == '\n' || next_newline)
+      {
+	// Do nothing here
+	// We won't be getting \r execlusively
+      }
+      else
+      {
+	p->Token.Data.Property.Value[values] = id;
+	// What if next character is new line and we tried to replace it with null ? -> We will miss new line detection
 
-            if (!next_newline)
-            {
-                p->Token.Data.Property.Value[values].Data[p->Token.Data.Property.Value[values].Length] = '\0';
-                p->Pos++;
-            }
-            values++;
-            Assert(values <= count_values);
-        }
-        if (!next_newline)
-            id = GetNextToken(p->Pos, p);
-        else
-            id = GetNextToken(p->Pos + 1, p);
-        // LogWarn("Parsing iteratively");
+	uint8_t* last_char = p->Token.Data.Property.Value[values].Data + p->Token.Data.Property.Value[values].Length;
+	if (*last_char == '\n')
+	{
+	  *last_char = '\0';
+	  next_newline = true;
+	  p->Pos = last_char + 1;
+	}
+	else
+	  next_newline = false;
+
+	if(*last_char == ';')
+	{
+	  *last_char = '\0';
+	  p->Pos = last_char + 1;
+	  break;
+	}
+
+	if(!next_newline)
+	{
+	  *last_char = '\0';
+	  p->Pos = last_char + 1;
+	}
+	values++;
+	Assert(values<=count_values);
+      }
+	id = GetNextToken(p->Pos,p);
     }
-
+    
     Assert(p->Token.Data.Property.Value != NULL);
     p->column = (uint32_t)(p->Token.Data.Property.Value->Data - p->line_ptr);
     return true;
@@ -281,9 +321,12 @@ INLINE_PROCEDURE bool MudaParseNext(Muda_Parser *p)
 
     while ((*token.Data == '\r' || *token.Data == '\n') && token.Length == 0)
     {
+      if(*token.Data == '\n')
+      {
         p->line++;
         p->line_ptr = token.Data + 1;
-        token       = GetNextToken(token.Data + 1, p);
+      }
+       token       = GetNextToken(token.Data + 1, p);
     }
 
     if (*token.Data == '\0')
