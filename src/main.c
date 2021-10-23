@@ -99,21 +99,90 @@ void DeserializeMuda(Build_Config *build_config, Compiler_Config_List *config_li
 
         case Muda_Token_Section: {
             if (StrMatchCaseInsensitive(StringLiteral("OS.ALL"), prsr.Token.Data.Section))
+            {
                 section.OS = Muda_Parsing_OS_All;
-            else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
-                section.OS = Muda_Parsing_OS_Windows;
-            else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX"), prsr.Token.Data.Section))
-                section.OS = Muda_Parsing_OS_Linux;
-            else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC"), prsr.Token.Data.Section))
-                section.OS = Muda_Parsing_OS_Mac;
-            else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.ALL"), prsr.Token.Data.Section))
                 section.Compiler = Muda_Parsing_COMPILER_ALL;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
+            {
+                section.OS = Muda_Parsing_OS_Windows;
+                section.Compiler = Muda_Parsing_COMPILER_ALL;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX"), prsr.Token.Data.Section))
+            {
+                section.OS = Muda_Parsing_OS_Linux;
+                section.Compiler = Muda_Parsing_COMPILER_ALL;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC"), prsr.Token.Data.Section))
+            {
+                section.OS = Muda_Parsing_OS_Mac;
+                section.Compiler = Muda_Parsing_COMPILER_ALL;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.ALL"), prsr.Token.Data.Section))
+            {
+                section.Compiler = Muda_Parsing_COMPILER_ALL;
+                section.OS = Muda_Parsing_OS_All;
+            }
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CL"), prsr.Token.Data.Section))
+            {
                 section.Compiler = Muda_Parsing_COMPILER_CL;
+                section.OS = Muda_Parsing_OS_All;
+            }
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CLANG"), prsr.Token.Data.Section))
+            {
                 section.Compiler = Muda_Parsing_COMPILER_CLANG;
+                section.OS = Muda_Parsing_OS_All;
+            }
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.GCC"), prsr.Token.Data.Section))
+            {
                 section.Compiler = Muda_Parsing_COMPILER_GCC;
+                section.OS = Muda_Parsing_OS_All;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS.CL"), prsr.Token.Data.Section))
+            {
+                section.Compiler = Muda_Parsing_COMPILER_CL;
+                section.OS = Muda_Parsing_OS_Windows;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS.CLANG"), prsr.Token.Data.Section))
+            {
+                section.Compiler = Muda_Parsing_COMPILER_CLANG;
+                section.OS = Muda_Parsing_OS_Windows;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS.GCC"), prsr.Token.Data.Section))
+            {
+                section.Compiler = Muda_Parsing_COMPILER_GCC;
+                section.OS = Muda_Parsing_OS_Windows;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX.CL"), prsr.Token.Data.Section))
+            {
+                section.Compiler = Muda_Parsing_COMPILER_CL;
+                section.OS = Muda_Parsing_OS_Linux;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX.CLANG"), prsr.Token.Data.Section))
+            {
+                section.Compiler = Muda_Parsing_COMPILER_CLANG;
+                section.OS = Muda_Parsing_OS_Linux;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX.GCC"), prsr.Token.Data.Section))
+            {
+                section.Compiler = Muda_Parsing_COMPILER_GCC;
+                section.OS = Muda_Parsing_OS_Linux;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC.CL"), prsr.Token.Data.Section))
+            {
+                section.Compiler = Muda_Parsing_COMPILER_CL;
+                section.OS = Muda_Parsing_OS_Mac;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC.CLANG"), prsr.Token.Data.Section))
+            {
+                section.Compiler = Muda_Parsing_COMPILER_CLANG;
+                section.OS = Muda_Parsing_OS_Mac;
+            }
+            else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC.GCC"), prsr.Token.Data.Section))
+            {
+                section.Compiler = Muda_Parsing_COMPILER_GCC;
+                section.OS = Muda_Parsing_OS_Mac;
+            }
             else
             {
                 String error = FmtStr(scratch, "Line: %u, Column: %u :: Unknown Section: %s\n", prsr.line, prsr.column,
