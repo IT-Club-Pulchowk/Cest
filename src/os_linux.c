@@ -227,14 +227,16 @@ Ptrsize OsFileGetSize(File_Handle handle)
 
 bool OsFileRead(File_Handle handle, Uint8 *buffer, Ptrsize size)
 {
-    fread(buffer, sizeof(Uint8), size, handle.PlatformFileHandle);
-    return errno == 0;
+    fread(buffer, size, 1, handle.PlatformFileHandle);
+    bool result = (errno == 0);
+    return result;
 }
 
 bool OsFileWrite(File_Handle handle, String data)
 {
-    fwrite(data.Data, sizeof(Uint8), data.Length, handle.PlatformFileHandle);
-    return errno == 0;
+    fwrite(data.Data, data.Length, 1, handle.PlatformFileHandle);
+    bool result = (errno == 0);
+    return result;
 }
 
 bool OsFileWriteFV(File_Handle handle, const char *fmt, va_list args)

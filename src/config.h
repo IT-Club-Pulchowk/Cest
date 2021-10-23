@@ -561,21 +561,21 @@ INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, bool wr
 {
     if (config->Build.Length == 0)
     {
-        config->Build = StringLiteral("output");
+        config->Build = StrDuplicateArena(StringLiteral("output"), config->Arena);
         if (write_log)
             LogInfo("Using Default Binary: %s\n", config->Build.Data);
     }
 
     if (config->BuildDirectory.Length == 0)
     {
-        config->BuildDirectory = StringLiteral("./bin");
+        config->BuildDirectory = StrDuplicateArena(StringLiteral("./bin"), config->Arena);
         if (write_log)
             LogInfo("Using Default Binary Directory: \"%s\"\n", config->BuildDirectory.Data);
     }
 
     if (StringArrayListIsEmpty(&config->Sources))
     {
-        String def_source = StringLiteral("*.c");
+        String def_source = StrDuplicateArena(StringLiteral("*.c"), config->Arena);
         StringArrayListAdd(&config->Sources, &def_source, 1, config->Arena);
         if (write_log)
             LogInfo("Using Default Sources: %s\n", def_source.Data);
