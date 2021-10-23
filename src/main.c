@@ -6,6 +6,18 @@
 #include "stream.h"
 #include "zBase.h"
 
+#if PLATFORM_OS_WINDOWS == 1
+const char *ExecutableExtension = "exe";
+const char *StaticLibraryExtension = "lib";
+const char *DynamicLlibraryExtension = "dll";
+#elif PLATFORM_OS_LINUX == 1
+const char *ExecutableExtension = "out";
+const char *StaticLibraryExtension = "a";
+const char *DynamicLibraryExtension = "so";
+#else
+#error "Unimplemented"
+#endif
+
 void MudaParseSectionInit(Muda_Parse_Section *section)
 {
     section->OS       = Muda_Parsing_OS_All;
@@ -495,10 +507,10 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
                 if (compiler_config->Application != Application_Static_Library)
                     OutFormatted(&out, "-out:\"%s/%s.%s\" ", build_dir.Data, build.Data,
-                                 compiler_config->Application == Application_Executable ? "exe" : "dll");
+                                 compiler_config->Application == Application_Executable ? ExecutableExtension : DynamicLibraryExtension);
 
                 if (compiler_config->Application == Application_Dynamic_Library)
-                    OutFormatted(&out, "-IMPLIB:\"%s/%s.lib\" ", build_dir.Data, build.Data);
+                    OutFormatted(&out, "-IMPLIB:\"%s/%s.%s\" ", build_dir.Data, build.Data, StaticLibraryExtension);
 
                 ForList(String_Array_List_Node, &compiler_config->LinkerFlags)
                 {
@@ -516,7 +528,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 OutFormatted(&out, "-Fo\"%s/int/%s.obj\" ", build_dir.Data, build.Data);
 
                 OutFormatted(&lib, "lib -nologo \"%s/int/%s.obj\" ", build_dir.Data, build.Data);
-                OutFormatted(&lib, "-out:\"%s/%s.lib\" ", build_dir.Data, build.Data);
+                OutFormatted(&lib, "-out:\"%s/%s.%s\" ", build_dir.Data, build.Data, StaticLibraryExtension);
             }
 
             Out_Stream *target = ((compiler_config->Application != Application_Static_Library) ? &out : &lib);
@@ -537,7 +549,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(target, "\"%s.lib\" ", it->Data[index].Values[str_index].Data);
+                        OutFormatted(target, "\"%s.%s\" ", it->Data[index].Values[str_index].Data, StaticLibraryExtension);
                 }
             }
 
@@ -616,16 +628,9 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
                 if (compiler_config->Application != Application_Static_Library)
                 {
-                    if (PLATFORM_OS_WINDOWS)
-                    {
-                        OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
-                                     compiler_config->Application == Application_Executable ? "exe" : "dll");
-                    }
-                    else
-                    {
-                        OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
-                                     compiler_config->Application == Application_Executable ? "" : "so");
-                    }
+                    OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
+                                compiler_config->Application == Application_Executable ? ExecutableExtension : DynamicLibraryExtension);
+
                 }
 
                 ForList(String_Array_List_Node, &compiler_config->LinkerFlags)
@@ -641,11 +646,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
             else
             {
                 OutFormatted(&out, "-c ");
-
-                if (PLATFORM_OS_WINDOWS)
-                    OutFormatted(&lib, "-o \"%s/%s.lib\" ", build_dir.Data, build.Data);
-                else
-                    OutFormatted(&lib, "-o \"%s/%s.a\" ", build_dir.Data, build.Data);
+                OutFormatted(&lib, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data, StaticLibraryExtension);
             }
 
             Out_Stream *target = ((compiler_config->Application != Application_Static_Library) ? &out : &lib);
@@ -752,7 +753,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
                 if (compiler_config->Application != Application_Static_Library)
                     OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
-                                 compiler_config->Application == Application_Executable ? "exe" : "dll");
+                                 compiler_config->Application == Application_Executable ? ExecutableExtension : DynamicLibraryExtension);
 
                 ForList(String_Array_List_Node, &compiler_config->LinkerFlags)
                 {
@@ -767,7 +768,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
             else
             {
                 OutFormatted(&out, "-c ");
-                OutFormatted(&lib, "-o \"%s/%s.a\" ", build_dir.Data, build.Data);
+                OutFormatted(&lib, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data, StaticLibraryExtension);
             }
 
             Out_Stream *target = ((compiler_config->Application != Application_Static_Library) ? &out : &lib);
@@ -810,23 +811,12 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         pevent.Data.Prebuild.Succeeded = false;
         pevent.Data.Prebuild.BuildKind = compiler_config->Application;
 
-#if PLATFORM_OS_WINDOWS == 1
         if (compiler_config->Application == Application_Executable)
-            pevent.Data.Prebuild.BuildExtension = "exe";
+            pevent.Data.Prebuild.BuildExtension = ExecutableExtension;
         else if (compiler_config->Application == Application_Dynamic_Library)
-            pevent.Data.Prebuild.BuildExtension = "dll";
+            pevent.Data.Prebuild.BuildExtension = DynamicLibraryExtension;
         else
-            pevent.Data.Prebuild.BuildExtension = "lib";
-#elif PLATFORM_OS_LINUX
-        if (compiler_config->Application == Application_Executable)
-            pevent.Data.Prebuild.BuildExtension = "out";
-        else if (compiler_config->Application == Application_Dynamic_Library)
-            pevent.Data.Prebuild.BuildExtension = "so";
-        else
-            pevent.Data.Prebuild.BuildExtension = "a";
-#else
-#error "Unimplemented"
-#endif
+            pevent.Data.Prebuild.BuildExtension = StaticLibraryExtension;
 
         pevent.Kind = Muda_Plugin_Event_Kind_Prebuild;
         build_config->PluginHook(&ThreadContext, &build_config->Interface, &pevent);
