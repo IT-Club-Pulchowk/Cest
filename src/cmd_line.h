@@ -276,7 +276,7 @@ static bool OptCompiler(const char *program, const char *arg[], int count, Build
         config->ForceCompiler = Compiler_Bit_CL;
     else
     {
-        LogError("Unknown compiler \"%s\"\n\n", arg[0]);
+        LogError("Unknown compiler \"%s\" \n\n", arg[0]);
         return true;
     }
 

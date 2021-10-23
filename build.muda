@@ -27,6 +27,10 @@ Build              : muda;
 BuildDirectory     : ./.muda;
 Sources            : plugin/muda_plug.c;
 
+:OS.LINUX
+Flags: -fPIC;
+Libraries: dl m;
+
 ##################################################################################
 
 # [release]

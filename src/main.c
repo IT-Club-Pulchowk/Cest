@@ -615,8 +615,18 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                     OutFormatted(&out, "--shared ");
 
                 if (compiler_config->Application != Application_Static_Library)
-                    OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
-                                 compiler_config->Application == Application_Executable ? "exe" : "dll");
+                {
+                    if (PLATFORM_OS_WINDOWS)
+                    {
+                        OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
+                                     compiler_config->Application == Application_Executable ? "exe" : "dll");
+                    }
+                    else
+                    {
+                        OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
+                                     compiler_config->Application == Application_Executable ? "" : "so");
+                    }
+                }
 
                 ForList(String_Array_List_Node, &compiler_config->LinkerFlags)
                 {

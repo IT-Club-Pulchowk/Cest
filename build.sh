@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SOURCEFILES=../src/build.c
-OUTPUTFILE=muda.out
+OUTPUTFILE=muda
 GCCFLAGS="-g"
 CLANGFLAGS="-gcodeview -Od"
 

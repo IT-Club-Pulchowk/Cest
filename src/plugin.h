@@ -68,7 +68,7 @@
 #define MUDA_PLUGIN_INTERFACE __declspec(dllexport)
 #endif
 #else
-#ifdef(__cplusplus)
+#if defined(__cplusplus)
 #define MUDA_PLUGIN_INTERFACE extern "C"
 #else
 #define MUDA_PLUGIN_INTERFACE 
@@ -296,9 +296,9 @@ typedef Muda_Event_Hook_Defn((*Muda_Event_Hook_Procedure));
 //
 
 #define MudaPluginName(name) Interface->PluginName = name
-#define MudaLog(fmt, ...) Interface->LogInfo(Thread, fmt, __VA_ARGS__)
-#define MudaWarn(fmt, ...) Interface->LogWarn(Thread, fmt, __VA_ARGS__)
-#define MudaError(fmt, ...) Interface->LogError(Thread, fmt, __VA_ARGS__)
+#define MudaLog(fmt, ...) Interface->LogInfo(Thread, fmt, ##__VA_ARGS__)
+#define MudaWarn(fmt, ...) Interface->LogWarn(Thread, fmt, ##__VA_ARGS__)
+#define MudaError(fmt, ...) Interface->LogError(Thread, fmt, ##__VA_ARGS__)
 #define MudaFatalError(msg) Interface->FatalError(Thread, msg)
 #define MudaGetThreadScratch Interface->GetThreadScratchpad(Thread)
 #define MudaPushSize(sz) Interface->PushSize(sz)
