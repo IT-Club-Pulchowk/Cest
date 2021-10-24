@@ -15,8 +15,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Build in linux
       - run: ./build.sh
+      - uses: actions/checkout@v2
       - run: ./build.sh optimize
 
   windows_build:
@@ -24,6 +24,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Build in windows
       - run: .\\build.bat
+      - uses: actions/checkout@v2
       - run: .\\build.bat optimize
