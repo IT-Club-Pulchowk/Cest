@@ -434,6 +434,18 @@ void OsSetupConsole()
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE), ENABLE_VIRTUAL_TERMINAL_INPUT);
     SetConsoleMode(GetStdHandle(STD_ERROR_HANDLE), ENABLE_VIRTUAL_TERMINAL_INPUT);
+
+    if (IsDebuggerPresent())
+    {
+#pragma comment(lib, "User32.lib")
+
+        HWND window = GetConsoleWindow();
+        SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+        // Making the windows transparent
+        SetWindowLong(window, GWL_EXSTYLE, GetWindowLong(window, GWL_EXSTYLE) | WS_EX_LAYERED);
+        SetLayeredWindowAttributes(window, 0, (255 * 90) / 100, LWA_ALPHA);
+    }
 }
 
 void *OsGetStdOutputHandle()
