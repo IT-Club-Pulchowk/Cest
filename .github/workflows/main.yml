@@ -14,20 +14,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - run: ./build.sh optimize
+      - uses: actions/checkout@v1
+      - name: Build muda
+        run: ./build.sh optimize
 
-      - uses: actions/checkout@v2
-      - run: ../release/muda -noplug
-      - working-directory: ./tests
+      - uses: actions/checkout@v1
+      - name: Testing muda
+        run: ../release/muda -noplug
+        working-directory: ./tests
 
   windows_build:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - run: ./build.bat optimize
+      - uses: actions/checkout@v1
+      - name: Build muda
+        run: ./build.bat optimize
 
-      - uses: actions/checkout@v2
-      - run: ../release/muda.exe -noplug
-      - working-directory: ./tests
+      - uses: actions/checkout@v1
+      - name: Testing muda
+        run: ../release/muda.exe -noplug
+        working-directory: ./tests
