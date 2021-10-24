@@ -7,12 +7,12 @@
 #include "zBase.h"
 
 #if PLATFORM_OS_WINDOWS == 1
-const char *ExecutableExtension = "exe";
-const char *StaticLibraryExtension = "lib";
+const char *ExecutableExtension     = "exe";
+const char *StaticLibraryExtension  = "lib";
 const char *DynamicLibraryExtension = "dll";
 #elif PLATFORM_OS_LINUX == 1
-const char *ExecutableExtension = "out";
-const char *StaticLibraryExtension = "a";
+const char *ExecutableExtension     = "out";
+const char *StaticLibraryExtension  = "a";
 const char *DynamicLibraryExtension = "so";
 #else
 #error "Unimplemented"
@@ -24,16 +24,16 @@ void MudaParseSectionInit(Muda_Parse_Section *section)
     section->Compiler = Muda_Parsing_COMPILER_ALL;
 }
 
-void DeserializeMuda(Build_Config *build_config, Compiler_Config_List *config_list, Uint8 *data, Compiler_Kind compiler)
+void DeserializeMuda(Build_Config *build_config, Compiler_Config_List *config_list, Uint8 *data, Compiler_Kind compiler, const char *parent)
 {
-    Memory_Arena    *scratch = ThreadScratchpad();
+    Memory_Arena         *scratch = ThreadScratchpad();
 
-    Compiler_Config *config  = CompilerConfigListAdd(config_list, StringLiteral("default"));
+    Compiler_Config      *config  = CompilerConfigListAdd(config_list, StringLiteral("default"));
 
-    Muda_Parser      prsr    = MudaParseInit(data, config->Arena);
+    Muda_Parser           prsr    = MudaParseInit(data, config->Arena);
 
-    Uint32           version = 0;
-    Uint32           major = 0, minor = 0, patch = 0;
+    Uint32                version = 0;
+    Uint32                major = 0, minor = 0, patch = 0;
 
     Muda_Parsing_COMPILER selected_compiler;
     if (compiler == Compiler_Bit_CL)
@@ -100,88 +100,88 @@ void DeserializeMuda(Build_Config *build_config, Compiler_Config_List *config_li
         case Muda_Token_Section: {
             if (StrMatchCaseInsensitive(StringLiteral("OS.ALL"), prsr.Token.Data.Section))
             {
-                section.OS = Muda_Parsing_OS_All;
+                section.OS       = Muda_Parsing_OS_All;
                 section.Compiler = Muda_Parsing_COMPILER_ALL;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS"), prsr.Token.Data.Section))
             {
-                section.OS = Muda_Parsing_OS_Windows;
+                section.OS       = Muda_Parsing_OS_Windows;
                 section.Compiler = Muda_Parsing_COMPILER_ALL;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX"), prsr.Token.Data.Section))
             {
-                section.OS = Muda_Parsing_OS_Linux;
+                section.OS       = Muda_Parsing_OS_Linux;
                 section.Compiler = Muda_Parsing_COMPILER_ALL;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC"), prsr.Token.Data.Section))
             {
-                section.OS = Muda_Parsing_OS_Mac;
+                section.OS       = Muda_Parsing_OS_Mac;
                 section.Compiler = Muda_Parsing_COMPILER_ALL;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.ALL"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_ALL;
-                section.OS = Muda_Parsing_OS_All;
+                section.OS       = Muda_Parsing_OS_All;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CL"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_CL;
-                section.OS = Muda_Parsing_OS_All;
+                section.OS       = Muda_Parsing_OS_All;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.CLANG"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_CLANG;
-                section.OS = Muda_Parsing_OS_All;
+                section.OS       = Muda_Parsing_OS_All;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("COMPILER.GCC"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_GCC;
-                section.OS = Muda_Parsing_OS_All;
+                section.OS       = Muda_Parsing_OS_All;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS.CL"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_CL;
-                section.OS = Muda_Parsing_OS_Windows;
+                section.OS       = Muda_Parsing_OS_Windows;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS.CLANG"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_CLANG;
-                section.OS = Muda_Parsing_OS_Windows;
+                section.OS       = Muda_Parsing_OS_Windows;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.WINDOWS.GCC"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_GCC;
-                section.OS = Muda_Parsing_OS_Windows;
+                section.OS       = Muda_Parsing_OS_Windows;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX.CL"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_CL;
-                section.OS = Muda_Parsing_OS_Linux;
+                section.OS       = Muda_Parsing_OS_Linux;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX.CLANG"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_CLANG;
-                section.OS = Muda_Parsing_OS_Linux;
+                section.OS       = Muda_Parsing_OS_Linux;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.LINUX.GCC"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_GCC;
-                section.OS = Muda_Parsing_OS_Linux;
+                section.OS       = Muda_Parsing_OS_Linux;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC.CL"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_CL;
-                section.OS = Muda_Parsing_OS_Mac;
+                section.OS       = Muda_Parsing_OS_Mac;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC.CLANG"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_CLANG;
-                section.OS = Muda_Parsing_OS_Mac;
+                section.OS       = Muda_Parsing_OS_Mac;
             }
             else if (StrMatchCaseInsensitive(StringLiteral("OS.MAC.GCC"), prsr.Token.Data.Section))
             {
                 section.Compiler = Muda_Parsing_COMPILER_GCC;
-                section.OS = Muda_Parsing_OS_Mac;
+                section.OS       = Muda_Parsing_OS_Mac;
             }
             else
             {
@@ -317,12 +317,14 @@ void DeserializeMuda(Build_Config *build_config, Compiler_Config_List *config_li
             if (!property_found)
             {
                 Muda_Plugin_Event pevent;
-                pevent.Kind                  = Muda_Plugin_Event_Kind_Parse;
-                pevent.Data.Parse.Section    = section;
-                pevent.Data.Parse.Key.Data   = token->Data.Property.Key.Data;
-                pevent.Data.Parse.Key.Length = token->Data.Property.Key.Length;
-                pevent.Data.Parse.Values     = (Muda_String *)token->Data.Property.Value;
-                pevent.Data.Parse.ValueCount = (uint32_t)token->Data.Property.Count;
+                pevent.Kind                   = Muda_Plugin_Event_Kind_Parse;
+                pevent.Data.Parse.Section     = section;
+                pevent.Data.Parse.Key.Data    = token->Data.Property.Key.Data;
+                pevent.Data.Parse.Key.Length  = token->Data.Property.Key.Length;
+                pevent.Data.Parse.ConfigName  = config->Name.Data;
+                pevent.Data.Parse.MudaDirName = parent;
+                pevent.Data.Parse.Values      = (Muda_String *)token->Data.Property.Value;
+                pevent.Data.Parse.ValueCount  = (uint32_t)token->Data.Property.Count;
 
                 if (build_config->PluginHook(&ThreadContext, &build_config->Interface, &pevent) != 0)
                 {
@@ -419,19 +421,25 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
 void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config,
                       const Compiler_Kind available_compilers, const Compiler_Kind compiler, const char *parent)
 {
-    Memory_Arena    *scratch = ThreadScratchpad();
+    Memory_Arena    *scratch       = ThreadScratchpad();
 
-    Temporary_Memory temp    = BeginTemporaryMemory(scratch);
+    Temporary_Memory temp          = BeginTemporaryMemory(scratch);
 
+    bool             prebuild_pass = true;
     if (compiler_config->Prebuild.Length)
     {
         LogInfo("==> Executing Prebuild command\n");
         if (!OsExecuteCommandLine(compiler_config->Prebuild))
         {
+            prebuild_pass = false;
             LogError("Prebuild execution failed. Aborted.\n\n");
-            return;
+            if (compiler_config->Kind != Compile_Project)
+                return;
         }
-        LogInfo("Finished executing Prebuild command\n");
+        else
+        {
+            LogInfo("Finished executing Prebuild command\n");
+        }
     }
 
     bool              execute_postbuild = true;
@@ -441,6 +449,29 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
     if (compiler_config->Kind == Compile_Project)
     {
+        String build_dir                 = compiler_config->BuildDirectory;
+        String build                     = compiler_config->Build;
+
+        pevent.Data.Prebuild.MudaDirName = parent;
+        pevent.Data.Prebuild.Name        = compiler_config->Name.Data;
+        pevent.Data.Prebuild.Build       = build.Data;
+        pevent.Data.Prebuild.BuildDir    = build_dir.Data;
+        pevent.Data.Prebuild.Succeeded   = prebuild_pass;
+        pevent.Data.Prebuild.BuildKind   = compiler_config->Application;
+
+        if (compiler_config->Application == Application_Executable)
+            pevent.Data.Prebuild.BuildExtension = ExecutableExtension;
+        else if (compiler_config->Application == Application_Dynamic_Library)
+            pevent.Data.Prebuild.BuildExtension = DynamicLibraryExtension;
+        else
+            pevent.Data.Prebuild.BuildExtension = StaticLibraryExtension;
+
+        pevent.Kind = Muda_Plugin_Event_Kind_Prebuild;
+        build_config->PluginHook(&ThreadContext, &build_config->Interface, &pevent);
+
+        if (!prebuild_pass)
+            return;
+
         LogInfo("Beginning compilation\n");
 
         Out_Stream out;
@@ -452,10 +483,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         Out_Stream res;
         OutCreate(&res, MemoryArenaAllocator(compiler_config->Arena));
 
-        String build_dir = compiler_config->BuildDirectory;
-        String build     = compiler_config->Build;
-
-        Uint32 result    = OsCheckIfPathExists(build_dir);
+        Uint32 result = OsCheckIfPathExists(build_dir);
         if (result == Path_Does_Not_Exist)
         {
             if (!OsCreateDirectoryRecursively(build_dir))
@@ -547,7 +575,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
             if (compiler_config->ResourceFile.Length)
             {
                 OutFormatted(&res, "rc -fo \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data,
-                             compiler_config->ResourceFile);
+                             compiler_config->ResourceFile.Data);
                 OutFormatted(&out, "\"%s/%s.res\" ", build_dir.Data, build.Data);
             }
 #endif
@@ -576,7 +604,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
                 if (compiler_config->Application != Application_Static_Library)
                     OutFormatted(&out, "-out:\"%s/%s.%s\" ", build_dir.Data, build.Data,
-                                 compiler_config->Application == Application_Executable ? ExecutableExtension : DynamicLibraryExtension);
+                                 compiler_config->Application == Application_Executable ? ExecutableExtension
+                                                                                        : DynamicLibraryExtension);
 
                 if (compiler_config->Application == Application_Dynamic_Library)
                     OutFormatted(&out, "-IMPLIB:\"%s/%s.%s\" ", build_dir.Data, build.Data, StaticLibraryExtension);
@@ -618,7 +647,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 {
                     Int64 str_count = it->Data[index].Count;
                     for (Int64 str_index = 0; str_index < str_count; ++str_index)
-                        OutFormatted(target, "\"%s.%s\" ", it->Data[index].Values[str_index].Data, StaticLibraryExtension);
+                        OutFormatted(target, "\"%s.%s\" ", it->Data[index].Values[str_index].Data,
+                                     StaticLibraryExtension);
                 }
             }
 
@@ -674,7 +704,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
             if (compiler_config->ResourceFile.Length)
             {
                 OutFormatted(&res, "llvm-rc -FO \"%s/%s.res\" \"%s\" ", build_dir.Data, build.Data,
-                             compiler_config->ResourceFile);
+                             compiler_config->ResourceFile.Data);
                 OutFormatted(&out, "\"%s/%s.res\" ", build_dir.Data, build.Data);
             }
 #endif
@@ -698,8 +728,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                 if (compiler_config->Application != Application_Static_Library)
                 {
                     OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
-                                compiler_config->Application == Application_Executable ? ExecutableExtension : DynamicLibraryExtension);
-
+                                 compiler_config->Application == Application_Executable ? ExecutableExtension
+                                                                                        : DynamicLibraryExtension);
                 }
 
                 ForList(String_Array_List_Node, &compiler_config->LinkerFlags)
@@ -798,7 +828,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 #if PLATFORM_OS_WINDOWS == 1
             if (compiler_config->ResourceFile.Length)
             {
-                OutFormatted(&res, "windres -i \"%s\" \"%s/%s.o\" ", compiler_config->ResourceFile, build_dir.Data,
+                OutFormatted(&res, "windres -i \"%s\" \"%s/%s.o\" ", compiler_config->ResourceFile.Data, build_dir.Data,
                              build.Data);
                 OutFormatted(&out, "\"%s/%s.o\" ", build_dir.Data, build.Data);
             }
@@ -822,7 +852,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
                 if (compiler_config->Application != Application_Static_Library)
                     OutFormatted(&out, "-o \"%s/%s.%s\" ", build_dir.Data, build.Data,
-                                 compiler_config->Application == Application_Executable ? ExecutableExtension : DynamicLibraryExtension);
+                                 compiler_config->Application == Application_Executable ? ExecutableExtension
+                                                                                        : DynamicLibraryExtension);
 
                 ForList(String_Array_List_Node, &compiler_config->LinkerFlags)
                 {
@@ -871,24 +902,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         break;
         }
 
-        String cmd_line                = OutBuildStringSerial(&out, compiler_config->Arena);
-
-        pevent.Data.Prebuild.Name      = compiler_config->Name.Data;
-        pevent.Data.Prebuild.Build     = build.Data;
-        pevent.Data.Prebuild.BuildDir  = build_dir.Data;
-        pevent.Data.Prebuild.MudaDir   = (parent ? parent : ".");
-        pevent.Data.Prebuild.Succeeded = false;
-        pevent.Data.Prebuild.BuildKind = compiler_config->Application;
-
-        if (compiler_config->Application == Application_Executable)
-            pevent.Data.Prebuild.BuildExtension = ExecutableExtension;
-        else if (compiler_config->Application == Application_Dynamic_Library)
-            pevent.Data.Prebuild.BuildExtension = DynamicLibraryExtension;
-        else
-            pevent.Data.Prebuild.BuildExtension = StaticLibraryExtension;
-
-        pevent.Kind = Muda_Plugin_Event_Kind_Prebuild;
-        build_config->PluginHook(&ThreadContext, &build_config->Interface, &pevent);
+        String cmd_line                  = OutBuildStringSerial(&out, compiler_config->Arena);
 
         execute_postbuild                = false;
 
@@ -1005,9 +1019,12 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 
                     if (OsSetWorkingDirectory(values[str_index]))
                     {
+                        String parent_dir = values[str_index];
+                        parent_dir.Data += 2;
+                        parent_dir.Length -= 2;
                         Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
                         SearchExecuteMudaBuild(arena, build_config, available_compilers, compiler, compiler_config,
-                                               values[str_index].Data);
+                                               parent_dir.Data);
                         EndTemporaryMemory(&arena_temp);
                         if (!OsSetWorkingDirectory(StringLiteral("..")))
                         {
@@ -1033,10 +1050,13 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         LogInfo("==> Executing Postbuild command\n");
         if (!OsExecuteCommandLine(compiler_config->Postbuild))
         {
+            execute_postbuild = false;
             LogError("Postbuild execution failed. \n\n");
-            return;
         }
-        LogInfo("Finished executing Postbuild command\n");
+        else
+        {
+            LogInfo("Finished executing Postbuild command\n");
+        }
     }
 
     if (compiler_config->Kind == Compile_Project)
@@ -1099,7 +1119,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
             {
                 buffer[size] = 0;
                 LogInfo("Parsing muda file\n");
-                DeserializeMuda(build_config, configs, buffer, compiler);
+                DeserializeMuda(build_config, configs, buffer, compiler, parent);
                 LogInfo("Finished parsing muda file\n");
             }
             else if (size == 0)
@@ -1214,7 +1234,7 @@ int main(int argc, char *argv[])
         plugin = OsLibraryLoad(MudaPluginPath);
         if (plugin)
         {
-            typedef void (*PluginVersionProc)(uint32_t *major, uint32_t *minor, uint32_t *patch);
+            typedef void (*PluginVersionProc)(uint32_t * major, uint32_t * minor, uint32_t * patch);
             PluginVersionProc check_version = (PluginVersionProc)OsGetProcedureAddress(plugin, "MudaAcceptVersion");
 
             if (check_version)
@@ -1299,9 +1319,10 @@ int main(int argc, char *argv[])
         LogInfo("Compiler GCC Detected.\n");
     }
 
-    Memory_Arena arena = MemoryArenaCreate(MegaBytes(128));
+    Memory_Arena arena               = MemoryArenaCreate(MegaBytes(128));
 
-    SearchExecuteMudaBuild(&arena, &build_config, available_compilers, compiler, NULL, NULL);
+    const char  *current_dir_name    = OsGetWorkingDirectoryName(&arena);
+    SearchExecuteMudaBuild(&arena, &build_config, available_compilers, compiler, NULL, current_dir_name);
 
     Muda_Plugin_Event pevent;
     memset(&pevent, 0, sizeof(pevent));

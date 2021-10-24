@@ -51,7 +51,7 @@ MudaHandleEvent()
         {
             if (Config->Succeeded)
             {
-                MudaLog("Launching Process: %s\n", Config->MudaDir);
+                MudaLog("Launching Process: %s\n", Config->MudaDirName);
 
                 char CommandLine[256];
                 snprintf(CommandLine, sizeof(CommandLine), "%s/%s.%s", Config->BuildDir, Config->Build,

@@ -310,6 +310,45 @@ String OsGetUserConfigurationPath(String path)
     return FmtStr(scratch, "C:/%s", path.Data);
 }
 
+char *OsGetWorkingDirectoryName(Memory_Arena *arena)
+{
+    Memory_Arena    *scratch = ThreadScratchpad();
+    Temporary_Memory temp    = BeginTemporaryMemory(scratch);
+
+    DWORD            length  = GetCurrentDirectoryW(0, NULL);
+    wchar_t         *buffer  = PushSize(scratch, (length + 1) * sizeof(wchar_t));
+    length                   = GetCurrentDirectoryW(length + 1, buffer);
+    buffer[length]           = 0;
+
+    if (buffer[length - 1] == '\\' || buffer[length - 1] == '/')
+    {
+        buffer[length - 1] = 0;
+        length -= 1;
+    }
+
+    // get name of directrory only
+    int index = length - 1;
+    for (; index >= 0; --index)
+    {
+        if (buffer[index] == '\\' || buffer[index] == '/')
+        {
+            index += 1;
+            break;
+        }
+    }
+
+    buffer += index;
+
+    int   working_dir_len        = WideCharToMultiByte(CP_UTF8, 0, buffer, -1, NULL, 0, 0, 0);
+    char *working_dir            = PushSize(arena, (working_dir_len + 1) * sizeof(char));
+    working_dir_len              = WideCharToMultiByte(CP_UTF8, 0, buffer, -1, working_dir, working_dir_len + 1, 0, 0);
+    working_dir[working_dir_len] = 0;
+
+    EndTemporaryMemory(&temp);
+
+    return working_dir;
+}
+
 File_Handle OsFileOpen(const String path, File_Mode mode)
 {
     wchar_t *wpath               = UnicodeToWideChar(path.Data, (int)path.Length);

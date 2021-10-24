@@ -219,6 +219,8 @@ typedef struct Muda_String
 
 typedef struct Muda_Parser_Token
 {
+    const char        *MudaDirName;
+    const char        *ConfigName;
     Muda_Parse_Section Section;
     Muda_String        Key;
     Muda_String       *Values;
@@ -235,13 +237,13 @@ typedef enum Muda_Plugin_Event_Kind
 } Muda_Plugin_Event_Kind;
 
 typedef struct Muda_Plugin_Config {
+    const char *MudaDirName;
     const char *Name;
     const char *Build;
     const char *BuildExtension;
     const char *BuildDir;
-    const char *MudaDir;
     uint32_t    BuildKind;
-    uint32_t    Succeeded;
+    uint32_t    Succeeded; // if Prebuild, tells if the prebuild was successful, if Postbuild, tells if the compilation was successful
 } Muda_Plugin_Config;
 
 typedef struct Muda_Plugin_Event

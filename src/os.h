@@ -69,6 +69,7 @@ Uint32 OsCheckIfPathExists(String path);
 bool   OsCreateDirectoryRecursively(String path);
 
 String OsGetUserConfigurationPath(String path);
+char  *OsGetWorkingDirectoryName(Memory_Arena *arena); // mallocs in linux!!
 
 typedef struct File_Handle
 {

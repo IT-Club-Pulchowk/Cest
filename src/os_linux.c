@@ -200,6 +200,17 @@ String OsGetUserConfigurationPath(String path)
     return FmtStr(scratch, "~/%s", path.Data);
 }
 
+char *OsGetWorkingDirectoryName(Memory_Arena *arena)
+{
+    char *dirname = get_current_dir_name();
+    size_t len = strlen(dirname);
+    char  *result  = PushSize(arena, len + 1);
+    memcpy(result, dirname, len);
+    result[len] = 0;
+    free(dirname);
+    return result;
+}
+
 File_Handle OsFileOpen(const String path, File_Mode mode)
 {
     File_Handle handle;
