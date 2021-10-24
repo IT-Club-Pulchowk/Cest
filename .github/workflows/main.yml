@@ -26,5 +26,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: ./build.bat optimize
+      - uses: actions/checkout@v2
       - working-directory: ./tests
       - run: ../release/muda.exe -noplug
