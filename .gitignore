@@ -1,7 +1,6 @@
 misc
 bin
 .vscode
-*.exe
 *.exp
 *.ilk
 *.obj
