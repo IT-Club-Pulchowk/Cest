@@ -15,11 +15,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-        run: ./build.sh optimize
+      - run: ./build.sh optimize
 
   windows_build:
     runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v2
-        run: ./build.bat optimize
+      - run: ./build.bat optimize
