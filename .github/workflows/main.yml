@@ -16,9 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: ./build.sh optimize
+
       - uses: actions/checkout@v2
-      - working-directory: ./tests
       - run: ../release/muda -noplug
+      - working-directory: ./tests
 
   windows_build:
     runs-on: windows-latest
@@ -26,6 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: ./build.bat optimize
+
       - uses: actions/checkout@v2
-      - working-directory: ./tests
       - run: ../release/muda.exe -noplug
+      - working-directory: ./tests
