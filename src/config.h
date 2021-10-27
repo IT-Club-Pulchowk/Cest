@@ -575,10 +575,11 @@ INLINE_PROCEDURE void PushDefaultCompilerConfig(Compiler_Config *config, bool wr
 
     if (StringArrayListIsEmpty(&config->Sources))
     {
-        String def_source = StrDuplicateArena(StringLiteral("*.c"), config->Arena);
-        StringArrayListAdd(&config->Sources, &def_source, 1, config->Arena);
+        String *def_source = (String*) PushSize(config->Arena,sizeof(String));
+	*def_source = StringLiteral("*.c");
+        StringArrayListAdd(&config->Sources, def_source, 1, config->Arena);
         if (write_log)
-            LogInfo("Using Default Sources: %s\n", def_source.Data);
+            LogInfo("Using Default Sources: %s\n", def_source->Data);
     }
 }
 
