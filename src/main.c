@@ -9,7 +9,7 @@
 #if PLATFORM_OS_WINDOWS == 1
 const char *ExecutableExtension = "exe";
 const char *StaticLibraryExtension = "lib";
-const char *DynamicLlibraryExtension = "dll";
+const char *DynamicLibraryExtension = "dll";
 #elif PLATFORM_OS_LINUX == 1
 const char *ExecutableExtension = "out";
 const char *StaticLibraryExtension = "a";
