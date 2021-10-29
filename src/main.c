@@ -85,6 +85,8 @@ void DeserializeMuda(Build_Config *build_config, Compiler_Config_List *config_li
         switch (prsr.Token.Kind)
         {
         case Muda_Token_Config: {
+            MudaParseSectionInit(&section);
+            
             if (first_config_name)
             {
                 config->Name      = StrDuplicateArena(prsr.Token.Data.Config, config->Arena);
