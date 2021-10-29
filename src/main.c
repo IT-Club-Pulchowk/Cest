@@ -993,7 +993,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
             directory_iteration.Arena  = dir_scratch;
             directory_iteration.List   = &directory_list;
             directory_iteration.Ignore = &compiler_config->IgnoredDirectories;
-            OsIterateDirectroy(".", DirectoryIteratorAddToList, &directory_iteration);
+            OsIterateDirectory(".", DirectoryIteratorAddToList, &directory_iteration);
 
             ForList(String_List_Node, &directory_list)
             {

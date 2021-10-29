@@ -98,7 +98,7 @@ static bool IterateInternal(const String path, Directory_Iterator iterator, void
     return true;
 }
 
-bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *context)
+bool OsIterateDirectory(const char *path, Directory_Iterator iterator, void *context)
 {
     Memory_Arena    *scratch  = ThreadScratchpad();
     Temporary_Memory temp     = BeginTemporaryMemory(scratch);

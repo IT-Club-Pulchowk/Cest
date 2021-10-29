@@ -43,7 +43,7 @@ INLINE_PROCEDURE Directory_Iteration DirectoryIteratorPrint(const File_Info *inf
     return Directory_Iteration_Recurse;
 }
 
-bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *context);
+bool OsIterateDirectory(const char *path, Directory_Iterator iterator, void *context);
 
 bool OsSetWorkingDirectory(String path);
 

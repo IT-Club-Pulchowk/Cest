@@ -95,7 +95,7 @@ static void ConvertWin32FileInfo(File_Info *dst, WIN32_FIND_DATAW *src, String r
 }
 
 // The path parameter of this procedure MUST be the non const string that ends with "/*"
-static bool IterateDirectroyInternal(String path, Directory_Iterator iterator, void *context)
+static bool IterateDirectoryInternal(String path, Directory_Iterator iterator, void *context)
 {
     Memory_Arena    *scratch = ThreadScratchpad();
 
@@ -140,7 +140,7 @@ static bool IterateDirectroyInternal(String path, Directory_Iterator iterator, v
                 info.Path.Data[info.Path.Length]     = '/';
                 info.Path.Data[info.Path.Length + 1] = '*';
                 info.Path.Length += 2;
-                IterateDirectroyInternal(info.Path, iterator, context);
+                IterateDirectoryInternal(info.Path, iterator, context);
             }
             else if (result == Directory_Iteration_Break)
             {
@@ -160,7 +160,7 @@ static bool IterateDirectroyInternal(String path, Directory_Iterator iterator, v
     return true;
 }
 
-bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *context)
+bool OsIterateDirectory(const char *path, Directory_Iterator iterator, void *context)
 {
     Memory_Arena    *scratch         = ThreadScratchpad();
 
@@ -200,7 +200,7 @@ bool OsIterateDirectroy(const char *path, Directory_Iterator iterator, void *con
     if (!iterator)
         iterator = DirectoryIteratorPrint;
 
-    bool result = IterateDirectroyInternal(path_normalized, iterator, context);
+    bool result = IterateDirectoryInternal(path_normalized, iterator, context);
 
     EndTemporaryMemory(&temp);
 
