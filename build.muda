@@ -17,6 +17,11 @@ Defines            : ASSERTION_HANDLED;
 :COMPILER.CL
 Defines            :  _CRT_SECURE_NO_WARNINGS;
 
+:OS.LINUX
+Flags: -fPIC;
+Libraries: dl m;
+Defines: _GNU_SOURCE;
+
 ##################################################################################
 
 [muda-plugin]
@@ -26,7 +31,3 @@ Optimization       : True;
 Build              : muda;
 BuildDirectory     : ./.muda;
 Sources            : plugin/muda_plug.c;
-
-:OS.LINUX
-Flags: -fPIC;
-Libraries: dl m;
