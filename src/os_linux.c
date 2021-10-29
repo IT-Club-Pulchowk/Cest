@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "lenstring.h"
 #include "os.h"
 #include "zBase.h"
@@ -27,7 +28,7 @@ static bool GetInfo(File_Info *info, int dirfd, const String Path, const char *n
     info->Size            = stats.stx_size;
 
     Memory_Arena *scratch = ThreadScratchpad();
-    info->Path.Length     = Path.Length;
+    info->Path.Length     = Path.Length - 1;
     info->Path.Data       = PushSize(scratch, Path.Length);
     memcpy(info->Path.Data, Path.Data, Path.Length);
     info->Name.Data   = info->Path.Data + (Path.Length - name_len - 1);

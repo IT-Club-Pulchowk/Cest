@@ -387,13 +387,12 @@ static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, voi
         Directory_Iteration_Context *context = (Directory_Iteration_Context *)user_context;
 
         String_Array_List           *ignore  = context->Ignore;
+        String dir_path  = info->Path;
+        String dir_name  = SubStr(dir_path, 2, dir_path.Length - 2);
         ForList(String_Array_List_Node, ignore)
         {
             ForListNode(ignore, MAX_STRING_NODE_DATA_COUNT)
             {
-                String dir_path  = info->Path;
-                String dir_name  = SubStr(dir_path, 2, dir_path.Length - 2);
-
                 Int64  str_count = it->Data[index].Count;
                 for (Int64 str_index = 0; str_index < str_count; ++str_index)
                 {
