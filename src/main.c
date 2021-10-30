@@ -24,7 +24,8 @@ void MudaParseSectionInit(Muda_Parse_Section *section)
     section->Compiler = Muda_Parsing_COMPILER_ALL;
 }
 
-void DeserializeMuda(Build_Config *build_config, Compiler_Config_List *config_list, Uint8 *data, Compiler_Kind compiler, const char *parent)
+void DeserializeMuda(Build_Config *build_config, Compiler_Config_List *config_list, Uint8 *data, Compiler_Kind compiler,
+                     const char *parent)
 {
     Memory_Arena         *scratch = ThreadScratchpad();
 
@@ -86,7 +87,7 @@ void DeserializeMuda(Build_Config *build_config, Compiler_Config_List *config_li
         {
         case Muda_Token_Config: {
             MudaParseSectionInit(&section);
-            
+
             if (first_config_name)
             {
                 config->Name      = StrDuplicateArena(prsr.Token.Data.Config, config->Arena);
@@ -384,16 +385,16 @@ static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, voi
         if (StrMatch(info->Name, StringLiteral(".muda")))
             return Directory_Iteration_Continue;
 
-        Directory_Iteration_Context *context = (Directory_Iteration_Context *)user_context;
+        Directory_Iteration_Context *context  = (Directory_Iteration_Context *)user_context;
 
-        String_Array_List           *ignore  = context->Ignore;
-        String dir_path  = info->Path;
-        String dir_name  = SubStr(dir_path, 2, dir_path.Length - 2);
+        String_Array_List           *ignore   = context->Ignore;
+        String                       dir_path = info->Path;
+        String                       dir_name = SubStr(dir_path, 2, dir_path.Length - 2);
         ForList(String_Array_List_Node, ignore)
         {
             ForListNode(ignore, MAX_STRING_NODE_DATA_COUNT)
             {
-                Int64  str_count = it->Data[index].Count;
+                Int64 str_count = it->Data[index].Count;
                 for (Int64 str_index = 0; str_index < str_count; ++str_index)
                 {
 #if PLATFORM_OS_WINDOWS == 1
@@ -415,12 +416,15 @@ static Directory_Iteration DirectoryIteratorAddToList(const File_Info *info, voi
 }
 
 void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config,
-                      const Compiler_Kind available_compilers, const Compiler_Kind compiler, const char *parent);
+                      const Compiler_Kind available_compilers, const Compiler_Kind compiler, const char *parent,
+                      bool is_root);
 void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind available_compilers,
-                            const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent);
+                            const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent,
+                            bool is_root);
 
 void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_config,
-                      const Compiler_Kind available_compilers, const Compiler_Kind compiler, const char *parent)
+                      const Compiler_Kind available_compilers, const Compiler_Kind compiler, const char *parent,
+                      bool is_root)
 {
     Memory_Arena    *scratch       = ThreadScratchpad();
 
@@ -458,7 +462,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
         pevent.Data.Prebuild.Build       = build.Data;
         pevent.Data.Prebuild.BuildDir    = build_dir.Data;
         pevent.Data.Prebuild.Succeeded   = prebuild_pass;
-        pevent.Data.Prebuild.BuildKind   = compiler_config->Application;
+        pevent.Data.Prebuild.RootBuild   = is_root;
 
         if (compiler_config->Application == Application_Executable)
             pevent.Data.Prebuild.BuildExtension = ExecutableExtension;
@@ -1025,7 +1029,7 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
                         parent_dir.Length -= 2;
                         Temporary_Memory arena_temp = BeginTemporaryMemory(arena);
                         SearchExecuteMudaBuild(arena, build_config, available_compilers, compiler, compiler_config,
-                                               parent_dir.Data);
+                                               parent_dir.Data, false);
                         EndTemporaryMemory(&arena_temp);
                         if (!OsSetWorkingDirectory(StringLiteral("..")))
                         {
@@ -1071,7 +1075,8 @@ void ExecuteMudaBuild(Compiler_Config *compiler_config, Build_Config *build_conf
 }
 
 void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, const Compiler_Kind available_compilers,
-                            const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent)
+                            const Compiler_Kind compiler, Compiler_Config *alternative_config, const char *parent,
+                            bool is_root)
 {
     Temporary_Memory      arena_temp = BeginTemporaryMemory(arena);
 
@@ -1149,7 +1154,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
                 Compiler_Config *config = &it->Config[index];
                 LogInfo("==> Building Configuration: %s \n", config->Name.Data);
                 PushDefaultCompilerConfig(config, config->Kind == Compile_Project);
-                ExecuteMudaBuild(config, build_config, available_compilers, compiler, parent);
+                ExecuteMudaBuild(config, build_config, available_compilers, compiler, parent, is_root);
             }
         }
     }
@@ -1176,7 +1181,7 @@ void SearchExecuteMudaBuild(Memory_Arena *arena, Build_Config *build_config, con
             {
                 LogInfo("==> Building Configuration: %s \n", config->Name.Data);
                 PushDefaultCompilerConfig(config, config->Kind == Compile_Project);
-                ExecuteMudaBuild(config, build_config, available_compilers, compiler, parent);
+                ExecuteMudaBuild(config, build_config, available_compilers, compiler, parent, is_root);
             }
             else
             {
@@ -1257,6 +1262,28 @@ int main(int argc, char *argv[])
                         (Muda_Event_Hook_Procedure)OsGetProcedureAddress(plugin, MudaPluginProcedureName);
                     if (build_config.PluginHook)
                     {
+                        Muda_Parsing_COMPILER forced_compiler = Muda_Parsing_COMPILER_ALL;
+                        if (build_config.ForceCompiler == Compiler_Bit_CL)
+                            forced_compiler = Muda_Parsing_COMPILER_CL;
+                        else if (build_config.ForceCompiler == Compiler_Bit_CLANG)
+                            forced_compiler = Muda_Parsing_COMPILER_CLANG;
+                        else if (build_config.ForceCompiler == Compiler_Bit_GCC)
+                            forced_compiler = Muda_Parsing_COMPILER_GCC;
+
+                        build_config.Interface.CommandLineConfig.Flags = 0;
+                        if (build_config.ForceCompiler)
+                            build_config.Interface.CommandLineConfig.Flags |= Command_Line_Flag_Force_Optimization;
+                        if (build_config.DisplayCommandLine)
+                            build_config.Interface.CommandLineConfig.Flags |= Command_Line_Flag_Display_Command_Line;
+                        if (build_config.DisableLogs)
+                            build_config.Interface.CommandLineConfig.Flags |= Command_Line_Flag_Disable_Logs;
+
+                        build_config.Interface.CommandLineConfig.ForceCompiler      = forced_compiler;
+                        build_config.Interface.CommandLineConfig.Configurations =
+                            (Muda_String *)build_config.Configurations;
+                        build_config.Interface.CommandLineConfig.ConfigurationCount = build_config.ConfigurationCount;
+                        build_config.Interface.CommandLineConfig.LogFilePath        = build_config.LogFilePath;
+
                         Muda_Plugin_Event pevent;
                         memset(&pevent, 0, sizeof(pevent));
                         pevent.Kind = Muda_Plugin_Event_Kind_Detection;
@@ -1320,10 +1347,10 @@ int main(int argc, char *argv[])
         LogInfo("Compiler GCC Detected.\n");
     }
 
-    Memory_Arena arena               = MemoryArenaCreate(MegaBytes(128));
+    Memory_Arena arena            = MemoryArenaCreate(MegaBytes(128));
 
-    const char  *current_dir_name    = OsGetWorkingDirectoryName(&arena);
-    SearchExecuteMudaBuild(&arena, &build_config, available_compilers, compiler, NULL, current_dir_name);
+    const char  *current_dir_name = OsGetWorkingDirectoryName(&arena);
+    SearchExecuteMudaBuild(&arena, &build_config, available_compilers, compiler, NULL, current_dir_name, true);
 
     Muda_Plugin_Event pevent;
     memset(&pevent, 0, sizeof(pevent));

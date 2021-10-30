@@ -439,6 +439,8 @@ INLINE_PROCEDURE void BuildConfigInit(Build_Config *build_config)
     build_config->Interface.Version.Patch        = MUDA_VERSION_PATCH;
 
     build_config->PluginHook                     = NullMudaEventHook;
+
+    memset(&build_config->Interface.CommandLineConfig, 0, sizeof(build_config->Interface.CommandLineConfig));
 }
 
 INLINE_PROCEDURE void CompilerConfigInit(Compiler_Config *config, Memory_Arena *arena)

@@ -47,7 +47,7 @@ MudaHandleEvent()
 
         Muda_Plugin_Config *Config = MudaGetPostbuildData();
 
-        if (Config->BuildKind == BUILD_KIND_EXECUTABLE)
+        if (Config->RootBuild)
         {
             if (Config->Succeeded)
             {

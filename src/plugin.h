@@ -71,7 +71,7 @@
 #if defined(__cplusplus)
 #define MUDA_PLUGIN_INTERFACE extern "C"
 #else
-#define MUDA_PLUGIN_INTERFACE 
+#define MUDA_PLUGIN_INTERFACE
 #endif
 #endif
 
@@ -177,7 +177,7 @@ typedef struct Temporary_Memory
 } Temporary_Memory;
 
 #define MUDA_PLUGIN_VERSION_MAJOR 1
-#define MUDA_PLUGIN_VERSION_MINOR 8
+#define MUDA_PLUGIN_VERSION_MINOR 9
 #define MUDA_PLUGIN_VERSION_PATCH 0
 
 #else
@@ -236,14 +236,32 @@ typedef enum Muda_Plugin_Event_Kind
     Muda_Plugin_Event_Kind_Destroy
 } Muda_Plugin_Event_Kind;
 
-typedef struct Muda_Plugin_Config {
+typedef enum Command_Line_Flags
+{
+    Command_Line_Flag_Force_Optimization = 0x1,
+    Command_Line_Flag_Display_Command_Line = 0x2,
+    Command_Line_Flag_Disable_Logs = 0x4,
+} Command_Line_Flags;
+
+typedef struct Command_Line_Config
+{
+    Muda_Parsing_COMPILER ForceCompiler;
+    Command_Line_Flags    Flags;
+    Muda_String          *Configurations;
+    uint32_t              ConfigurationCount;
+    const char           *LogFilePath;
+} Command_Line_Config;
+
+typedef struct Muda_Plugin_Config
+{
     const char *MudaDirName;
     const char *Name;
     const char *Build;
     const char *BuildExtension;
     const char *BuildDir;
-    uint32_t    BuildKind;
-    uint32_t    Succeeded; // if Prebuild, tells if the prebuild was successful, if Postbuild, tells if the compilation was successful
+    uint32_t    RootBuild;
+    uint32_t Succeeded; // if Prebuild, tells if the prebuild was successful, if Postbuild, tells if the compilation was
+                        // successful
 } Muda_Plugin_Config;
 
 typedef struct Muda_Plugin_Event
@@ -270,6 +288,8 @@ typedef struct Muda_Plugin_Interface
     void (*LogWarn)(struct Thread_Context *, const char *fmt, ...);
     void (*FatalError)(struct Thread_Context *, const char *msg);
 
+    Command_Line_Config CommandLineConfig;
+
     char *PluginName;
     void *UserContext;
 
@@ -279,11 +299,12 @@ typedef struct Muda_Plugin_Interface
     } Version;
 } Muda_Plugin_Interface;
 
-#define Muda_Event_Hook_Defn(name) int32_t name (struct Thread_Context *Thread, Muda_Plugin_Interface *Interface, Muda_Plugin_Event *Event)
+#define Muda_Event_Hook_Defn(name)                                                                                     \
+    int32_t name(struct Thread_Context *Thread, Muda_Plugin_Interface *Interface, Muda_Plugin_Event *Event)
 typedef Muda_Event_Hook_Defn((*Muda_Event_Hook_Procedure));
 
 #define MudaHandleEvent()                                                                                              \
-    MUDA_PLUGIN_INTERFACE void MudaAcceptVersion(uint32_t *major, uint32_t *minor, uint32_t *patch)         \
+    MUDA_PLUGIN_INTERFACE void MudaAcceptVersion(uint32_t *major, uint32_t *minor, uint32_t *patch)                    \
     {                                                                                                                  \
         *major = MUDA_PLUGIN_VERSION_MAJOR;                                                                            \
         *minor = MUDA_PLUGIN_VERSION_MINOR;                                                                            \
