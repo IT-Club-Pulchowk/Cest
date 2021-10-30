@@ -1,5 +1,8 @@
 misc
 bin
+x64
+test
+Data
 .vscode
 *.exe
 *.exp
@@ -8,4 +11,18 @@ bin
 *.out
 *.pdb
 .fuse*
-/.muda/muda.lib
+buillder-original.bat
+buillder-test.bat
+delete_dll.bat
+delete_exe.bat
+delete_muda.bat
+build - Original.muda
+build - Test.muda
+muda.sln
+muda.vcxproj
+muda.vcxproj.filters
+muda.vcxproj.user
+.github/workflows/main.yml
+.muda/output.txt
+.vs
+release/a.txt
