@@ -149,6 +149,11 @@ MudaHandleEvent()
         }
 
         MudaLog("==> Finished Collecting information.\n\n");
+
+        fclose(input_file);
+        fclose(log_file);
+
+
         return 0;
     }
 
@@ -315,7 +320,6 @@ BOOL CheckOutput(Muda_Plugin_Config *Config)
 
     free(input_line);
     free(output_line);
-    fclose(input_file);
     fclose(output_file);
 
     return same;
