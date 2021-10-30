@@ -1,33 +1,34 @@
-# Command: muda -noplug
-
 @version 1.0.0
-
-[muda]
+[Plugin]
 Kind               : Project;
 Application        : Executable;
-Optimization       : True;
-
+Optimization       : False;
 Build              : muda;
-BuildDirectory     : ./release;
-Sources            : src/build.c;
-Flags              : ;
-
-Defines            : ASSERTION_HANDLED;
-
-:COMPILER.CL
-Defines            :  _CRT_SECURE_NO_WARNINGS;
+BuildDirectory     : ./.muda;
+Sources            : tests/main.c;
 
 :OS.LINUX
 Flags: -fPIC;
 Libraries: dl m;
-Defines: _GNU_SOURCE;
 
 ##################################################################################
 
-[muda-plugin]
-Kind               : Project;
-Application        : DynamicLibrary;
-Optimization       : True;
-Build              : muda;
-BuildDirectory     : ./.muda;
-Sources            : plugin/muda_plug.c;
+# [release]
+# Kind               : Project;
+# Application        : Executable;
+# Optimization       : True;
+# 
+# Build              : muda;
+# BuildDirectory     : ./release;
+# Sources            : src/build.c;
+# Flags              : ;
+# 
+# Defines            : ASSERTION_HANDLED;
+# 
+# IncludeDirectories : ;
+# Libraries          : ;
+# LibraryDirectories : ;
+# LinkerFlags        : ;
+# 
+# :COMPILER.CL
+# Defines            :  _CRT_SECURE_NO_WARNINGS;
