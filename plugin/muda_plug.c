@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 
 #include "../src/plugin.h"
 #include "../src/sha-256.h"
@@ -36,11 +38,39 @@ int         DumpCSV(Muda_Plugin_Config *Config, ProcessLaunchInfo Info, int corr
 
 
 
+
+FILE       *input_file;
+wchar_t     input_file_name[256];
+
+WCHAR       log_file_name[256];
+FILE       *log_file;
+
 MudaHandleEvent()
 {
     if (Event->Kind == Muda_Plugin_Event_Kind_Detection)
     {
         MudaPluginName("MudaXPlugin");
+
+        // File with standard answers
+        _snwprintf_s(input_file_name, 256, _TRUNCATE, L"%hs/%hs.%hs", "Data", "input", "txt");
+        _wfopen_s(&input_file, input_file_name, L"r");
+
+        if (input_file == 0)
+        {
+            printf("Could Not Open %ws.\nReturning at line %d\n\n", input_file_name, __LINE__);
+            return -1;
+        }
+
+        // The csv file
+        _snwprintf_s(log_file_name, 256, _TRUNCATE, L"%hs/%hs.%hs", "Data", "muda", "csv");
+        _wfopen_s(&log_file, log_file_name, L"a");
+
+        if (log_file == 0)
+        {
+            printf("Could Not open %ws.\nReturning at line %d\n\n", log_file_name, __LINE__);
+            return -1;
+        }
+
         return 0;
     }
 
@@ -104,8 +134,10 @@ MudaHandleEvent()
                 int same = CheckOutput(Config);
                 if (same == 0)
                     printf("Sorry! Your Code failed to Produce Desired Output!\n\n");
-
-                printf("Yay! Code Workedd.\n\n");
+                else if (same == -1)
+                    return -1; // returns one because failed to start process. In this case dont log.
+                else
+                    printf("Yay! Code Workedd.\n\n");
 
 
 
@@ -198,22 +230,23 @@ static void OsExecuteCommandLine(struct Thread_Context *Thread, Muda_Plugin_Inte
 
 void DumpOutput(Muda_Plugin_Config *Config)
 {
-    char assignment_file_name[256];
-    snprintf(assignment_file_name, 256, "%s/%s.%s", Config->BuildDir, "output", "txt");
+    wchar_t* assignment_file_name = malloc(256 * sizeof(wchar_t));
+    _snwprintf_s(assignment_file_name, 256, _TRUNCATE, L"%hs/%hs.%hs", Config->BuildDir, "output", "txt");
 
-    char CommandLine[256];
-    snprintf(CommandLine, sizeof(CommandLine), "%s/%s.%s", Config->BuildDir, Config->Build, Config->BuildExtension);
+    wchar_t* CommandLine = malloc(256 * sizeof(wchar_t));
+    ZeroMemory(CommandLine, 256);
+    _snwprintf_s(CommandLine, 256, _TRUNCATE, L"%hs/%hs.%hs", Config->BuildDir, Config->Build, Config->BuildExtension);
 
     SECURITY_ATTRIBUTES sa;
     sa.nLength              = sizeof(sa);
     sa.lpSecurityDescriptor = NULL;
     sa.bInheritHandle       = TRUE;
 
-    HANDLE              h = CreateFileA(assignment_file_name, FILE_APPEND_DATA, FILE_SHARE_WRITE | FILE_SHARE_READ, &sa,
+    HANDLE              h = CreateFileW(assignment_file_name, FILE_APPEND_DATA, FILE_SHARE_WRITE | FILE_SHARE_READ, &sa,
                                         CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
     PROCESS_INFORMATION pi;
-    STARTUPINFO         si;
+    STARTUPINFOW         si;
     BOOL                ret = FALSE;
 
     ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
@@ -224,11 +257,11 @@ void DumpOutput(Muda_Plugin_Config *Config)
     si.hStdError  = h;
     si.hStdOutput = h;
 
-    ret           = CreateProcessA(NULL, CommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
+    ret           = CreateProcessW(NULL, CommandLine, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi);
 
     if (!ret)
     {
-        printf("Could Not Open a process.\nReturning at line %d\n\n", __LINE__);
+        printf("Could Not Open a process.\nError: %s\nReturning at line %d\n\n", strerror(GetLastError()), __LINE__);
         CloseHandle(h);
         return;
     }
@@ -243,25 +276,16 @@ BOOL CheckOutput(Muda_Plugin_Config *Config)
     // assume .muda/input.txt and .muda/muda.txt
     // input.txt has correct values
     // output.txt has assigned program output
-    FILE *input_file;
+    
+
+    wchar_t assignment_file_name[256];
+    _snwprintf_s(assignment_file_name, 256, _TRUNCATE, L"%hs/%hs.%hs", Config->BuildDir, "output", "txt");
+
     FILE *output_file;
-
-    char  input_file_name[256];
-    snprintf(input_file_name, 256, "%s/%s.%s", Config->BuildDir, "input", "txt");
-
-    char assignment_file_name[256];
-    snprintf(assignment_file_name, 256, "%s/%s.%s", Config->BuildDir, "output", "txt");
-
-    errno_t file_err = fopen_s(&input_file, input_file_name, "r");
-    if (input_file == 0)
-    {
-        printf("Could Not Open %s.\nReturning at line %d\n\n", input_file_name, __LINE__);
-        return -1;
-    }
-    file_err = fopen_s(&output_file, assignment_file_name, "r");
+    _wfopen_s(&output_file, assignment_file_name, L"r");
     if (output_file == 0)
     {
-        printf("Could Not Open %s.\nReturning at line %d\n\n", assignment_file_name, __LINE__);
+        printf("Could Not Open %ws.\nReturning at line %d\n\n", assignment_file_name, __LINE__);
         return -1;
     }
 
@@ -270,17 +294,17 @@ BOOL CheckOutput(Muda_Plugin_Config *Config)
     // output maybe higher but I doubt we will ever hit a line this long
     // so it is
     int     line_size   = 4096;
-    char   *input_line  = malloc(line_size * sizeof(char));
-    char   *output_line = malloc(line_size * sizeof(char));
+    WCHAR   *input_line  = malloc(line_size * sizeof(char));
+    WCHAR   *output_line = malloc(line_size * sizeof(char));
     int     same        = 1;
 
     uint8_t input_hash[32];
     uint8_t output_hash[32];
 
-    while (same && fgets(input_line, line_size, input_file) && fgets(output_line, line_size, output_file))
+    while (same && fgetws(input_line, line_size, input_file) && fgetws(output_line, line_size, output_file))
     {
-        calc_sha_256(input_hash, (void *)input_line, strlen(input_line));
-        calc_sha_256(output_hash, (void *)output_line, strlen(output_line));
+        calc_sha_256(input_hash, (void *)input_line, wcslen(input_line));
+        calc_sha_256(output_hash, (void *)output_line, wcslen(output_line));
 
         for (int i = 0; i < 32; ++i)
         {
@@ -299,22 +323,12 @@ BOOL CheckOutput(Muda_Plugin_Config *Config)
 
 int DumpCSV(Muda_Plugin_Config *Config, ProcessLaunchInfo Info, int correctness)
 {
-    char log_file_name[256];
-    snprintf(log_file_name, 256, "%s/%s.%s", Config->BuildDir, Config->Build, "csv");
-    FILE   *log_file;
-    errno_t file_err = fopen_s(&log_file, log_file_name, "a");
-
-    if (log_file == 0)
-    {
-        printf("Could Not open %s.\nReturning at line %d\n\n", log_file_name, __LINE__);
-        return -1;
-    }
-    char log_entry[256];
-    snprintf(log_entry, 256, "%d,\"%s\",%zu,%f,%f,%f,%f\n", correctness, Config->MudaDir, Info.Memory.PageFaults,
+    WCHAR log_entry[256];
+    _snwprintf_s(log_entry, 256, _TRUNCATE, L"%d,\"%hs\",%zu,%f,%f,%f,%f\n", correctness, Config->MudaDir, Info.Memory.PageFaults,
              (double)Info.Memory.PageMappedUsage / 1024.0, (double)Info.Memory.PageFileUsage / 1024.0,
              (double)Info.Time.Cycles / 1000.0, Info.Time.Millisecs);
 
-    fputs(log_entry, log_file);
+    fputws(log_entry, log_file);
     return 0;
 }
 
