@@ -8,3 +8,5 @@ bin
 *.pdb
 .fuse*
 /.muda/muda.lib
+builder-*
+delete_*
