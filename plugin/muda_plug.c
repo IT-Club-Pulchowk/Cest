@@ -36,7 +36,7 @@ static void OsExecuteCommandLine(struct Thread_Context *Thread, Muda_Plugin_Inte
                                  const char *CommandLine, ProcessLaunchInfo *InfoOut);
 void        DumpOutput(Muda_Plugin_Config *Config);
 BOOL        CheckOutput(Muda_Plugin_Config *Config);
-int         DumpCSV(Muda_Plugin_Config *Config, ProcessLaunchInfo Info, int correctness);
+int         DumpCSV(Muda_Plugin_Config *Config, ProcessLaunchInfo* Info, int correctness);
 
 
 FILE       *input_file;
@@ -53,7 +53,7 @@ MudaHandleEvent()
     if (Event->Kind == Muda_Plugin_Event_Kind_Detection)
     {
         MudaPluginName("MudaXPlugin");
-
+    
         // File with standard answers
         _snwprintf_s(input_file_name, 256, _TRUNCATE, L"%hs/%hs.%hs", "Data", "input", "txt");
         _wfopen_s(&input_file, input_file_name, L"r");
@@ -143,7 +143,7 @@ MudaHandleEvent()
 
 
                 // log into muda.csv
-                DumpCSV(Config, Info, same);
+                DumpCSV(Config, &Info, same);
 
             }
 
@@ -242,10 +242,10 @@ static void OsExecuteCommandLine(struct Thread_Context *Thread, Muda_Plugin_Inte
 
 void DumpOutput(Muda_Plugin_Config *Config)
 {
-    wchar_t *assignment_file_name = malloc(256 * sizeof(wchar_t));
+    wchar_t assignment_file_name[256];
     _snwprintf_s(assignment_file_name, 256, _TRUNCATE, L"%hs/%hs.%hs", Config->BuildDir, "output", "txt");
 
-    wchar_t *CommandLine = malloc(256 * sizeof(wchar_t));
+    wchar_t CommandLine[256];
     ZeroMemory(CommandLine, 256);
     _snwprintf_s(CommandLine, 256, _TRUNCATE, L"%hs/%hs.%hs", Config->BuildDir, Config->Build, Config->BuildExtension);
 
@@ -315,6 +315,12 @@ BOOL CheckOutput(Muda_Plugin_Config *Config)
     {
         fgetws(input_line, line_size, input_file);
         fgetws(output_line, line_size, output_file);
+        
+        if (feof(input_file)) // fuck i am so dumb
+            break;
+        if (feof(output_file))
+            break;
+
         calc_sha_256(input_hash, (void *)input_line, wcslen(input_line));
         calc_sha_256(output_hash, (void *)output_line, wcslen(output_line));
 
@@ -322,7 +328,7 @@ BOOL CheckOutput(Muda_Plugin_Config *Config)
         {
             if (input_hash[i] != output_hash[i])
             {
-                same = 0;
+                same = 0; // this also breaks the outer while
                 break;
             }
         }
@@ -335,12 +341,12 @@ BOOL CheckOutput(Muda_Plugin_Config *Config)
     return same;
 }
 
-int DumpCSV(Muda_Plugin_Config *Config, ProcessLaunchInfo Info, int correctness)
+int DumpCSV(Muda_Plugin_Config *Config, ProcessLaunchInfo* Info, int correctness)
 {
     WCHAR log_entry[256];
     _snwprintf_s(log_entry, 256, _TRUNCATE, L"%d,\"%hs\",%zu,%f,%f,%f,%f\n", correctness, Config->MudaDirName,
-                 Info.Memory.PageFaults, (double)Info.Memory.PageMappedUsage / 1024.0,
-                 (double)Info.Memory.PageFileUsage / 1024.0, (double)Info.Time.Cycles / 1000.0, Info.Time.Millisecs);
+                 Info->Memory.PageFaults, (double)Info->Memory.PageMappedUsage / 1024.0,
+                 (double)Info->Memory.PageFileUsage / 1024.0, (double)Info->Time.Cycles / 1000.0, Info->Time.Millisecs);
 
     fputws(log_entry, log_file);
     return 0;
