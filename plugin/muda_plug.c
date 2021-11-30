@@ -82,6 +82,7 @@ MudaHandleEvent()
 
     if (Event->Kind == Muda_Plugin_Event_Kind_Parse)
     {
+        Event->Data.Parse
         // May be we are interested in some properties?
         return 1; // we return 1 because we are not handling any unknown properties
     }
@@ -92,7 +93,7 @@ MudaHandleEvent()
 
         Muda_Plugin_Config *Config = MudaGetPostbuildData();
 
-        if (Config->RootBuild)
+        if (!Config->RootBuild)
         {
             if (Config->Succeeded)
             {

@@ -177,7 +177,7 @@ typedef struct Temporary_Memory
 } Temporary_Memory;
 
 #define MUDA_PLUGIN_VERSION_MAJOR 1
-#define MUDA_PLUGIN_VERSION_MINOR 9
+#define MUDA_PLUGIN_VERSION_MINOR 10
 #define MUDA_PLUGIN_VERSION_PATCH 0
 
 #else
